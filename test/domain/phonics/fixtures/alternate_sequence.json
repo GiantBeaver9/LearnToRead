@@ -1,0 +1,58 @@
+{
+  "levels": [
+    {
+      "id": "alt-level-1",
+      "ordinal": 1,
+      "format": "sentence",
+      "vocabEnabled": false,
+      "heartWords": ["you"],
+      "skills": [
+        {
+          "id": "alt-skill-cvc-short-i",
+          "name": "CVC short i",
+          "sequenceOrder": 1,
+          "introducesGraphemes": ["i"]
+        }
+      ]
+    },
+    {
+      "id": "alt-level-2",
+      "ordinal": 2,
+      "format": "multiSentence",
+      "vocabEnabled": false,
+      "heartWords": ["there"],
+      "skills": [
+        {
+          "id": "alt-skill-blend-tr",
+          "name": "Blend tr",
+          "sequenceOrder": 2,
+          "introducesGraphemes": ["tr"]
+        }
+      ]
+    },
+    {
+      "id": "alt-level-3",
+      "ordinal": 3,
+      "format": "paragraph",
+      "vocabEnabled": true,
+      "heartWords": ["because"],
+      "skills": [
+        {
+          "id": "alt-skill-vowel-team-ea",
+          "name": "Vowel team ea",
+          "sequenceOrder": 3,
+          "introducesGraphemes": ["ea"]
+        }
+      ]
+    }
+  ],
+  "stories": [
+    { "id": "alt-story-1-1", "levelId": "alt-level-1" },
+    { "id": "alt-story-1-2", "levelId": "alt-level-1" },
+    { "id": "alt-story-1-3", "levelId": "alt-level-1" },
+    { "id": "alt-story-1-4", "levelId": "alt-level-1" },
+    { "id": "alt-story-2-1", "levelId": "alt-level-2" },
+    { "id": "alt-story-2-2", "levelId": "alt-level-2" },
+    { "id": "alt-story-3-1", "levelId": "alt-level-3" }
+  ]
+}
