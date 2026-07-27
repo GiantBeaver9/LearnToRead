@@ -86,6 +86,8 @@ progress data with no export path), without building any of it now.
 - User-generated or AI-generated-at-runtime content. All content is authored,
   edited, and shipped through the pipeline in Unit 3.
 - Handwriting, spelling, or letter-formation exercises.
+- Placement/level-assessment test (age band + parent override sets the
+  starting level in v1; a proper placement test is v2 — see Unit 2).
 - Social features of any kind.
 
 ## 4. Success criteria
@@ -122,7 +124,10 @@ story packs.
 - **PhonicsSkill** — `id`, `name` (e.g. "short a", "digraph sh"), `sequenceOrder`.
   The ordered list is the scope & sequence (Unit 2).
 - **Level** — `id`, `ordinal`, `newSkills: [PhonicsSkill]`, `format`
-  (`sentence` | `multiSentence` | `paragraph`), `vocabEnabled: bool`.
+  (`sentence` | `multiSentence` | `paragraph`), `vocabEnabled: bool`,
+  `narrationEnabled: bool` (true at all sentence-format levels; the opt-in
+  flag Unit 5 reads for higher levels; pack validation requires
+  `narrationAudioRef` on every sentence wherever it is true, per A-11).
 - **Story** — `id`, `levelId`, `title`, `pages: [Page]`, `riveAnimationRef`,
   `celebrationAudioRef`, `collectibleRef`, `skillsExercised: [PhonicsSkill]`,
   `packId`, `contentVersion`.
@@ -163,8 +168,10 @@ story packs.
 
 ### Analytics events (anonymous — see Unit 12 for the privacy contract)
 
-`session_start`, `story_started`, `word_read` (correct/helped),
-`help_given` (tier), `story_completed`, `story_abandoned`,
+`session_start`, `story_started`, `word_read` (correct/near_miss/helped —
+near-miss acceptances are deliberately distinguishable so pilot data shows
+where "close enough" is doing the work), `help_given` (tier),
+`story_completed`, `story_abandoned`,
 `vocab_card_opened`, `collectible_earned`, `twister_started`,
 `twister_completed`. Events carry a random per-install
 ID and profile ordinal only — never names, audio, or device identifiers.
@@ -218,7 +225,7 @@ ID and profile ordinal only — never names, audio, or device identifiers.
 | R1 | Even with expected-text hybridization, recognition of young children's speech misfires; words don't turn green when read correctly. | Core magic breaks; children frustrated. | **Unit 0 spike (week one) tests this on real kids before anything builds on it.** Close-enough phonetic acceptance is the pinned policy (Unit 4); tiered help instead of "wrong!"; tap fallback; engine-swap seam if on-device proves too coarse; signal §4.4 watches this in pilot. |
 | R2 | If a metered cloud engine backs the hybrid layer, cost scales with free usage. | Product owner funds unbounded bill. | Default engine is on-device (A-10), making this moot; if a cloud engine substitutes, hard per-profile daily cap (A-7) with silent downgrade. |
 | R3 | Shipping publicly without COPPA consent machinery. | Legal exposure; app-store removal. | Explicitly post-POC: the PRD records verifiable consent + counsel review as ship-gates (see §6 POC posture). POC distribution stays private (TestFlight/internal testing, known families). No audio retention regardless (Unit 4). |
-| R4 | Content pipeline too slow/expensive per story (illustration + Rive + editing + TTS). | Library stalls at launch size; retention decays. | Pipeline is a first-class unit (Unit 3) with per-story cost tracked from story #1; style guide constrains art scope; hybrid voice strategy avoids per-story recording sessions. |
+| R4 | Content pipeline too slow/expensive per story (illustration + Rive + editing + per-story voice recording). | Library stalls at launch size; retention decays. | Pipeline is a first-class unit (Unit 3) with per-story cost tracked from story #1; style guide constrains art scope; recordings done in batched sessions (many stories per sitting); the source-agnostic audio refs keep TTS as the recorded post-v1 escape hatch if recording cost stalls the library. |
 | R5 | Decodable text authored with AI drifts off the phonics constraint. | Stories unteachable at their level. | Pipeline includes an automated decodability linter (Unit 3 acceptance) — every word checked against the level's cumulative grapheme set; human editor approves. |
 | R6 | "Fully responsive both orientations" doubles design/QA effort and delays launch. | Schedule risk. | Accepted knowingly by product owner. Design system (Unit 1) defines layout rules once; Rive stages composed for a safe-area aspect range rather than per-orientation rebuilds. |
 | R7 | Struggle detection (when to intervene) tuned wrong: too eager feels condescending, too slow feels absent. | Teaching interaction fails both age ends. | Timings are pinned as tunable constants (Unit 6) and adjusted in pilot; per-level timing profiles allowed. |
@@ -313,12 +320,15 @@ critical path.
 - Profile start level from age band: 5–6 → level 1; 7–8 → first
   multiSentence level; 9–10 → first paragraph level. Parent can override in
   parent corner. (Placement test is v2 — Non-scope.)
-- Unlock rule (ratified): **rolling window of 3** — the child always has the
-  next 3 uncompleted stories of their current level available and picks
-  freely among them; completing one pulls the next authored story into the
-  window, and unchosen stories remain offered until read. Completing the
-  level's story set advances `currentLevelId` (the window then draws from
-  the new level). Earlier stories remain replayable forever.
+- Unlock rule (ratified): **rolling window of 3** — the child always has
+  the next 3 uncompleted stories in global authored order (which is
+  level-ordered) and picks freely among them; completing one pulls the next
+  authored story into the window, and unchosen stories remain offered until
+  read ("no strict block": when fewer than 3 uncompleted stories remain at
+  the current level, the window back-fills from the next level's authored
+  order). `currentLevelId` still advances only when the level's full story
+  set is completed — it gates vocab enablement and twister tagging, not
+  story availability. Earlier stories remain replayable forever.
 - Engine exposes: `storiesFor(profile)`, `advance(profile, story)`,
   `isUnlocked(profile, story)` — pure functions over Profile + content data.
 
@@ -445,8 +455,9 @@ critical path.
   opening a story plays the recorded human narration of the sentence once
   before listening begins; a listen button (ear icon, design system)
   replays it anytime, pausing recognition while it plays. No per-word
-  karaoke highlighting during narration in v1 (A-11). Narration is off at
-  multiSentence/paragraph levels unless a level opts in (content flag).
+  karaoke highlighting during narration in v1 (A-11). Narration is governed
+  by `Level.narrationEnabled` (§5): always true at sentence-format levels,
+  off at multiSentence/paragraph levels unless the level opts in.
 - Word state machine per WordToken:
   `unread → current → (accepted | helped) → done(green)`; driven solely by
   Unit 4's event stream — the screen contains no recognition logic.
