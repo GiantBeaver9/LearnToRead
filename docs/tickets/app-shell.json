@@ -1,8 +1,8 @@
 {
   "unit": "app-shell",
   "title": "App shell: main.dart, go_router wiring, session/lifecycle wiring, whole-app integration (Unit 1 shell half)",
-  "prd_refs": ["§8 Unit 1", "§8 Unit 11 (launch catalog check)", "§8 Unit 12 (session wiring)", "§9 A-2", "§6 Offline"],
-  "deps": ["design-tokens", "reading-screen", "progress-map-collection", "profiles-parent-corner", "vocab-cards", "celebration-sequence", "twister-flow", "content-delivery", "analytics", "listening-tracker", "stuck-word-scaffold"],
+  "prd_refs": ["§8 Unit 1", "§8 Unit 11 (launch catalog check)", "§8 Unit 12 (session wiring)", "§8 Unit 15 (fourth child destination)", "§9 A-2", "§6 Offline"],
+  "deps": ["design-tokens", "reading-screen", "progress-map-collection", "profiles-parent-corner", "vocab-cards", "celebration-sequence", "twister-flow", "sound-garden", "content-delivery", "analytics", "listening-tracker", "stuck-word-scaffold"],
   "files": [
     "lib/main.dart",
     "lib/app/app.dart",
@@ -17,8 +17,8 @@
     "test/scaffold_test.dart"
   ],
   "accept": [
-    "main.dart boots ProviderScope + go_router app: launch → profile picker; profile selected → home/progress map; navigation exists to Reading, Collection, parent corner (gated) — the three pinned child-facing screens plus parent corner; route tests.",
-    "All cross-ticket wiring lives here (providers.dart): content_repository → phonics-engine → map; reading screen ← tracker + scaffold + audio + analytics; reading completion → celebration-sequence → return-to-map with next story highlighted; vocab opener injection; twister node → twister-flow (shell integration test drives one full story loop with all fakes: select profile → pick story → events turn words green → help fires → complete → celebrate → collectible → map).",
+    "main.dart boots ProviderScope + go_router app: launch → profile picker; profile selected → home/progress map; navigation exists to Reading, Collection, Sound Garden, and parent corner (gated) — the four pinned child-facing screens (Home/progress map, Reading, Collection, Sound Garden per Unit 1 as amended) plus parent corner; route tests.",
+    "All cross-ticket wiring lives here (providers.dart): content_repository → phonics-engine → map; reading screen ← tracker + scaffold + audio + analytics; reading completion → celebration-sequence → return-to-map with next story highlighted; vocab opener injection; twister node → twister-flow; Sound Garden ← content_repository's grapheme inventory + phonics-engine level state (shell integration test drives one full story loop with all fakes: select profile → pick story → events turn words green → help fires → complete → celebrate → collectible → map; plus a Sound Garden route smoke: navigate in, tap a card, phoneme audio plays).",
     "Analytics session wiring: profile selection starts a session; app backgrounded > 120 s, closed, or profile switch ends it; reading-screen exit reports for story_abandoned (lifecycle simulated in tests).",
     "Launch catalog check wired: online (faked) → catalog checked in background; offline_first_run_test: fresh install with airplane-mode fakes runs the full starter-pack experience end-to-end (Unit 11 acceptance, app level).",
     "Child-facing navigation is icon + voice prompt only — no reading required to navigate: router-level test asserts child-facing routes' nav affordances are icon-based (voice prompt refs present as audio hooks).",
@@ -26,7 +26,7 @@
     "[DEVICE] Unit 1 golden acceptance routed to owner: goldens of library(map)/reading/collection in all four layout classes without overflow or clipped Rive stages; headless proxy: layout_smoke_test pumps each screen at all four class sizes asserting no overflow errors.",
     "Existing test/scaffold_test.dart updated to the real shell (it currently asserts the placeholder)."
   ],
-  "pinned_design": "Unit 1 pinned (shell half): Flutter, Riverpod state (A-2), go_router navigation, Rive runtime; child-facing screens are exactly Home/progress map, Reading, Collection; all child-facing navigation icon + voice prompt. This ticket owns main.dart and ALL router wiring (single-owner rule) and performs no feature logic of its own — it composes the feature tickets' public APIs. Session semantics wired per Unit 12 pinned boundaries; launch catalog check per Unit 11; celebration return-to-map with next story highlighted per Unit 8.",
+  "pinned_design": "Unit 1 pinned (shell half, as amended): Flutter, Riverpod state (A-2), go_router navigation, Rive runtime; child-facing screens are exactly Home/progress map, Reading, Collection, Sound Garden (Unit 15); all child-facing navigation icon + voice prompt. This ticket owns main.dart and ALL router wiring (single-owner rule) and performs no feature logic of its own — it composes the feature tickets' public APIs. Session semantics wired per Unit 12 pinned boundaries; launch catalog check per Unit 11; celebration return-to-map with next story highlighted per Unit 8.",
   "tier": "standard",
   "notes": "Built LAST — it is the integration ticket. Everything headless with the fakes each feature ticket ships. If any feature ticket is quarantined, the shell wires the remaining ones and stubs the quarantined route behind a provider override (keep the loop green). Voice-prompt recordings are owner content — refs only."
 }

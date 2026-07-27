@@ -1,0 +1,38 @@
+{
+  "unit": "sound-garden",
+  "title": "Sound Garden: grapheme-sound card practice area with echo matching (Unit 15)",
+  "prd_refs": ["§8 Unit 15", "§5 GraphemeSound", "§5 Analytics events (sound_card_played, sound_card_echo)", "§8 Unit 4 (sound mode)", "§9 A-13", "§8 Unit 1 (child-facing screens)"],
+  "deps": ["design-tokens", "domain-models", "phonics-engine", "listening-contracts", "word-matcher", "audio-playback", "analytics"],
+  "files": [
+    "lib/features/sound_garden/sound_garden_screen.dart",
+    "lib/features/sound_garden/sound_card.dart",
+    "lib/features/sound_garden/sound_card_controller.dart",
+    "lib/features/sound_garden/echo_session.dart",
+    "lib/features/sound_garden/example_words.dart"
+  ],
+  "test_files": [
+    "test/features/sound_garden/sound_garden_screen_test.dart",
+    "test/features/sound_garden/awake_muted_test.dart",
+    "test/features/sound_garden/echo_session_test.dart",
+    "test/features/sound_garden/example_words_test.dart",
+    "test/features/sound_garden/no_failure_state_test.dart",
+    "test/features/sound_garden/layout_classes_test.dart"
+  ],
+  "accept": [
+    "Card grid renders the full fixture grapheme inventory (short vowels, digraphs, blends, vowel teams, diphthongs like oi/ou, r-controlled) as an illustrated, browsable space; card face shows the letter combination large in the reading typeface (token-styled; widget tests).",
+    "Awake/muted state exactly matches the profile's level (transcribed acceptance): cards with introducedAtLevelId <= profile currentLevelId render awake; ahead-of-level cards are present but muted; ALL cards visible from day one; muted cards remain fully tappable and echoable (awake_muted_test over fixture profiles at different levels; level state via phonics-engine).",
+    "Tap plays the card's recorded phoneme audio — the grapheme's phonemeIds in order, gapless via PhonemeSequencer (FakeAudioService asserts refs and order — transcribed acceptance).",
+    "After playback a gentle prompt invites the child to say it back; the echo path routes through the sound-mode matcher configured with the twister threshold set (A-13 defaults from the tuning file — asserted via matcher config injection); match earns a warm sparkle state (integration test with FakeAsrEngine scripted hypotheses).",
+    "Echo is optional and there is NO failure state: non-match produces no negative state, no 'wrong', no red, no error sound — the child can just listen (no_failure_state_test: non-matching hypotheses leave the card in its neutral state; no negative token/asset reachable).",
+    "Example-word filtering matches fixture minLevelId data exactly as the profile level changes: a word appears only when minLevelId <= profile's current level; more words surface as the level rises (example_words_test — transcribed acceptance).",
+    "Tapping an example word plays its pronunciationAudioRef and highlights the grapheme within the word (widget test asserting audio call + highlight span over the grapheme substring).",
+    "A card with no downloaded example-word audio shows only the words it has audio for (offline/partial-pack behavior; test with a fixture inventory whose refs partially resolve).",
+    "No completion state, no collectibles, no progression mechanics exist anywhere in the feature (negative test: no CollectionState/StoryProgress/TwisterProgress writes; API surface has no completion concept).",
+    "sound_card_played and sound_card_echo (matched: bool) emitted per §5 with correct payloads (recording analytics fake; schema conformance is analytics' schema tests).",
+    "Mic/echo respects consent: with micConsent off, the echo prompt is absent and no engine is started — listen-only cards (consent-gated test).",
+    "All four layout classes render without overflow (headless layout_classes_test; [DEVICE] goldens for the four layout classes routed to owner)."
+  ],
+  "pinned_design": "Unit 15 pinned (ratified): a third child-facing area alongside progress map and collection — an illustrated, browsable space of grapheme-sound cards covering the full scope-&-sequence grapheme inventory. Card face: letter combination large in the reading typeface; tap → recorded human phoneme audio (grapheme's phonemeIds in order, gapless); then a gentle prompt invites saying it back, scored with sound-level matching using the twister threshold set (Unit 4 sound mode; A-13 defaults: accept when >= 60% of the target phoneme sequence matched with per-phoneme distance <= 1, target-phoneme instances weighted double — tunable in the tuning file); match earns a warm sparkle; echo optional, no failure state, a card never says 'wrong'. Visibility ratified: all cards visible from day one; introduced-at-or-below-level cards awake, ahead-of-level cards muted but fully tappable and echoable. Example words ratified: each card lists example words with minLevelId <= profile's current level; more surface as level rises; tapping plays pronunciation audio and highlights the grapheme within the word. No completion, collectibles, or progression — free practice observed only via sound_card_played / sound_card_echo. Fully offline: phoneme audio + grapheme inventory ship in the binary; example-word audio arrives with packs; cards show only words with available audio.",
+  "tier": "standard",
+  "notes": "Fully headless: FakeAsrEngine + sound_mode_scorer (word-matcher) for echo, FakeAudioService for playback, fixture GraphemeSound inventory (real inventory is authored content, OQ-5). echo_session is a lightweight engine+scorer loop — do NOT pull in listening-tracker (no words, no silence/struggle/tap semantics here). The GraphemeSound inventory reaches this screen as injected data; loading it from starter content/packs is content-delivery's, and route wiring is app-shell's. Goldens [DEVICE]/owner."
+}

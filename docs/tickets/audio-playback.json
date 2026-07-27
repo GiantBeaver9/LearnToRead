@@ -1,7 +1,7 @@
 {
   "unit": "audio-playback",
   "title": "Audio system: playback interface, gapless phoneme sequencing, ducking rules, recording brief (Unit 13 app half)",
-  "prd_refs": ["§8 Unit 13", "§8 Unit 6 (phoneme sound-out)", "§6 Art & audio pipeline", "§10 OQ-3"],
+  "prd_refs": ["§8 Unit 13", "§8 Unit 6 (phoneme sound-out)", "§8 Unit 15 (gapless phonemeIds playback)", "§6 Art & audio pipeline", "§9 A-17", "§10 OQ-3"],
   "deps": ["domain-models"],
   "files": [
     "lib/features/audio/audio_service.dart",
@@ -26,5 +26,5 @@
   ],
   "pinned_design": "Unit 13 pinned: all v1 voice audio is human-recorded, supplied by the product owner, one narrator throughout (ratified, OQ-3): 44 phonemes with clean articulation and minimal schwa (recording brief is part of this unit), ~10 celebration lines, fixed prompts, sentence narrations, twisters, word pronunciations, definition read-alouds — ingested and loudness-normalized by the pipeline (Unit 3 owns the -16 LUFS check); nothing generated at runtime. TTS is a post-v1 alternative only: the audio manifest is source-agnostic (a pronunciation is just an audio ref) so TTS can later substitute without app changes — therefore this service takes opaque refs. Playback engine pinned requirements: low-latency (phoneme sound-out must feel instant), gapless sequential phoneme playback, ducking rules (help audio ducks ambient/celebration; nothing ducks microphone processing).",
   "tier": "standard",
-  "notes": "PUBSPEC BLOCKER for the real implementation: the pinned pubspec has NO audio playback plugin — the orchestrator must centrally add one (e.g. just_audio or audioplayers; see OPEN-DECISIONS) and the concrete impl is a thin adapter behind AudioService, owner-verified on device. Everything in this ticket is interface + pure logic + fake, fully headless; no real audio files exist in the container (tests reference refs only). Latency and phoneme-set sign-off acceptance are [DEVICE]/owner."
+  "notes": "Playback plugin is pinned by A-17 (former OD-8 resolved): just_audio + audio_session, added centrally to pubspec by the orchestrator — the concrete impl is a thin adapter behind AudioService, owner-verified on device (Unit 13 latency measured against it per A-17). Everything in this ticket is interface + pure logic + fake, fully headless; no real audio files exist in the container (tests reference refs only). Latency and phoneme-set sign-off acceptance are [DEVICE]/owner."
 }
