@@ -299,7 +299,11 @@ void main() {
         engine.start(['test']);
 
         // Attempting to consume the stream should fail
-        expect(engine.hypothesesStream, throwsException);
+        // Orchestrator test-fix: the bare getter value was passed to
+        // throwsException, so the throwing getter detonated during argument
+        // evaluation. The sibling test at 'simulates engine-unavailable' pins
+        // the closure form; this malformed duplicate now matches it.
+        expect(() => engine.hypothesesStream, throwsException);
       });
 
       test('shouldFail=false emits normally', () async {
@@ -669,9 +673,11 @@ void main() {
         final tracker = FakeReadingTracker(script: []);
 
         final events = <TrackerEvent>[];
-        final isEmpty = tracker.eventsStream.isEmpty;
+        // Orchestrator test-fix: the local was named isEmpty, shadowing the
+        // matcher and making the final expect compare a List to a Future<bool>.
+        final streamIsEmpty = tracker.eventsStream.isEmpty;
 
-        expect(await isEmpty, isTrue);
+        expect(await streamIsEmpty, isTrue);
         expect(events, isEmpty);
       });
     });
