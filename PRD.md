@@ -128,7 +128,10 @@ story packs.
 
 ### Content models (authored, immutable once published)
 
-- **PhonicsSkill** — `id`, `name` (e.g. "short a", "digraph sh"), `sequenceOrder`.
+- **PhonicsSkill** — `id`, `name` (e.g. "short a", "digraph sh"),
+  `sequenceOrder`, `introducesGraphemes: [String]` (the graphemes this skill
+  teaches; the decodability linter's cumulative grapheme set at level N is
+  the union over all skills of levels ≤ N — one shared type, one schema).
   The ordered list is the scope & sequence (Unit 2).
 - **Level** — `id`, `ordinal`, `newSkills: [PhonicsSkill]`, `format`
   (`sentence` | `multiSentence` | `paragraph`), `vocabEnabled: bool`,
@@ -440,9 +443,11 @@ critical path.
   (on-device/cloud/tap) is invisible above this interface.
 - If a metered cloud engine is in use: per-profile daily minute cap
   (default A-7); when reached, silently switch to on-device.
-- Microphone lifecycle: mic active only on the reading screen; a small,
-  non-alarming "listening" indicator (design system) is always visible while
-  the mic is open.
+- Microphone lifecycle: mic active only during active reading/practice
+  interactions — the reading screen, tongue-twister nodes (Unit 14), and
+  Sound Garden echo (Unit 15); never on navigation or parent screens. A
+  small, non-alarming "listening" indicator (design system) is always
+  visible while the mic is open.
 
 **Acceptance**
 - Matching-layer unit tests need no audio: hypothesis strings vs expected

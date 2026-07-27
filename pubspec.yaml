@@ -18,6 +18,8 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.32
   rive: ^0.13.20
 
+  just_audio: ^0.9.46
+  audio_session: ^0.1.25
   path_provider: ^2.1.5
   path: ^1.9.1
   crypto: ^3.0.6
