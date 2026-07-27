@@ -1,8 +1,20 @@
 {
   "unit": "progress-map-collection",
   "title": "Progress map (child home) + collection scene screens (Unit 9)",
-  "prd_refs": ["§8 Unit 9", "§8 Unit 2 (rolling window)", "§5 StoryProgress", "§5 CollectionState", "§5 Collectible", "§8 Unit 14 (booster nodes on map)"],
-  "deps": ["design-tokens", "domain-models", "local-storage", "phonics-engine"],
+  "prd_refs": [
+    "§8 Unit 9",
+    "§8 Unit 2 (rolling window)",
+    "§5 StoryProgress",
+    "§5 CollectionState",
+    "§5 Collectible",
+    "§8 Unit 14 (booster nodes on map)"
+  ],
+  "deps": [
+    "design-tokens",
+    "domain-models",
+    "local-storage",
+    "phonics-engine"
+  ],
   "files": [
     "lib/features/map/progress_map_screen.dart",
     "lib/features/map/map_node.dart",
@@ -26,7 +38,8 @@
     "Completing a story adds exactly one collectible at its authored slot; re-reading adds none (test over CollectionState fixtures — transcribed acceptance).",
     "Both screens are strictly per-profile with no global/comparative elements; profile switch swaps map + collection state completely (integration test with two fixture profiles — transcribed acceptance).",
     "Scene capacity covers all launch collectibles and the extension direction for future packs (scrollable/expanding per the style guide) is honored in the layout primitive (test: scene renders a beyond-launch collectible count without overflow by extending).",
-    "All four layout classes render without overflow (headless layout tests; [DEVICE] goldens for both screens routed to owner)."
+    "All four layout classes render without overflow (headless layout tests; [DEVICE] goldens for both screens routed to owner).",
+    "Map renders the highlighted-story treatment for a story id passed in the return-navigation payload from the celebration sequence (widget test) — Unit 8 'returns to the map with the next story highlighted'."
   ],
   "pinned_design": "Unit 9 pinned: progress map = child home screen; illustrated trail of the level path; completed → thumbnail; the 3 rolling-window stories awake/gently animated; future stories asleep but visible; completed stories re-readable by tap; booster nodes (Unit 14) interleaved with distinct visual treatment (target ≈ 1 per 3 stories, tagged to a level, unlocked with it, always replayable). Collection = one persistent illustrated scene (e.g. a garden); collectibles live at authored sceneSlots, individually tappable for a small reaction (Rive collect/poke); the scene fills with progress — the child's owned space. Both per-profile; no leaderboards or cross-profile visibility. Scene extension direction (scrollable/expanding) is pinned with the illustrator in the Unit 1 style guide — build the layout to extend.",
   "tier": "standard",

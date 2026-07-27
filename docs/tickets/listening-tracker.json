@@ -1,8 +1,19 @@
 {
   "unit": "listening-tracker",
   "title": "Reading tracker: engine + matcher orchestration, silence/struggle, tap fallback, mic lifecycle, cloud cap",
-  "prd_refs": ["§8 Unit 4", "§6 Speech recognition", "§9 A-7", "§9 A-10", "§9 A-12", "§8 Unit 10 (consent)"],
-  "deps": ["domain-models", "listening-contracts", "word-matcher"],
+  "prd_refs": [
+    "§8 Unit 4",
+    "§6 Speech recognition",
+    "§9 A-7",
+    "§9 A-10",
+    "§9 A-12",
+    "§8 Unit 10 (consent)"
+  ],
+  "deps": [
+    "domain-models",
+    "listening-contracts",
+    "word-matcher"
+  ],
   "files": [
     "lib/features/listening/tracker/reading_tracker.dart",
     "lib/features/listening/tracker/silence_detector.dart",
@@ -33,5 +44,5 @@
   ],
   "pinned_design": "Unit 4 pinned: tracker = the hybrid layer's runtime — feeds engine hypotheses to the matcher against the known target sentence; emits the pinned four-event stream consumed by Units 5-6. Fallback chain pinned: engine failure or mic unavailable → tap-the-word (always available, visually discreet — the discreet UI itself is reading-screen's). No audio is ever stored — not on device, not server-side; any substitute cloud engine must support no-retention processing. Metered cloud engine (only if substituted): 20 cloud-minutes/profile/day (A-7), silent downgrade on cap (R2). Mic active only on the reading screen; small non-alarming listening indicator always visible while mic open (indicator widget is reading-screen's; tracker exposes the state). Consent (Unit 10): consent changes take effect immediately — Unit 4 reads them per session start and on change. Silence/struggle constants live in the tuning file (domain-models); struggle semantics pinned by A-12: (a) two consecutive finalized hypothesis bursts with speech failing to match the current word, or (b) sustained silence >= T1, tunable.",
   "tier": "hard",
-  "notes": "Concurrency + timing heavy: build on fake_async/clock injection throughout. No real engine exists in the container — all engine interaction is via FakeAsrEngine and tap_engine (tap_engine is also the real production fallback, so it is fully owned here). The near-miss PROMPT itself is stuck-word-scaffold's; the tracker only emits the event. Post-POC backlog (recorded): noise/cross-talk fixtures. platform-asr-adapter plugs into this tracker later without changes (that is the acceptance of the interface)."
+  "notes": "Concurrency + timing heavy: build on fake_async/clock injection throughout. No real engine exists in the container — all engine interaction is via FakeAsrEngine and tap_engine (tap_engine is also the real production fallback, so it is fully owned here). The near-miss PROMPT itself is stuck-word-scaffold's; the tracker only emits the event. Post-POC backlog (recorded): noise/cross-talk fixtures. platform-asr-adapter plugs into this tracker later without changes (that is the acceptance of the interface). Validator note: PRD Unit 4's 'contract tests against a small recorded fixture set' is realized headlessly as scripted hypothesis fixtures; contract tests against real recorded child audio are an owner-run [DEVICE] item, tracked with the other device items — the PRD item is narrowed here, not dropped."
 }

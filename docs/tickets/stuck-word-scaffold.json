@@ -1,8 +1,19 @@
 {
   "unit": "stuck-word-scaffold",
   "title": "Tiered stuck-word help: T1 sound-out, T2 model-it, near-miss prompt, WordHelpRecord (Unit 6)",
-  "prd_refs": ["§8 Unit 6", "§5 WordHelpRecord", "§8 Unit 4 (near-miss)", "§7 R7", "§4.3"],
-  "deps": ["domain-models", "listening-contracts", "audio-playback", "local-storage"],
+  "prd_refs": [
+    "§8 Unit 6",
+    "§5 WordHelpRecord",
+    "§8 Unit 4 (near-miss)",
+    "§7 R7",
+    "§4.3"
+  ],
+  "deps": [
+    "domain-models",
+    "listening-contracts",
+    "audio-playback",
+    "local-storage"
+  ],
   "files": [
     "lib/features/help/stuck_word_controller.dart",
     "lib/features/help/sound_out_sequence.dart",
@@ -25,7 +36,8 @@
     "Any word receiving Tier 1 or Tier 2 is recorded in WordHelpRecord with the tier reached (soundOut | modeled) and is marked helped internally with NO visible marker (help_recorder writes rows; a §4.3-style metric query over the fixture rows returns the correct help-rate trajectory — transcribed acceptance).",
     "Near-miss prompt path: on wordAcceptedNearMiss the word still turns green (no helped marking, no WordHelpRecord row unless tiers ran) and the controller plays the brief warm model of the correct word — prompt line + word pronunciation audio ('that's it — cat!'); the child may echo but is not required to: reading continues immediately, the prompt never escalates to Tier 1/2 (tests: audio played, no tier started, no block).",
     "help_given(tier) analytics emission hook is exposed (callback/interface — actual client wiring in reading-screen/app-shell); helped word_read results are distinguishable for §5 analytics.",
-    "All audio interactions asserted via FakeAudioService (ducking: help audio ducks ambient/celebration per audio-playback policy — asserted by channel tag)."
+    "All audio interactions asserted via FakeAudioService (ducking: help audio ducks ambient/celebration per audio-playback policy — asserted by channel tag).",
+    "Every word resolution records an encounter in WordHelpRecord via local-storage's recordEncounter — helped AND unaided words alike (tests assert encounterCount increments for an unaided word), so the §4.3 help-rate trajectory has its denominator."
   ],
   "pinned_design": "Unit 6 pinned verbatim: trigger = struggleDetected or sustained silence for T1=4s (tunable; per-level profiles allowed). Tier 1: sound out phonemes with recorded human phoneme audio, highlighting each grapheme cluster per graphemePhonemeMap as its phoneme plays; then T2=4s to say the word. Tier 2: app says the whole word (recorded pronunciation), gently prompts 'your turn' (recorded line), accepts the repeat — or after one more T2, accepts and moves on (never hard-blocks). Helped words: marked helped internally, no visible marker (Unit 1 ratified), recorded in WordHelpRecord with tier reached. Phoneme audio = recorded 44-phoneme set (clean, minimal schwa — Unit 13 brief); sound-out order/grouping from authored graphemePhonemeMap. Near-miss prompt ratified: close-enough acceptance still turns the word green — the child is never told they were wrong — followed by a brief warm model of the correct word the child may echo but need not; reading continues immediately; lighter than Tier 1/2, never escalates; exact prompt copy is authored content (Unit 3) — use fixture refs. Timings/sensitivity/thresholds live only in the tuning file; pilot adjustments touch only that file (R7).",
   "tier": "hard",

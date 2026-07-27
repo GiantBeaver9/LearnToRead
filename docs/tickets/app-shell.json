@@ -1,8 +1,28 @@
 {
   "unit": "app-shell",
   "title": "App shell: main.dart, go_router wiring, session/lifecycle wiring, whole-app integration (Unit 1 shell half)",
-  "prd_refs": ["§8 Unit 1", "§8 Unit 11 (launch catalog check)", "§8 Unit 12 (session wiring)", "§8 Unit 15 (fourth child destination)", "§9 A-2", "§6 Offline"],
-  "deps": ["design-tokens", "reading-screen", "progress-map-collection", "profiles-parent-corner", "vocab-cards", "celebration-sequence", "twister-flow", "sound-garden", "content-delivery", "analytics", "listening-tracker", "stuck-word-scaffold"],
+  "prd_refs": [
+    "§8 Unit 1",
+    "§8 Unit 11 (launch catalog check)",
+    "§8 Unit 12 (session wiring)",
+    "§8 Unit 15 (fourth child destination)",
+    "§9 A-2",
+    "§6 Offline"
+  ],
+  "deps": [
+    "design-tokens",
+    "reading-screen",
+    "progress-map-collection",
+    "profiles-parent-corner",
+    "vocab-cards",
+    "celebration-sequence",
+    "twister-flow",
+    "sound-garden",
+    "content-delivery",
+    "analytics",
+    "listening-tracker",
+    "stuck-word-scaffold"
+  ],
   "files": [
     "lib/main.dart",
     "lib/app/app.dart",
@@ -28,5 +48,5 @@
   ],
   "pinned_design": "Unit 1 pinned (shell half, as amended): Flutter, Riverpod state (A-2), go_router navigation, Rive runtime; child-facing screens are exactly Home/progress map, Reading, Collection, Sound Garden (Unit 15); all child-facing navigation icon + voice prompt. This ticket owns main.dart and ALL router wiring (single-owner rule) and performs no feature logic of its own — it composes the feature tickets' public APIs. Session semantics wired per Unit 12 pinned boundaries; launch catalog check per Unit 11; celebration return-to-map with next story highlighted per Unit 8.",
   "tier": "standard",
-  "notes": "Built LAST — it is the integration ticket. Everything headless with the fakes each feature ticket ships. If any feature ticket is quarantined, the shell wires the remaining ones and stubs the quarantined route behind a provider override (keep the loop green). Voice-prompt recordings are owner content — refs only."
+  "notes": "Built LAST — it is the integration ticket. Everything headless with the fakes each feature ticket ships. If any feature ticket is quarantined, the shell wires the remaining ones and stubs the quarantined route behind a provider override (keep the loop green). Voice-prompt recordings are owner content — refs only. Validator fix: ASR engine selection is a provider override app-shell exposes (providers.dart); PlatformAsrEngine wiring is a one-line override the orchestrator schedules together with the platform-asr-adapter ticket once the spike verdict unblocks it."
 }
