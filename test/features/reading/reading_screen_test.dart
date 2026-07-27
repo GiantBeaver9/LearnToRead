@@ -525,6 +525,12 @@ void main() {
       await tester.pump();
       expect(tracker.isListening, isTrue);
       expect(_isListeningIndicatorActive(tester), isTrue);
+      // Orchestrator test-fix: reaching isListening==true necessarily logs
+      // 'resume' in this fake, so the exact-log assertion below
+      // (['pause','resume']) could never hold from a dirty log. Clear it,
+      // exactly as narration_test.dart:399 does before its own exact-log
+      // assertion.
+      tracker.calls.clear();
 
       await tester.tap(find.byKey(const ValueKey('word-tap-1')));
       await tester.pump();
