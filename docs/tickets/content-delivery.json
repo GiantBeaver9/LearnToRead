@@ -1,0 +1,35 @@
+{
+  "unit": "content-delivery",
+  "title": "Content delivery: bundled starter pack loading, CDN catalog, atomic pack install (Unit 11)",
+  "prd_refs": ["§8 Unit 11", "§5 StoryPack", "§8 Unit 3 (pack format)", "§6 Offline", "§9 A-9"],
+  "deps": ["domain-models", "pack-build-cli"],
+  "files": [
+    "lib/data/content/content_repository.dart",
+    "lib/data/content/pack_loader.dart",
+    "lib/data/content/catalog_client.dart",
+    "lib/data/content/pack_downloader.dart",
+    "lib/data/content/pack_installer.dart"
+  ],
+  "test_files": [
+    "test/data/content/pack_loader_test.dart",
+    "test/data/content/catalog_client_test.dart",
+    "test/data/content/pack_installer_test.dart",
+    "test/data/content/corrupt_pack_test.dart",
+    "test/data/content/min_app_version_test.dart",
+    "test/data/content/resume_test.dart",
+    "test/data/content/offline_e2e_test.dart"
+  ],
+  "accept": [
+    "pack_loader loads a pack bundle (built by lib/pipeline/pack_builder code in a test setup) into §5 content models end-to-end: text renders (models parse), audio refs resolve to files, Rive refs resolve (Unit 3 acceptance's app-side half; integration test).",
+    "content_repository merges the bundled starter pack (always present from the binary/assets) with installed CDN packs and exposes stories/twisters to the app; the app is fully functional having never seen the network (offline_e2e_test: repository over starter pack only, airplane-mode fake transport, full content graph available — transcribed 'fresh install in airplane mode' acceptance at the data layer).",
+    "catalog_client checks a static catalog.json on launch when online (faked transport); catalog fetch failure is silent — installed content unaffected.",
+    "Download policy: new packs download in the background on Wi-Fi by default (connectivity abstraction, faked); checksum verified BEFORE install.",
+    "Atomic install (verify → swap): a failed or partial download never corrupts installed content — corrupt/truncated pack fixture is rejected and installed content untouched (transcribed acceptance; test tampers bytes and asserts prior pack intact).",
+    "minAppVersion respected: a catalog pack requiring a newer app is hidden, never downloaded-and-broken (transcribed acceptance).",
+    "Download resumes/retries across app restarts (simulated interruption: downloader state persisted, resumed on next construction — transcribed acceptance).",
+    "No user data flows upward: catalog/download requests carry no identifiers, no user payloads (test asserts request shape — download-only contract)."
+  ],
+  "pinned_design": "Unit 11 pinned: packs are static, versioned, checksummed bundles on a CDN — no dynamic backend, download-only, no user data upward. App checks static catalog.json on launch when online; background download on Wi-Fi by default; checksum verified before install; atomic install verify → swap; failed/partial download never corrupts installed content. Starter pack always present from the binary (A-9: ~8 stories covering all three age-band starting levels); fully functional with no network ever. minAppVersion: too-new packs hidden. §6 Offline: bundled starter pack and all core loops fully offline; CDN packs work offline after download.",
+  "tier": "hard",
+  "notes": "No network in container: HTTP transport and connectivity are interfaces with fakes; real implementation uses dart:io HttpClient (no new pub dependency). File operations against injected temp directories (no path_provider in tests). Fixture packs are BUILT BY the pipeline code (pack-build-cli's lib/pipeline/pack_builder) inside test setup — reference that code, do not own it; this realizes Unit 3's 'pack build produces a bundle the app loads end-to-end'. CDN base URL / catalog hosting is owner infrastructure (OPEN-DECISIONS); 'signed checksum' scheme question also in OPEN-DECISIONS (SHA-256 verify implemented regardless). Full app-level airplane-mode e2e (UI included) lands in app-shell."
+}

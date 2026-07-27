@@ -1,0 +1,35 @@
+{
+  "unit": "local-storage",
+  "title": "Drift database for device-local user models + DAOs + profile erasure",
+  "prd_refs": ["§5 device-local user models", "§8 Unit 10 (erasure, max 4 profiles)", "§9 A-2", "§4.3"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/data/db/app_database.dart",
+    "lib/data/db/tables.dart",
+    "lib/data/db/daos/profiles_dao.dart",
+    "lib/data/db/daos/story_progress_dao.dart",
+    "lib/data/db/daos/word_help_dao.dart",
+    "lib/data/db/daos/twister_progress_dao.dart",
+    "lib/data/db/daos/collection_dao.dart"
+  ],
+  "test_files": [
+    "test/data/db/profiles_dao_test.dart",
+    "test/data/db/story_progress_dao_test.dart",
+    "test/data/db/word_help_dao_test.dart",
+    "test/data/db/twister_progress_dao_test.dart",
+    "test/data/db/collection_dao_test.dart",
+    "test/data/db/erasure_test.dart"
+  ],
+  "accept": [
+    "Drift tables exist for exactly the §5 device-local user models (Profile, StoryProgress, WordHelpRecord, TwisterProgress, CollectionState) with the pinned fields and enums (status locked|available|completed; lastHelpLevel none|soundOut|modeled; ageBand three bands); CRUD via DAOs round-trips to the domain types from domain-models.",
+    "Max 4 profiles per device enforced at the DAO layer: inserting a 5th profile fails with a typed error (negative test).",
+    "WordHelpRecord upsert semantics support the learning signal (§4.3): recordEncounter increments encounterCount; recordHelp increments helpCount and sets lastHelpLevel to the tier reached; a query returns per-word help-rate trajectory over encounters for a profile (test with fixture history).",
+    "CollectionState: earning a collectible is idempotent per (profile, collectible) — granting the same collectible twice stores one row (supports Unit 8 first-completion-only rule; test).",
+    "StoryProgress: completing a story sets completedAt and increments timesRead; re-reads increment timesRead without duplicating rows (test).",
+    "Deleting a profile erases ALL its local data — progress, help records, twister progress, collection — irreversibly; erasure_test verifies a deleted profile leaves zero rows in every table.",
+    "All tests run headlessly against an in-memory NativeDatabase (no path_provider, no device)."
+  ],
+  "pinned_design": "A-2 pinned: local storage is Drift (SQLite). §5 pinned: all models local-first on device; no server holds user data. Field shapes transcribed exactly from §5 (see domain-models ticket for the authoritative field lists). Unit 10 pinned: up to 4 local profiles; deleting a profile erases all its local data irreversibly. Unit 8 pinned: collectible granted only on first completion (storage must make double-grant impossible). §4.3 pinned: WordHelpRecord powers the help-rate-over-encounters learning signal and the parent pilot view (stories completed + words that needed help, with tier). DAOs expose watch/stream queries (Drift) so Riverpod providers in UI tickets can observe changes; consumers receive domain-model types, not Drift row classes.",
+  "tier": "standard",
+  "notes": "Headless testing uses drift's NativeDatabase.memory(), which needs a system libsqlite3 in the container — if absent, orchestrator should add sqlite3 via apt or the sqlite3 dart package's bundled lib. Content models are NOT stored in Drift (packs are file-based, owned by content-delivery). Analytics has its own queue persistence (not this DB) to keep ownership disjoint."
+}

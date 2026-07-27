@@ -1,0 +1,32 @@
+{
+  "unit": "design-tokens",
+  "title": "Design tokens, layout classes, and Rive stage contract (Unit 1, foundation half)",
+  "prd_refs": ["§8 Unit 1", "§8 Unit 8 (Rive state-machine contract)", "§9 A-6"],
+  "deps": [],
+  "files": [
+    "lib/design/tokens.dart",
+    "lib/design/layout.dart",
+    "lib/design/rive_stage.dart",
+    "lib/design/fake_rive_stage.dart"
+  ],
+  "test_files": [
+    "test/design/tokens_test.dart",
+    "test/design/layout_test.dart",
+    "test/design/token_lint_test.dart",
+    "test/design/rive_stage_test.dart"
+  ],
+  "accept": [
+    "A single design-token Dart file (lib/design/tokens.dart) exists defining: palette colors (warm near-black ink — not pure #000, palette green, vocab blue, backgrounds), type scale, spacing, and motion durations (including the ~250 ms green-sweep duration and the collectible-flight motion token).",
+    "Word color states are defined once here as the single source of truth used by Units 5-7: unread = warm ink; current = ink with subtle underline/glow marker style; read-correct = palette green; vocab (unread) = blue; helped = visually identical to read-correct green (no distinct token exists for 'helped' — a test asserts helped resolves to the same color value as read-correct).",
+    "Reading-text minimum sizes are encoded as tokens and asserted by test: 28pt phone / 36pt tablet at sentence levels; 20pt/24pt at paragraph levels.",
+    "Green (read) vs blue (vocab) contrast: green meets WCAG AA against the reading background (contrast-ratio computed in a unit test); [DEVICE] color-vision simulation screenshots (protanopia, deuteranopia) showing green vs blue distinguishable are produced by the owner and attached to design review — headless proxy: a test asserts the chosen green/blue pair differ sufficiently in blue-yellow (tritan-safe) channel per a documented heuristic.",
+    "lib/design/layout.dart defines exactly four layout classes — phonePortrait, phoneLandscape, tabletPortrait, tabletLandscape — resolved from MediaQuery size/orientation; widget tests pin the resolution boundaries.",
+    "Layout rule for the reading screen is encoded as a reusable layout primitive: landscape = text region and animation stage side-by-side (book-like); portrait = text above stage; verified by widget test at all four classes.",
+    "Token-lint test (CI-enforceable): a test scans lib/features/ source for direct Color(0x...)/Colors.*/TextStyle-with-inline-font usages outside lib/design/ and fails if any child-facing widget references a color/font outside the token file.",
+    "lib/design/rive_stage.dart defines the StoryStage contract: every story artboard exposes the same state-machine inputs — idle, celebrate, collect — so app code never special-cases a story; a FakeStoryStage records input triggers for tests and reports a currently-active state.",
+    "[DEVICE] Product-owner sign-off of style guide + tokens recorded in repo — owner-delivered; ticket leaves tokens clearly marked as proposed-pending-owner-review."
+  ],
+  "pinned_design": "Unit 1 pinned: storybook-illustrated direction — warm, hand-illustrated, textured, soft palette; no stock Material/Cupertino component styling visible in child-facing screens. Typography: purpose-built early-reader typeface for reading text (unambiguous a/g, generous x-height), friendly display face for titles — ACTUAL FONT FILES ARE OWNER-SUPPLIED (OPEN-DECISIONS); tokens define the font-family indirection with a bundled placeholder so swap is one-line. Word color states as listed in accept — single source of truth; helped word visually identical to read-correct green (ratified: no visible marker). Every screen defines all four layout classes; reading screen landscape side-by-side / portrait stacked. Motion durations live in tokens (green sweep ~250 ms per Unit 5; collectible-flight motion pinned in Unit 1 tokens per Unit 8). Rive stage contract from Unit 8 pinned verbatim: state-machine inputs idle / celebrate / collect on every story artboard — this file is the app-side statement of the animator's technical spec. Design tokens live in one Dart file reviewed by the product owner before UI build starts.",
+  "tier": "standard",
+  "notes": "No real Rive files or licensed fonts exist in this container: rive_stage.dart is an abstraction over the rive runtime plus FakeStoryStage for all downstream tests; the concrete rive-runtime binding is a thin adapter here but its rendering is owner/device verified. Golden screenshots and color-vision simulations are [DEVICE]/owner tasks. Token VALUES (exact hexes, faces) need owner ratification per Unit 1 acceptance — see OPEN-DECISIONS. Min-spec Android tablet (A-6) is picked by owner at this unit's build — OPEN-DECISIONS."
+}

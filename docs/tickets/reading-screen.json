@@ -1,0 +1,39 @@
+{
+  "unit": "reading-screen",
+  "title": "Reading screen: word rendering, green sweep, listen-first narration, page turns, handoff (Unit 5 UI half)",
+  "prd_refs": ["§8 Unit 5", "§8 Unit 1 (word states, layout)", "§8 Unit 4 (indicator, tap fallback UI)", "§9 A-11", "§5 Analytics events"],
+  "deps": ["design-tokens", "domain-models", "listening-contracts", "word-state-machine", "audio-playback", "analytics"],
+  "files": [
+    "lib/features/reading/reading_screen.dart",
+    "lib/features/reading/reading_controller.dart",
+    "lib/features/reading/word_text_view.dart",
+    "lib/features/reading/narration_controller.dart",
+    "lib/features/reading/page_turn.dart",
+    "lib/features/reading/listening_indicator.dart"
+  ],
+  "test_files": [
+    "test/features/reading/reading_screen_test.dart",
+    "test/features/reading/word_states_render_test.dart",
+    "test/features/reading/narration_test.dart",
+    "test/features/reading/page_turn_test.dart",
+    "test/features/reading/layout_classes_test.dart",
+    "test/features/reading/no_negative_feedback_test.dart"
+  ],
+  "accept": [
+    "Renders story text per the design-system word states (tokens only): unread ink, current-word underline/glow marker, read-correct green, vocab blue (when Level.vocabEnabled), helped identical to green; widget tests feed fixture tracker event streams (FakeReadingTracker) and assert the exact word-state render sequence including lookahead back-fill; helped words render identically to accepted while WordHelpRecord rows differ (transcribed acceptance).",
+    "Green transition is an animated per-word sweep using the ~250 ms motion token — not an instant recolor — with no per-word sound (widget test pumps the animation and asserts no AudioService call on word acceptance).",
+    "Listen-first (A-11, ratified): at levels where Level.narrationEnabled, opening a story plays the recorded sentence narration once BEFORE listening begins (recognition not started until it completes); an ear-icon listen button replays it anytime, pausing recognition while playing and resuming after; NO per-word karaoke highlighting during narration (tests via FakeAudioService + tracker pause/resume assertions).",
+    "Grapheme highlight during Tier-1 sound-out: word_text_view renders the help_state highlight (current graphemePhonemeMap entry) within the current word — digraphs highlight as one unit (widget test driving help_state).",
+    "One sentence (early levels) up to one paragraph (later levels) per page; multi-page stories page with a full-bleed page-turn transition at the state machine's page boundaries (widget test).",
+    "Last word green → listening stops and control hands to the celebration sequence after a ~400 ms beat via an onStoryComplete callback (fake-clock test asserting stop-then-callback ordering and the beat).",
+    "Tap fallback UI: the current word is tappable, visually discreet, and always available; taps route to the tracker's tap path (test asserting tap emits acceptance identically).",
+    "Listening indicator: small, non-alarming, token-styled indicator visible whenever the mic session is open, driven by the tracker's isListening state (widget test).",
+    "Vocab words: blue rendering and tap TARGET are present at vocabEnabled levels at any time (before/during/after read); tap invokes an injected VocabCardOpener interface, pausing listening — the card itself is vocab-cards' ticket; cursor-restore contract tested here with a fake opener (pause on open, resume at identical cursor on close).",
+    "Analytics emission: story_started on open, word_read (correct|near_miss|helped) per word resolution (asserted with a recording AnalyticsClient fake); story_abandoned is analytics' session-tracker's concern — this screen reports reading-exited to it (hook test).",
+    "The reading screen never displays 'wrong', red coloring, error sounds, or any negative feedback — no_negative_feedback_test asserts no red-family token or error asset/string is reachable from this feature's widget tree (grep-level + widget assertions, transcribed acceptance).",
+    "Layout: text region + animation stage side-by-side in landscape (book-like), stacked text-above-stage in portrait; layout_classes_test verifies all four classes without overflow ([DEVICE] goldens routed to owner; the stage is rendered via the StoryStage abstraction — FakeStoryStage in tests, showing the idle state during reading per Unit 8)."
+  ],
+  "pinned_design": "Unit 5 pinned: renders per Unit 1 word states; sentence-to-paragraph per page with full-bleed page-turn; listen-first at narrationEnabled levels (narration once before listening, ear-icon replay pausing recognition, no karaoke in v1 per A-11); state machine driven solely by Unit 4 events — screen contains no recognition logic; green sweep ~250 ms motion token, no per-word sound (sound reserved for help and celebration so the child's own voice is the primary audio); blue vocab tappable at any time, tap pauses listening, opens the card, close restores cursor exactly; last word green → stop listening, hand to celebration after ~400 ms beat; NEVER any negative feedback — only patience and help. Unit 4 pinned (UI side): tap-the-word fallback always available and visually discreet; small non-alarming listening indicator always visible while mic open. The Rive stage shows the story's idle scene during reading (Unit 8) so the celebration transforms the scene in place.",
+  "tier": "hard",
+  "notes": "All tests headless: FakeReadingTracker, FakeAudioService, FakeStoryStage, recording analytics fake. Goldens for four layout classes are [DEVICE]/owner; layout_classes_test is the headless proxy (MediaQuery-forced sizes, overflow assertions). Fonts are placeholder pending owner-supplied typefaces (design-tokens indirection). Celebration handoff is a callback — no dep on celebration-sequence; app-shell wires them."
+}

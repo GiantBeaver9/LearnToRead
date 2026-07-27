@@ -1,0 +1,35 @@
+{
+  "unit": "word-matcher",
+  "title": "Hybrid matching layer: close-enough phonetic word matching + sound-mode scoring (the core)",
+  "prd_refs": ["§8 Unit 4", "§8 Unit 14 (sound mode)", "§6 Speech recognition", "§10 OQ-1", "§5 WordToken"],
+  "deps": ["domain-models", "listening-contracts"],
+  "files": [
+    "lib/features/listening/matcher/word_matcher.dart",
+    "lib/features/listening/matcher/phoneme_distance.dart",
+    "lib/features/listening/matcher/grapheme_to_phoneme.dart",
+    "lib/features/listening/matcher/sound_mode_scorer.dart",
+    "lib/features/listening/matcher/match_result.dart"
+  ],
+  "test_files": [
+    "test/features/listening/matcher/word_matcher_test.dart",
+    "test/features/listening/matcher/phoneme_distance_test.dart",
+    "test/features/listening/matcher/lookahead_test.dart",
+    "test/features/listening/matcher/self_correction_test.dart",
+    "test/features/listening/matcher/sound_mode_scorer_test.dart"
+  ],
+  "accept": [
+    "Matching needs no audio: inputs are hypothesis strings (word and optional phone hypotheses) vs the expected sentence's WordTokens; outputs are typed MatchResults (exact, nearMiss, reject) plus which indices advanced.",
+    "Exact policy: hypothesis equal to target word (case/punctuation-insensitive) → accepted.",
+    "Close-enough policy: phoneme-level edit distance against the target's graphemePhonemeMap phonemes; accepted as NEAR-MISS when within threshold — at most 1 substituted phoneme for words <= 4 phonemes, at most 2 for longer words — thresholds read from the tuning file, never hardcoded (test asserts changing tuning constants changes behavior).",
+    "'gat' → 'cat' accepted as near-miss; 'dog' → 'cat' rejected (the PRD's canonical examples, as tests).",
+    "Near-miss results are distinguishable from exact results in the MatchResult type (drives wordAcceptedNearMiss and the §5 word_read correct/near_miss analytics distinction).",
+    "Hypothesis words that are not the current target are scored with lookahead 1: a hypothesis matching the NEXT word confirms (back-fills) the current one — both advance, current emitted as accepted before next (ordering test).",
+    "Self-corrections and repeats always accepted: a wrong attempt followed by a correct production accepts the word; repeating an already-accepted word never regresses state or double-advances (tests).",
+    "For hypotheses on the current word that match neither current nor next within threshold: no acceptance, result reject with the failed distance (feeds struggle detection in the tracker).",
+    "Sound mode (Unit 14): sound_mode_scorer tracks a twister's phoneme sequence from phone-level hypotheses when the engine exposes them, weighting instances of the drilled targetPhonemeId most; where only word hypotheses are available it approximates by phonetic-distance scoring of those hypotheses against the phoneme sequence (both paths tested with scripted hypotheses); sound mode uses the separate looser twister threshold set from the tuning file (asserted via config injection).",
+    "Grapheme-to-phoneme for hypothesis words (needed to phonetically compare an arbitrary hypothesis like 'gat' that has no authored map): a small deterministic G2P for comparison purposes, unit-tested on the fixture vocabulary; documented as matcher-internal."
+  ],
+  "pinned_design": "Unit 4 pinned (ratified, OQ-1): expected-text hybrid recognition, KidSpeak-style — the matcher always knows the target sentence; the engine is biased with expected words; hypotheses are scored against the known next word, never open-ended transcription. Match policy pinned: accept when hypothesis is the target OR phonetically close enough; closeness = phoneme-level edit distance against the word's graphemePhonemeMap phonemes; threshold at most 1 substituted phoneme for words <= 4 phonemes, at most 2 for longer (tunable constants in the Unit 6 tuning file). Near-miss acceptance is deliberately distinguishable (§5 analytics) and triggers the near-miss prompt path (Unit 6 governs the prompt; the matcher only classifies). Self-corrections and repeats always accepted; lookahead 1 with back-fill (hearing the next word confirms the current one). Word mode (stories) vs sound mode (twisters: phoneme-sequence tracking, drilled phoneme weighted most, looser thresholds). v1 bar is the happy path: quiet room, one child, cooperative reading — noise/accents/cross-talk explicitly deferred post-POC.",
+  "tier": "intensive",
+  "notes": "This is the product's core risk (R1) and the hardest pure-logic unit — hence intensive. Fully headless: no audio, only hypothesis strings. The comparison G2P for out-of-vocabulary hypotheses is matcher-internal machinery (the PRD pins phoneme-level edit distance but hypothesis words arrive as text); keep it minimal and deterministic, cover the test vocabulary, and document its limits — do NOT let it grow into a linguistics project. Sound-mode default threshold values are OPEN (OPEN-DECISIONS) — implement against injected config with clearly-marked placeholder defaults. Emission of tracker events is listening-tracker's job; this ticket returns MatchResults only."
+}

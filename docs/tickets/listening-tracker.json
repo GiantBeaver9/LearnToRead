@@ -1,0 +1,36 @@
+{
+  "unit": "listening-tracker",
+  "title": "Reading tracker: engine + matcher orchestration, silence/struggle, tap fallback, mic lifecycle, cloud cap",
+  "prd_refs": ["§8 Unit 4", "§6 Speech recognition", "§9 A-7", "§9 A-10", "§8 Unit 10 (consent)"],
+  "deps": ["domain-models", "listening-contracts", "word-matcher"],
+  "files": [
+    "lib/features/listening/tracker/reading_tracker.dart",
+    "lib/features/listening/tracker/silence_detector.dart",
+    "lib/features/listening/tracker/tap_engine.dart",
+    "lib/features/listening/tracker/cloud_minute_cap.dart",
+    "lib/features/listening/tracker/mic_session.dart"
+  ],
+  "test_files": [
+    "test/features/listening/tracker/reading_tracker_test.dart",
+    "test/features/listening/tracker/fixture_contract_test.dart",
+    "test/features/listening/tracker/fallback_test.dart",
+    "test/features/listening/tracker/silence_detector_test.dart",
+    "test/features/listening/tracker/cloud_cap_test.dart",
+    "test/features/listening/tracker/no_audio_storage_test.dart"
+  ],
+  "accept": [
+    "The tracker consumes an AsrEngine (listening-contracts) + the word-matcher and emits the single pinned event stream: wordAccepted(index), wordAcceptedNearMiss(index), struggleDetected(index), silence(duration) — engine choice invisible above this interface (same scripted scenario run against FakeAsrEngine and tap_engine yields equivalent acceptance events; test).",
+    "The engine is always started with the expected sentence's words as biasing context (FakeAsrEngine records it; test asserts expected-text hybridization is always on).",
+    "Contract tests with scripted fixture hypothesis sets (clear read, hesitant read, near-miss mispronunciation, silence) drive the full tracker and assert the exact expected event streams (transcribed Unit 4 acceptance; happy-path fixtures only for POC — noise/cross-talk fixtures recorded as post-POC backlog in notes).",
+    "Near-miss: matcher near-miss result emits wordAcceptedNearMiss (not wordAccepted) so Unit 6's near-miss prompt path can trigger (integration-style test with fake engine).",
+    "Silence detection: no accepted hypothesis on the current word for the tuning-file silence window emits silence(duration) events sufficient for Unit 6's T1=4s trigger; rejected (not-close-enough) hypotheses feed struggleDetected per the tuning file's struggle sensitivity (fake-clock tests). [OPEN] non-silence struggle definition — see OPEN-DECISIONS.",
+    "Fallback chain: engine failure or mic unavailable → tap mode without UI interruption (the stream keeps flowing; a mode flag flips); tapping the current word emits wordAccepted identically to ASR acceptance (transcribed acceptance; tests).",
+    "Consent gating: tracker never starts an engine when micConsent is false — it starts directly in tap mode; consent state is read per session start and on change (test toggling consent mid-session).",
+    "Mic lifecycle: mic session active only while the reading screen has it open; an isListening state is exposed for the design-system listening indicator; pausing (narration playing, vocab card open) suspends recognition and resumes at the same word (tests).",
+    "Cloud minute cap (A-7, only if a metered cloud engine is active): per-profile daily cap of 20 cloud-minutes; when reached, silently switch to the on-device engine with no user-visible interruption (fake-clock test with a fake 'metered' engine).",
+    "No code path writes audio buffers to storage: no_audio_storage_test greps/analyzes tracker sources for file-write APIs touching audio types and the tracker API exposes no audio buffers (transcribed static/dynamic check)."
+  ],
+  "pinned_design": "Unit 4 pinned: tracker = the hybrid layer's runtime — feeds engine hypotheses to the matcher against the known target sentence; emits the pinned four-event stream consumed by Units 5-6. Fallback chain pinned: engine failure or mic unavailable → tap-the-word (always available, visually discreet — the discreet UI itself is reading-screen's). No audio is ever stored — not on device, not server-side; any substitute cloud engine must support no-retention processing. Metered cloud engine (only if substituted): 20 cloud-minutes/profile/day (A-7), silent downgrade on cap (R2). Mic active only on the reading screen; small non-alarming listening indicator always visible while mic open (indicator widget is reading-screen's; tracker exposes the state). Consent (Unit 10): consent changes take effect immediately — Unit 4 reads them per session start and on change. Silence/struggle constants live in the tuning file (domain-models).",
+  "tier": "hard",
+  "notes": "Concurrency + timing heavy: build on fake_async/clock injection throughout. No real engine exists in the container — all engine interaction is via FakeAsrEngine and tap_engine (tap_engine is also the real production fallback, so it is fully owned here). The near-miss PROMPT itself is stuck-word-scaffold's; the tracker only emits the event. Post-POC backlog (recorded): noise/cross-talk fixtures. platform-asr-adapter plugs into this tracker later without changes (that is the acceptance of the interface)."
+}
