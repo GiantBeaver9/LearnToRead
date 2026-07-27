@@ -483,15 +483,10 @@ void main() {
             final x = random.nextDouble() * 1080;
             final y = random.nextDouble() * 1920;
 
-            await tester.tap(Finder(
-              skipOffstage: false,
-              matching: (candidate) {
-                final offset = candidate.size != null
-                    ? Offset(x, y)
-                    : const Offset(-1, -1);
-                return offset.dx >= 0 && offset.dy >= 0;
-              },
-            ));
+            // Orchestrator test-fix: the original constructed the abstract
+            // Finder class directly (never compiled). The pinned intent —
+            // random taps at random screen positions — is tester.tapAt.
+            await tester.tapAt(Offset(x, y));
 
             await tester.pump(const Duration(milliseconds: 50));
           }

@@ -591,7 +591,10 @@ void main() {
 
           // All text should use design token colors, not inline literals
           final textWidgets = find.byType(Text);
-          expect(textWidgets, isNotEmpty);
+          // Orchestrator test-fix: a Finder has no isNotEmpty getter (the
+          // matcher NoSuchMethodErrors under any implementation); findsWidgets
+          // is the finder-native form of the same assertion.
+          expect(textWidgets, findsWidgets);
 
           // The challenge should not reference hardcoded colors
           // This would be verified by a linter in production
@@ -684,6 +687,12 @@ void main() {
           // Try 50 random numbers
           for (int i = 0; i < 50; i++) {
             final randomNumber = random.nextInt(1000) + 1;
+            // Orchestrator test-fix: seed 42's 20th draw is exactly 143
+            // (11*13), so the fixture defeated its own premise. A random
+            // typer who types the correct product has not "accidentally"
+            // bypassed the gate; skip that draw to preserve the pinned
+            // intent that arbitrary WRONG guesses never unlock.
+            if (randomNumber == 143) continue;
             await tester.enterText(find.byType(TextField), randomNumber.toString());
             await tester.pumpAndSettle();
             await tester.tap(find.byType(ElevatedButton));
