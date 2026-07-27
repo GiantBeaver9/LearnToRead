@@ -202,9 +202,7 @@ class _GateChallengeState extends State<GateChallenge> {
               child: TextField(
                 controller: _controller,
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 enabled: !_isSubmitting,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -247,13 +245,12 @@ class _GateChallengeState extends State<GateChallenge> {
 
             // Submit button
             ElevatedButton(
-              onPressed: _isSubmitting
-                  ? null
-                  : () => _handleSubmit(),
+              onPressed: _isSubmitting ? null : () => _handleSubmit(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: DesignTokens.wordReadGreen,
-                disabledBackgroundColor:
-                    DesignTokens.wordReadGreen.withAlpha(128),
+                disabledBackgroundColor: DesignTokens.wordReadGreen.withAlpha(
+                  128,
+                ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: DesignTokens.spacingLg,
                   vertical: DesignTokens.spacingMd,
@@ -262,7 +259,11 @@ class _GateChallengeState extends State<GateChallenge> {
               child: Text(
                 _isSubmitting ? 'Checking...' : 'Submit',
                 style: const TextStyle(
-                  color: Colors.white,
+                  // Token-lint (PRD §8 Unit 1 accept #6): no raw Colors.*
+                  // literals under lib/features/. readingBackground is the
+                  // token palette's near-white shade, giving legible
+                  // contrast against the wordReadGreen button fill.
+                  color: DesignTokens.readingBackground,
                   fontSize: 18.0,
                   fontWeight: FontWeight.bold,
                 ),

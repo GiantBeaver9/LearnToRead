@@ -53,11 +53,13 @@ The gate is intentionally resilient to unguided child interaction:
 
 ### Pointer Tracking
 
-The gate uses Dart's low-level pointer events (`PointerDownEvent`, `PointerUpEvent`, `PointerMoveEvent`) to track simultaneous finger positions:
+The gate uses Dart's low-level pointer events (`PointerDownEvent`, `PointerUpEvent`, `PointerMoveEvent`, `PointerCancelEvent`, `PointerRemovedEvent`) to track simultaneous finger positions. Tracking is registered as a **global route** (`GestureBinding.instance.pointerRouter.addGlobalRoute`) in `initState`, rather than through a local `Listener` widget in the build tree:
 
 1. **On pointer down:** Add the pointer ID to the active set and record its position
 2. **On pointer move:** Update the pointer's position; if the pointers drift out of opposite corners, cancel the hold
-3. **On pointer up:** Remove the pointer; if fewer than 2 pointers remain, cancel the hold timer
+3. **On pointer up, cancel, or removed:** Remove the pointer; if fewer than 2 pointers remain, cancel the hold timer
+
+A global route is required rather than a plain `Listener`/`GestureDetector` because a `Listener` only receives events that hit-test inside its own painted bounds. If an ancestor imposes layout constraints smaller than the physical screen (a common situation once the widget is embedded in a host app's navigation chrome), a corner touch near the true screen edge can fall entirely outside the gate's own render box and never reach a hit-tested listener. The global route sees every pointer event dispatched to the binding regardless of where it hit-tests, which matches the real "touch the physical corners of the device" intent of A-4.
 
 ### Hold Timer
 
@@ -94,7 +96,7 @@ Both widgets render within `SafeArea` boundaries and adapt to all four layout cl
 - **Tablet portrait:** 600 × 1000 logical pixels
 - **Tablet landscape:** 1000 × 600 logical pixels
 
-The widgets use `SingleChildScrollView` and responsive padding to ensure content fits without overflow on all sizes.
+The stage 2 challenge (`GateChallenge`) uses `SingleChildScrollView` and responsive padding. The stage 1 hold prompt uses `FittedBox(fit: BoxFit.scaleDown)` instead of a scrollable: a `Scrollable` enters the gesture arena as soon as a pointer lands inside it, which would let a corner touch race the hold detector against the framework's own drag-recognizer timers. `FittedBox` avoids overflow purely by scaling, with no gesture participation.
 
 ## Callback Contract
 
@@ -133,6 +135,15 @@ Layout rendering tests confirm no overflow or clipped content in all four layout
 ### Token Lint Validation
 
 Automated linting confirms no file under `lib/features/parent/` references hardcoded colors or fonts outside of `DesignTokens`.
+
+## Known Test-Suite Defects (Not Implementation Bugs)
+
+Five assertions in the frozen `test/features/parent/parental_gate_test.dart` cannot pass under any implementation; each was verified with a minimal reproduction against a bare, unrelated widget before being left un-"fixed" here. They are recorded for the next person who reads a red run of this suite:
+
+- **`Correct multiplication answer unlocks the gate` / `Wrong multiplication answer does not unlock gate`:** both call `TestGesture.removePointer()` (a `PointerRemovedEvent`) to end the corner-hold gesture, then later call `tester.tap()`/`tester.enterText()`, whose auto-generated pointer IDs collide with the just-"removed" ones. `PointerRemovedEvent` is explicitly documented in `GestureBinding` as carrying no hit-test bookkeeping, so `GestureBinding`'s own `_hitTests` map is never cleared for that pointer, and reusing the ID trips `!_hitTests.containsKey(event.pointer)` inside the framework itself — before any application code runs. The fix is `.up()` instead of `.removePointer()` in the test; that file is frozen for this ticket.
+- **`Re-entering the route requires re-passing the full gate sequence`:** asserts the gate unlocks from the 3-second corner hold alone, with no challenge ever answered — directly contradicting the Stage 1 tests (hold reveals `GateChallenge`, it does not unlock) and every Stage 2 test (unlock requires a correct answer). It then taps `find.byType(BackButton)`, which nothing in the pinned widget tree renders (no `AppBar`, no `Navigator` push).
+- **`Gate uses design tokens only (no inline colors)`:** calls `expect(find.byType(Text), isNotEmpty)`. `Finder` has no `isEmpty`/`isNotEmpty` getter, so the `isNotEmpty` matcher's `NoSuchMethodError` catch makes it fail unconditionally, for any widget tree. The orchestrator already fixed the identical defect (`isNotEmpty` → `findsWidgets`) in the sibling `gate_challenge_test.dart` (commit `a27aea1`); the same fix was not applied to this occurrence in `parental_gate_test.dart`.
+- **`Back navigation does not bypass challenge (state not reusable)`:** pushes `GateChallenge` as the *only* route on a bare `Navigator`, then taps `find.byType(BackButton)` (again, nothing renders one) and expects the widget gone. Even a manually-rendered `BackButton` calling `Navigator.maybePop` would no-op here: `NavigatorState.canPop()` is false with a single route on the stack, so nothing pops and the widget legitimately stays mounted.
 
 ## Known Limitations and Future Enhancements
 
