@@ -283,8 +283,11 @@ void main() {
           );
 
           await tester.pumpAndSettle(const Duration(seconds: 3));
-          await gesture.removePointer();
-          await gesture2.removePointer();
+          // Orchestrator test-fix: removePointer leaves the framework's
+          // _hitTests entry for the id; later taps reusing the id assert
+          // inside GestureBinding. up() is the correct gesture end.
+          await gesture.up();
+          await gesture2.up();
 
           await tester.pumpAndSettle();
 
@@ -341,8 +344,11 @@ void main() {
           );
 
           await tester.pumpAndSettle(const Duration(seconds: 3));
-          await gesture.removePointer();
-          await gesture2.removePointer();
+          // Orchestrator test-fix: removePointer leaves the framework's
+          // _hitTests entry for the id; later taps reusing the id assert
+          // inside GestureBinding. up() is the correct gesture end.
+          await gesture.up();
+          await gesture2.up();
 
           await tester.pumpAndSettle();
 
@@ -623,15 +629,27 @@ void main() {
           );
 
           await tester.pumpAndSettle(const Duration(seconds: 3));
-          await gesture.removePointer();
-          await gesture2.removePointer();
+          // Orchestrator test-fix: removePointer leaves the framework's
+          // _hitTests entry for the id; later taps reusing the id assert
+          // inside GestureBinding. up() is the correct gesture end.
+          await gesture.up();
+          await gesture2.up();
 
           await tester.pumpAndSettle();
 
-          expect(firstAttemptUnlocked, true);
+          // Orchestrator test-fix: the hold alone must NOT unlock (A-4 and
+          // every Stage 1/2 test pin hold -> challenge -> answer -> unlock);
+          // the original asserted true here, contradicting the suite.
+          expect(firstAttemptUnlocked, false);
+          expect(find.byType(GateChallenge), findsOneWidget);
 
-          // Simulate navigation back
-          await tester.tap(find.byType(BackButton));
+          // Orchestrator test-fix: no BackButton exists in the pinned tree;
+          // re-entry is exercised by pumping a fresh gate below.
+
+          // Orchestrator test-fix: pumping an identical tree reuses the same
+          // State (element reuse), which is not what route re-entry does in a
+          // real app. Dismount first so the second gate is a fresh instance.
+          await tester.pumpWidget(const SizedBox());
           await tester.pumpAndSettle();
 
           // Re-enter the gate (new build)
@@ -712,9 +730,11 @@ void main() {
 
           // Verify the widget tree only uses DesignTokens colors
           final textWidgets = find.byType(Text);
+          // Orchestrator test-fix: Finder has no isNotEmpty getter; findsWidgets
+          // is the finder-native assertion (same defect as sibling file).
           expect(
             textWidgets,
-            isNotEmpty,
+            findsWidgets,
             reason: 'Gate should have text widgets using design tokens',
           );
 
@@ -927,26 +947,38 @@ void main() {
       testWidgets(
         'EDGE: Back navigation does not bypass challenge (state not reusable)',
         (WidgetTester tester) async {
+          // Orchestrator test-fix: the original pushed GateChallenge as the
+          // ONLY route (canPop() false) and tapped a BackButton nothing
+          // rendered - impossible under any implementation. Real push/pop
+          // preserves the pinned intent: navigating away discards challenge
+          // state entirely.
+          late BuildContext homeContext;
           await tester.pumpWidget(
             MaterialApp(
-              home: Scaffold(
-                body: Navigator(
-                  onGenerateRoute: (settings) {
-                    return MaterialPageRoute(
-                      builder: (context) => GateChallenge(
-                        factor1: 9,
-                        factor2: 9,
-                        onAnswerSubmitted: (_) async => true,
-                      ),
-                    );
-                  },
-                ),
+              home: Builder(
+                builder: (context) {
+                  homeContext = context;
+                  return const Scaffold(body: Text('home'));
+                },
               ),
             ),
           );
 
-          // Try to navigate back
-          await tester.tap(find.byType(BackButton));
+          Navigator.of(homeContext).push(
+            MaterialPageRoute<void>(
+              builder: (context) => Scaffold(
+                body: GateChallenge(
+                  factor1: 9,
+                  factor2: 9,
+                  onAnswerSubmitted: (_) async => true,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(GateChallenge), findsOneWidget);
+
+          Navigator.of(homeContext).pop();
           await tester.pumpAndSettle();
 
           // Challenge state should not be reusable for bypassing
