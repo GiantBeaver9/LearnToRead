@@ -63,6 +63,11 @@ progress data with no export path), without building any of it now.
   seashells…") as bonus nodes interleaved on the progress map — modeled
   first by recorded narration (files supplied by the product owner), then
   read by the child with extra-forgiving tracking (Unit 14).
+- **Sound Garden — phonetic practice area:** a third child-facing area of
+  grapheme-sound cards (digraphs, vowel teams, diphthongs, r-controlled…)
+  — tap to hear the sound, say it back with forgiving sound-level matching,
+  with example words that appear based on the student's capability
+  (Unit 15).
 - Up to 4 local child profiles; minimal parent corner behind a parental gate,
   including per-child microphone consent and a single pilot progress view
   (stories completed, words that needed help, per child) (Unit 10).
@@ -152,6 +157,12 @@ story packs.
   `targetPhonemeId` (the sound it drills), `narrationAudioRef`
   (product-owner-supplied recording), `packId`. Exempt from decodability
   linting (modeled-first content may use above-level words).
+- **GraphemeSound** — `id`, `grapheme` ("oi", "sh"), `phonemeIds` (ordered;
+  plays via the recorded phoneme set), `introducedAtLevelId` (drives
+  awake/muted state in the Sound Garden), `exampleWords:
+  [(wordText, pronunciationAudioRef, minLevelId)]` (a word appears on the
+  card only when the profile's level ≥ its `minLevelId`). Full inventory
+  ships in the binary starter content; example words extend via packs.
 - **StoryPack** — `id`, `version`, `minAppVersion`, manifest of stories +
   twisters + assets, signed checksum.
 
@@ -175,7 +186,8 @@ near-miss acceptances are deliberately distinguishable so pilot data shows
 where "close enough" is doing the work), `help_given` (tier),
 `story_completed`, `story_abandoned`,
 `vocab_card_opened`, `collectible_earned`, `twister_started`,
-`twister_completed`. Events carry a random per-install
+`twister_completed`, `sound_card_played`, `sound_card_echo`
+(matched: bool). Events carry a random per-install
 ID and profile ordinal only — never names, audio, or device identifiers.
 
 ## 6. Constraints & dependencies
@@ -291,7 +303,8 @@ critical path.
   animation stage; in landscape they sit side-by-side (book-like), in
   portrait stacked text-above-stage.
 - All child-facing navigation is icon + voice prompt; no reading required to
-  navigate. Child-facing screens: Home/progress map, Reading, Collection.
+  navigate. Child-facing screens: Home/progress map, Reading, Collection,
+  Sound Garden (Unit 15).
 - App shell: Flutter, Riverpod for state (A-2), go_router navigation,
   Rive runtime. Product owner co-develops frontend; design tokens
   (colors, type scale, spacing, motion durations) live in one Dart file
@@ -816,6 +829,50 @@ proposed with flagged choice points, ratified during spec walkthrough)
 
 ---
 
+### Unit 15 — Sound Garden (phonetic practice area)
+
+**Pinned design** (ratified by product owner)
+- A third child-facing area alongside the progress map and collection: an
+  illustrated, browsable space of grapheme-sound cards covering the full
+  scope & sequence grapheme inventory (short vowels, digraphs, blends,
+  vowel teams, diphthongs like oi/ou, r-controlled).
+- Card face: the letter combination rendered large in the reading typeface.
+  Tap → the recorded human phoneme audio plays (grapheme's `phonemeIds` in
+  order, gapless). Then a gentle prompt invites the child to **say it
+  back**, scored with sound-level matching (the twister threshold set,
+  Unit 4 sound mode); a match earns a warm sparkle. The echo is optional
+  and there is no failure state — a card never says "wrong"; the child can
+  just listen.
+- Visibility (ratified): **all cards visible from day one** — curious kids
+  can explore ahead. Cards whose grapheme is introduced at or below the
+  profile's current level render "awake"; ahead-of-level cards are present
+  but muted. Muted cards are still fully tappable and echoable.
+- **Example words appear based on the student's capability (ratified):**
+  each card lists example words using the grapheme, showing only those with
+  `minLevelId` ≤ the profile's current level; more words surface as the
+  child's level rises. Tapping an example word plays its pronunciation
+  audio and highlights the grapheme within the word.
+- No completion state, no collectibles, no progression mechanics — this is
+  a free practice space. Practice is observed via `sound_card_played` /
+  `sound_card_echo` analytics only.
+- Fully offline: phoneme audio and the grapheme inventory ship in the
+  binary; example-word audio arrives with story packs (a card with no
+  downloaded example-word audio shows the words it has audio for).
+
+**Acceptance**
+- Card grid renders the full fixture inventory with awake/muted state
+  exactly matching the profile's level (widget tests; golden tests for the
+  four layout classes [DEVICE]).
+- Tap plays the mapped phoneme refs in order (fake audio service asserts);
+  echo path routes through the sound-mode matcher with the twister
+  threshold set; match → sparkle state; non-match → no negative state
+  (integration tests with fake engine).
+- Example-word filtering matches fixture `minLevelId` data exactly as the
+  profile level changes; tapping a word plays its audio ref.
+- Events emitted per §5 with correct payloads (schema tests).
+
+---
+
 ## 9. Assumptions (proceeding on these; override any of them)
 
 - **A-1:** English (US) only; single narrator voice gender/character chosen
@@ -848,6 +905,24 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - **A-11:** Listen-first narration plays without per-word karaoke
   highlighting in v1 (word-sync timing data is a post-POC enhancement);
   pack build requires `narrationAudioRef` for every sentence-format story.
+- **A-12:** `struggleDetected` default semantics: (a) two consecutive
+  finalized hypothesis bursts containing speech that fails to match the
+  current word, or (b) sustained silence ≥ T1. Tunable in the tuning file.
+- **A-13:** Sound-mode (twister/Sound Garden) default thresholds: accept
+  when ≥ 60% of the target phoneme sequence is matched with per-phoneme
+  distance ≤ 1, target-phoneme instances weighted double. Tunable in the
+  tuning file.
+- **A-14:** Analytics word hash: SHA-256 of the lowercased word text,
+  truncated to 16 hex chars.
+- **A-15:** Pack integrity v1: SHA-256 checksum listed in the catalog
+  (§5 "signed checksum" is satisfied by this in v1; cryptographic signing
+  is post-POC hardening).
+- **A-16:** Pack-build Rive state-machine validation uses a declared-inputs
+  sidecar JSON committed alongside each `.riv` (authoritative for
+  validation); runtime introspection may supplement where available.
+- **A-17:** Audio playback plugin: `just_audio` (+ `audio_session`), added
+  centrally to pubspec by the orchestrator; low-latency phoneme sequencing
+  per Unit 13 measured against it on device.
 
 ## 10. Open questions (block their units, not the whole build)
 
@@ -867,8 +942,18 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - **OQ-4 (blocks Unit 3 art commissions):** Illustrator/animator sourcing
   and budget per story; style guide contract deliverable defined in Unit 1.
 - **OQ-5 (content):** Final scope & sequence table (which skills at which
-  level, heart-word lists) — authored in Unit 3, reviewed by product owner
-  before story writing begins.
+  level, heart-word lists, grapheme inventory + example words for the Sound
+  Garden) — authored in Unit 3, reviewed by product owner before story
+  writing begins.
+- **OQ-6 (blocks pilot distribution, not build):** Hosting choices — the
+  anonymous-analytics endpoint (A-5) and the pack CDN/catalog host. Units
+  build and test against local fixture servers.
+- **OQ-7 (blocks pilot distribution, not build):** Privacy policy, contact,
+  and licenses URLs for the parent corner; placeholders until supplied.
+- **OQ-8 (blocks the owner token-review gate, not unit builds):** Final
+  typeface selections (early-reader reading face, display face) and
+  concrete design-token values — builders use placeholder tokens behind
+  the pinned token interface until the owner's Unit 1 sign-off.
 
 ---
 
