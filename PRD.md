@@ -77,8 +77,12 @@ There is no teacher/classroom user in v1 (see Non-scope).
 
 ## 4. Success criteria
 
-v1 is a free validation release. It succeeds if, measured over the first 90
-days after launch via the anonymous analytics in Unit 12:
+v1 is a free proof of concept, distributed privately (TestFlight / internal
+testing with known families). The primary POC bar: **the core loop works
+end-to-end for real children — read aloud, words turn green, help kicks in
+when stuck, animation rewards completion.** Once the POC reaches a pilot
+group, it succeeds if, measured over the first 90 days via the anonymous
+analytics in Unit 12:
 
 1. **Retention:** ≥ 35% of new child profiles have at least one reading
    session 7 days after their first session (D7 profile retention).
@@ -146,22 +150,27 @@ ID and profile ordinal only — never names, audio, or device identifiers.
 - **Platforms:** Flutter; iOS 16+ and Android 10 (API 29)+; phones and
   tablets; both orientations fully supported on every screen (ratified —
   the design tax is accepted).
-- **Speech recognition:** primary = a cloud ASR service specialized for
-  children's speech with word/phoneme-level confidence; fallback = on-device
-  recognition (iOS Speech framework / Android SpeechRecognizer) used when
-  offline, when cloud consent is not granted, or on service failure; final
-  fallback = discreet tap-the-word advance so a child is never hard-blocked.
-  Vendor selection is Open Question OQ-1.
-- **COPPA / GDPR-K:** sending a child's voice to a cloud service requires
-  verifiable parental consent. The parent corner must capture consent per
-  child before any audio leaves the device; with consent absent or revoked
-  the app silently uses on-device recognition only. Consent method is
-  Open Question OQ-2. No ads, no third-party trackers, no behavioral
-  profiling. App ships in the App Store Kids Category and Google Play
-  Families program and must satisfy both policy sets.
-- **Cost ceiling:** the app is free while cloud ASR bills per use. ASR spend
-  must be capped (per-profile daily cap, then graceful fallback to on-device
-  — see Unit 4). Budget threshold is Assumption A-7.
+- **Speech recognition:** expected-text hybrid recognition (KidSpeak-style,
+  per the research approach the product owner identified): the recognizer is
+  given both the child's audio and the expected words, and acceptance is a
+  "close enough" phonetic match against the known target — "gat" for "cat"
+  is accepted, and a dedicated near-miss prompt handles that case. Open-ended
+  transcription is never required. The hybrid matching layer is ours and
+  engine-agnostic; the underlying ASR engine is any that exposes word/phone
+  hypotheses with contextual biasing (default starting engine is A-10).
+  Final fallback = discreet tap-the-word advance so a child is never
+  hard-blocked. **v1 is get-it-working:** the happy path must work well;
+  edge cases (noise, accents, siblings talking) are iterated after the core
+  loop is proven.
+- **POC posture / COPPA:** v1 is a proof of concept, not a shipped app.
+  Verifiable-parental-consent machinery, Kids Category / Families program
+  submission, and counsel review are **post-POC** requirements, recorded so
+  they aren't forgotten at ship time. The POC still honors the baseline:
+  no ads, no third-party trackers, no audio retention, mic toggles in the
+  parent corner.
+- **Cost ceiling:** only applies if a metered cloud engine is chosen for the
+  hybrid layer's backend; if so, per-profile daily cap per A-7. With an
+  on-device engine (A-10 default) this constraint is moot.
 - **Art & audio pipeline:** one commissioned illustrator/animator working in
   Rive against a style guide (Unit 1); one voice actor for the fixed phoneme
   set + celebration lines; premium neural TTS for per-story word
@@ -180,14 +189,14 @@ ID and profile ordinal only — never names, audio, or device identifiers.
 
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R1 | Child-speech ASR accuracy is insufficient even from a specialized vendor; words don't turn green when read correctly. | Core magic breaks; children frustrated. | Forgiving match policy (Unit 4 pins it); tiered fallback to sound-out help rather than "wrong!"; tap fallback; metric §4.4 watches this directly. Vendor bake-off before build (OQ-1) with recordings of real children. |
-| R2 | Cloud ASR cost scales with free usage. | Product owner funds unbounded bill. | Hard per-profile daily cloud-ASR cap with silent downgrade to on-device (Unit 4); cap value A-7. |
-| R3 | COPPA violation via voice data handling. | Legal exposure; app-store removal. | Consent gate before any cloud audio (Unit 10); on-device default; no audio retention (Unit 4 pins "no recording storage"); counsel review before launch (OQ-2). |
+| R1 | Even with expected-text hybridization, recognition of young children's speech misfires; words don't turn green when read correctly. | Core magic breaks; children frustrated. | Close-enough phonetic acceptance is the pinned policy (Unit 4) — the system only ever asks "was that near the word we expected?"; tiered help instead of "wrong!"; tap fallback; metric §4.4 watches this directly. POC posture: prove the happy path with a few real kids before hardening edge cases. |
+| R2 | If a metered cloud engine backs the hybrid layer, cost scales with free usage. | Product owner funds unbounded bill. | Default engine is on-device (A-10), making this moot; if a cloud engine substitutes, hard per-profile daily cap (A-7) with silent downgrade. |
+| R3 | Shipping publicly without COPPA consent machinery. | Legal exposure; app-store removal. | Explicitly post-POC: the PRD records verifiable consent + counsel review as ship-gates (see §6 POC posture). POC distribution stays private (TestFlight/internal testing, known families). No audio retention regardless (Unit 4). |
 | R4 | Content pipeline too slow/expensive per story (illustration + Rive + editing + TTS). | Library stalls at launch size; retention decays. | Pipeline is a first-class unit (Unit 3) with per-story cost tracked from story #1; style guide constrains art scope; hybrid voice strategy avoids per-story recording sessions. |
 | R5 | Decodable text authored with AI drifts off the phonics constraint. | Stories unteachable at their level. | Pipeline includes an automated decodability linter (Unit 3 acceptance) — every word checked against the level's cumulative grapheme set; human editor approves. |
 | R6 | "Fully responsive both orientations" doubles design/QA effort and delays launch. | Schedule risk. | Accepted knowingly by product owner. Design system (Unit 1) defines layout rules once; Rive stages composed for a safe-area aspect range rather than per-orientation rebuilds. |
 | R7 | Struggle detection (when to intervene) tuned wrong: too eager feels condescending, too slow feels absent. | Teaching interaction fails both age ends. | Timings are pinned as tunable constants (Unit 6) and adjusted in pilot; per-level timing profiles allowed. |
-| R8 | App-store Kids Category review rejects the parental gate or analytics. | Launch blocked. | Gate + analytics designed to each store's published policy (Units 10, 12); pre-review checklist in Unit 13 acceptance. |
+| R8 | App-store Kids Category review rejects the parental gate or analytics at eventual public ship. | Public launch blocked (POC unaffected — private distribution). | Gate + analytics designed to each store's published policy from the start (Units 10, 12) so post-POC submission needs no rework; checklist runs pre-submission. |
 
 ## 8. Units
 
@@ -308,42 +317,58 @@ build-first-to-last; Units 1–4 are the critical path.
 ### Unit 4 — Listening pipeline (ASR integration & word matching)
 
 **Pinned design**
-- Primary engine: specialized child-speech cloud ASR (vendor OQ-1) streaming
-  with word-level (phoneme-level where available) confidence. Fallbacks in
-  order: on-device recognition (offline / no cloud consent / service error /
-  daily cap reached) → tap-the-word (child taps the current word to advance;
-  always available but visually discreet).
-- **No audio is ever stored** — not on device, not by us server-side; the
-  cloud vendor must be configurable for no-retention processing (vendor
-  requirement in OQ-1).
-- Forgiving match policy (pinned): the tracker holds a cursor on the current
-  word; a word is accepted (→ green) when ASR confidence for it exceeds an
-  acceptance threshold **or** a near-miss threshold is met and the word is
-  ≤ 4 phonemes; self-corrections and repeats are always accepted;
-  recognition may accept the next word appearing before the current word is
-  confirmed (lookahead 1) and back-fill the skipped word as correct.
-  Thresholds are tunable constants with pinned defaults (accept 0.60,
-  near-miss 0.40) calibrated during vendor bake-off.
+- **Expected-text hybrid recognition (KidSpeak-style, ratified):** the
+  matcher always knows the target sentence. The ASR engine is fed the
+  child's audio *and* biased with the expected words (contextual
+  strings/phrase hints); its hypotheses are then scored by our matching
+  layer against the known next word — never open-ended transcription.
+- Match policy (pinned): a word is accepted (→ green) when the hypothesis is
+  the target word **or phonetically close enough** — e.g. "gat" accepts
+  "cat". Closeness = phoneme-level edit distance against the word's
+  `graphemePhonemeMap` phonemes, threshold: at most 1 substituted phoneme
+  for words ≤ 4 phonemes, at most 2 for longer words (tunable constants in
+  the Unit 6 tuning file). A near-miss acceptance triggers the dedicated
+  near-miss prompt path (a gentle model-and-repeat variant, distinct from
+  stuck-word help) rather than silent acceptance. Self-corrections and
+  repeats always accepted; lookahead 1 with back-fill (hearing the next
+  word confirms the current one).
+- **v1 is get-it-working:** the acceptance bar is the happy path — quiet
+  room, one child, cooperative reading. Noise robustness, accents, and
+  cross-talk are explicitly deferred to post-POC iterations.
+- Engine: any ASR exposing word/phone hypotheses + contextual biasing.
+  Default start = platform on-device recognition (A-10: iOS
+  SFSpeechRecognizer with `contextualStrings`, Android SpeechRecognizer
+  with biasing). A cloud engine may substitute behind the same interface if
+  on-device hypotheses prove too coarse — the hybrid matching layer does
+  not change.
+- Fallback chain: engine failure or mic unavailable → tap-the-word (child
+  taps the current word to advance; always available, visually discreet).
+- **No audio is ever stored** — not on device, not server-side; any
+  substitute cloud engine must support no-retention processing.
 - The tracker emits a single event stream consumed by Units 5–6:
-  `wordAccepted(index)`, `struggleDetected(index)`, `silence(duration)`.
-  Engine choice (cloud/on-device/tap) is invisible above this interface.
-- Cloud usage cap: per-profile daily cloud-ASR minute cap (default A-7);
-  when reached, silently switch to on-device for the rest of the day.
+  `wordAccepted(index)`, `wordAcceptedNearMiss(index)`,
+  `struggleDetected(index)`, `silence(duration)`. Engine choice
+  (on-device/cloud/tap) is invisible above this interface.
+- If a metered cloud engine is in use: per-profile daily minute cap
+  (default A-7); when reached, silently switch to on-device.
 - Microphone lifecycle: mic active only on the reading screen; a small,
   non-alarming "listening" indicator (design system) is always visible while
   the mic is open.
 
 **Acceptance**
-- Contract tests against a recorded fixture set: child recordings (clear
-  read, hesitant read, mispronunciation, silence, background noise) drive
-  the tracker; expected event streams asserted. Fixture set built during
-  vendor bake-off with real child audio recorded with parental permission.
-- Fallback tests: airplane mode → on-device engine selected; consent revoked
-  → cloud engine never instantiated (asserted via dependency injection);
-  cap reached mid-session → engine swaps without UI interruption.
+- Matching-layer unit tests need no audio: hypothesis strings vs expected
+  words assert the close-enough policy exactly — "gat"→"cat" accepted as
+  near-miss, "dog"→"cat" not accepted, lookahead back-fill, self-correction.
+- Contract tests against a small recorded fixture set (clear read, hesitant
+  read, near-miss mispronunciation, silence) drive the full tracker;
+  expected event streams asserted. Happy-path fixtures only for POC;
+  noise/cross-talk fixtures are a post-POC backlog item, recorded.
+- Near-miss acceptance emits `wordAcceptedNearMiss` and triggers the
+  near-miss prompt path (integration test).
+- Fallback tests: engine unavailable → tap mode without UI interruption;
+  tapping the current word emits `wordAccepted` identically to ASR
+  acceptance.
 - Static/dynamic check: no code path writes audio buffers to storage.
-- Tap fallback: tapping the current word emits `wordAccepted` identically to
-  ASR acceptance.
 
 ---
 
@@ -404,8 +429,17 @@ build-first-to-last; Units 1–4 are the critical path.
   Unit 13). Sound-out order and grouping come from the story's authored
   `graphemePhonemeMap`, so digraphs highlight as one unit ("sh" lights
   together, never s-h separately).
-- Timings T1/T2 and struggle sensitivity are constants in one tuning file;
-  pilot adjustments touch only that file.
+- **Near-miss prompt (ratified in concept):** when Unit 4 accepts a
+  close-enough production ("gat" for "cat"), the word still turns green —
+  the child is never told they were wrong — and the app follows with the
+  dedicated near-miss prompt: a brief, warm model of the correct word
+  ("that's it — *cat*!", word pronunciation audio) that the child may echo
+  but is not required to; reading continues immediately. Exact prompt copy
+  is authored content (Unit 3); this is a lighter touch than Tier 1/2 and
+  never escalates.
+- Timings T1/T2, struggle sensitivity, and phonetic-closeness thresholds
+  (Unit 4) are constants in one tuning file; pilot adjustments touch only
+  that file.
 
 **Acceptance**
 - Integration tests with fixture event streams: silence → Tier 1 at T1;
@@ -517,10 +551,11 @@ build-first-to-last; Units 1–4 are the critical path.
 - Parent corner contents (all of it — nothing more in v1):
   - Create/edit/delete profiles: name, age band (sets starting level per
     Unit 2), optional level override.
-  - Per-child consent toggles: microphone use; cloud speech processing
-    (explains in plain language what is sent, that nothing is stored, and
-    names the vendor). Cloud toggle disabled until mic granted. Defaults:
-    both **off** until explicitly enabled.
+  - Per-child microphone toggle (default **off** until enabled). A cloud
+    processing toggle appears only if a cloud engine is in use (A-10 default
+    is on-device, so POC builds typically show mic only). POC consent is a
+    plain-language in-app toggle; **verifiable** parental consent (COPPA)
+    is a post-POC ship-gate (see §6).
   - Links: privacy policy, licenses, contact.
 - Consent state changes take effect immediately (Unit 4 reads them per
   session start and on change).
@@ -531,11 +566,11 @@ build-first-to-last; Units 1–4 are the critical path.
 - Gate blocks child-plausible interaction patterns (automated test taps/
   random input never passes the gate).
 - Consent matrix tests: (mic off) → tap-only mode, mic never requested;
-  (mic on, cloud off) → on-device only; (both on) → cloud engine allowed.
-  OS-level mic permission denial handled gracefully → tap mode.
+  (mic on) → recognition enabled. OS-level mic permission denial handled
+  gracefully → tap mode.
 - Profile CRUD + data erasure verified (deleted profile leaves zero rows).
-- Store-policy checklist for both stores completed and recorded in repo
-  (process acceptance).
+- Post-POC (recorded, not blocking): store-policy checklist for both
+  stores; verifiable-consent flow.
 
 ---
 
@@ -641,27 +676,28 @@ build-first-to-last; Units 1–4 are the critical path.
   anonymous mode.
 - **A-6:** Min-spec performance devices: iPhone SE 2nd gen; a 2019-era
   budget Android tablet (concrete model picked at Unit 1 build).
-- **A-7:** Cloud-ASR daily cap default: 20 minutes per profile per day;
-  revisit once vendor pricing is known (OQ-1).
+- **A-7:** If a metered cloud engine substitutes for the default: 20
+  cloud-minutes per profile per day cap.
 - **A-8:** Story length bounds: sentence levels 3–8 words; paragraph levels
   40–90 words across 1–3 pages.
 - **A-9:** The ~8-story starter pack spans the first 3 levels so every age
   band's starting level has bundled content offline on first run.
+- **A-10:** Default ASR engine behind the hybrid matching layer: platform
+  on-device recognition with contextual biasing (iOS SFSpeechRecognizer
+  `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
+  Unit 4's engine interface if its hypotheses prove too coarse.
 
 ## 10. Open questions (block their units, not the whole build)
 
-- **OQ-1 (blocks Unit 4 vendor integration; interface work can proceed):**
-  Which child-speech ASR vendor? Requirements: word/phoneme-level streaming
-  confidence, children's-voice training, contractual no-retention
-  processing, COPPA-compatible DPA, workable per-minute price for a free
-  app. Action: bake-off with real child recordings before Unit 4's vendor
-  adapter is built. (Candidates to evaluate at that time; the market moves —
-  e.g. SoapBox-class child ASR, Azure Pronunciation Assessment.)
-- **OQ-2 (blocks launch, not build):** COPPA verifiable-parental-consent
-  method for cloud voice processing in a free app with no accounts —
-  needs counsel confirmation that the chosen in-app consent flow meets the
-  "verifiable" bar, or we add a lightweight verification step (e.g.
-  email-plus) to Unit 10.
+- **OQ-1 — RESOLVED (product owner):** recognition is expected-text hybrid
+  (KidSpeak research approach): audio + expected words in, close-enough
+  phonetic acceptance out ("gat" accepts "cat", with a dedicated near-miss
+  prompt). No specialized-vendor bake-off needed; default engine per A-10.
+  V1 bar is the working happy path; edge cases iterated post-POC. Pinned in
+  Unit 4.
+- **OQ-2 — RESOLVED (product owner):** deferred — v1 is a POC with private
+  distribution, so verifiable parental consent and store compliance are
+  post-POC ship-gates, recorded in §6 and R3/R8, not v1 work.
 - **OQ-3 (blocks Unit 13/3 asset generation):** TTS vendor whose voice
   blends with the chosen actor; auditioned together, product-owner
   approval.
@@ -678,10 +714,13 @@ build-first-to-last; Units 1–4 are the critical path.
 - Why / Users & stakes / Scope & non-scope / Success criteria / Data model /
   Constraints / Risks / Units: present.
 - Every unit has pinned design + testable acceptance; no unit leaves a
-  design decision to the builder — remaining unknowns are explicitly OQ-1..5
-  and block only their own units.
+  design decision to the builder — remaining unknowns are explicitly
+  OQ-3..5 and block only their own units (OQ-1/OQ-2 resolved by the
+  product owner: expected-text hybrid recognition; POC posture defers
+  consent machinery).
 - Criteria satisfied by assumption rather than decision are listed in §9,
   each individually overridable.
-- Known-weakest points, flagged honestly: OQ-1 (ASR vendor viability at
-  free-app economics) and OQ-2 (consent method) are the two existential
-  unknowns; both have pre-build actions attached.
+- Known-weakest point, flagged honestly: R1 — whether platform on-device
+  hypotheses are granular enough for the close-enough matcher with young
+  voices. Mitigated by the engine-swap seam in Unit 4 and the POC's
+  prove-the-happy-path-first sequencing.
