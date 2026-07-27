@@ -34,7 +34,11 @@ animation, voice, and typography — is a first-class requirement, not polish.
 | Parent | Sets up profiles, grants microphone/cloud-processing consent, hands over the device. Not present for most sessions. | Trusts the app with their child's voice data and unsupervised screen time. A single privacy misstep or inappropriate moment destroys trust permanently. |
 | Product owner / content author | Writes and approves all story text, commissions art and voice recording, publishes content drops. | Content pipeline cost per story determines whether the library can grow. |
 
-There is no teacher/classroom user in v1 (see Non-scope).
+There is no teacher/classroom user in v1 (see Non-scope). The product is
+home-first, but the product owner is open to school/partner integrations
+later — unit designs should avoid choices that would structurally block
+multi-child or export/integration use (e.g. hard-wired profile ceilings,
+progress data with no export path), without building any of it now.
 
 ## 3. Scope & non-scope
 
@@ -51,8 +55,17 @@ There is no teacher/classroom user in v1 (see Non-scope).
 - Per-story hand-authored Rive reward animation + celebration audio (Unit 8).
 - Collection meta-layer (earned collectibles in a persistent scene) + progress
   map (Unit 9).
+- **Listen-first narration at early levels:** sentence-format stories are
+  read aloud by a recorded human voice before the child reads them, with a
+  listen button for replays. The product owner supplies the narration
+  recordings (Units 5, 13).
+- **Tongue-twister boosters:** alliterative enunciation practice ("She sells
+  seashells…") as bonus nodes interleaved on the progress map — modeled
+  first by recorded narration (files supplied by the product owner), then
+  read by the child with extra-forgiving tracking (Unit 14).
 - Up to 4 local child profiles; minimal parent corner behind a parental gate,
-  including per-child microphone/cloud-ASR consent (Unit 10).
+  including per-child microphone consent and a single pilot progress view
+  (stories completed, words that needed help, per child) (Unit 10).
 - Content delivery: starter pack bundled in the binary, additional story packs
   downloaded from a CDN. No user accounts, no server-side user data (Unit 11).
 - Anonymous, COPPA-safe analytics for the success metrics in §4 (Unit 12).
@@ -65,8 +78,8 @@ There is no teacher/classroom user in v1 (see Non-scope).
 
 - Monetization of any kind (paywall, subscriptions, IAP, ads). Deliberately
   deferred until the product is validated.
-- Parent progress dashboards / reports (parent corner is settings + consent
-  only).
+- Full parent dashboards/reports beyond the single pilot progress view in
+  Unit 10 (no charts, trends, exports, or notifications in v1).
 - User accounts, cloud sync of progress, multi-device continuity.
 - Teacher/classroom features, assessments, or reports.
 - Languages other than English (US).
@@ -80,21 +93,23 @@ There is no teacher/classroom user in v1 (see Non-scope).
 v1 is a free proof of concept, distributed privately (TestFlight / internal
 testing with known families). The primary POC bar: **the core loop works
 end-to-end for real children — read aloud, words turn green, help kicks in
-when stuck, animation rewards completion.** Once the POC reaches a pilot
-group, it succeeds if, measured over the first 90 days via the anonymous
-analytics in Unit 12:
+when stuck, animation rewards completion.** POC success is judged
+qualitatively: pilot kids ask to play it again, and pilot parents report
+real reading happening.
 
-1. **Retention:** ≥ 35% of new child profiles have at least one reading
-   session 7 days after their first session (D7 profile retention).
-2. **Real usage:** median completed stories per reading session ≥ 3.
-3. **Learning signal:** for words a child needed help with, the help-rate on
-   subsequent encounters of the same word declines — target ≥ 30% relative
-   reduction by the third encounter, aggregated across profiles.
-4. **Reliability of the core loop:** < 5% of reading sessions end with the
-   child abandoning mid-story after a stuck-word event (proxy for "the ASR or
-   scaffold frustrated the child").
+Four signals are instrumented from day one — **no pass/fail targets in v1**
+(ratified); they exist to observe the pilot and steer iteration:
 
-These four metrics define the instrumentation contract for Unit 12.
+1. **Retention signal:** rate of new child profiles with a reading session
+   7 days after their first (D7 profile return).
+2. **Usage signal:** completed stories per reading session (median).
+3. **Learning signal:** help-rate trajectory on repeated encounters of the
+   same word (does needing help decline?).
+4. **Frustration signal:** rate of sessions ending with mid-story
+   abandonment after a stuck-word event (proxy for "recognition or scaffold
+   frustrated the child").
+
+These four signals define the instrumentation contract for Unit 12.
 
 ## 5. Data & domain model
 
@@ -113,18 +128,25 @@ story packs.
   `packId`, `contentVersion`.
 - **Page** — `sentences: [Sentence]`. Sentence-format stories have exactly one
   page with one sentence.
-- **Sentence** — `words: [WordToken]`.
+- **Sentence** — `words: [WordToken]`, `narrationAudioRef?` (recorded human
+  read-aloud; required at sentence-format levels, supplied by the product
+  owner).
 - **WordToken** — `text`, `graphemePhonemeMap: [(graphemes, phonemeId)]`
-  (drives sound-out highlighting), `pronunciationAudioRef` (TTS-generated),
-  `vocabCardId?` (present ⇒ rendered blue when `Level.vocabEnabled`).
+  (drives sound-out highlighting), `pronunciationAudioRef` (recorded;
+  source-agnostic ref), `vocabCardId?` (present ⇒ rendered blue when
+  `Level.vocabEnabled`).
 - **VocabCard** — `id`, `word`, `definitionText` (kid-friendly, authored),
-  `definitionAudioRef` (TTS), `illustrationRef?`.
+  `definitionAudioRef` (recorded; source-agnostic ref), `illustrationRef?`.
 - **Phoneme** — `id` (one of the 44 English phonemes), `humanAudioRef`
   (recorded voice actor, fixed set shipped in binary).
 - **Collectible** — `id`, `storyId`, `riveRef`, `sceneSlot` (where it lives in
   the collection scene).
+- **TongueTwister** — `id`, `levelId`, `words: [WordToken]`,
+  `targetPhonemeId` (the sound it drills), `narrationAudioRef`
+  (product-owner-supplied recording), `packId`. Exempt from decodability
+  linting (modeled-first content may use above-level words).
 - **StoryPack** — `id`, `version`, `minAppVersion`, manifest of stories +
-  assets, signed checksum.
+  twisters + assets, signed checksum.
 
 ### Device-local user models
 
@@ -136,13 +158,15 @@ story packs.
 - **WordHelpRecord** — `profileId`, `wordText`, `encounterCount`,
   `helpCount`, `lastHelpLevel` (`none` | `soundOut` | `modeled`). Powers the
   learning-signal metric and adaptive review.
+- **TwisterProgress** — `profileId`, `twisterId`, `timesCompleted`.
 - **CollectionState** — `profileId`, `earnedCollectibles: [Collectible.id]`.
 
 ### Analytics events (anonymous — see Unit 12 for the privacy contract)
 
 `session_start`, `story_started`, `word_read` (correct/helped),
 `help_given` (tier), `story_completed`, `story_abandoned`,
-`vocab_card_opened`, `collectible_earned`. Events carry a random per-install
+`vocab_card_opened`, `collectible_earned`, `twister_started`,
+`twister_completed`. Events carry a random per-install
 ID and profile ordinal only — never names, audio, or device identifiers.
 
 ## 6. Constraints & dependencies
@@ -172,11 +196,13 @@ ID and profile ordinal only — never names, audio, or device identifiers.
   hybrid layer's backend; if so, per-profile daily cap per A-7. With an
   on-device engine (A-10 default) this constraint is moot.
 - **Art & audio pipeline:** one commissioned illustrator/animator working in
-  Rive against a style guide (Unit 1); one voice actor for the fixed phoneme
-  set + celebration lines; premium neural TTS for per-story word
-  pronunciations and definition read-alouds (vendor = OQ-3).
+  Rive against a style guide (Unit 1); one narrator recording all voice
+  audio (phonemes, celebrations, narrations, twisters, word pronunciations,
+  definitions), supplied by the product owner; TTS is a post-v1 alternative
+  only (Unit 13).
 - **Content:** ~30 stories at launch (~20 sentence/multi-sentence,
-  ~10 paragraph), AI-drafted then human-edited — every published word is
+  ~10 paragraph) plus tongue twisters (≈1 per 3 stories, product-owner
+  supplied), AI-drafted then human-edited — every published word is
   approved by a human editor. Decodability constraint: a story at level N may
   only use words decodable with skills introduced at levels ≤ N, plus that
   level's explicitly-tagged heart words (common irregular words taught as
@@ -189,7 +215,7 @@ ID and profile ordinal only — never names, audio, or device identifiers.
 
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
-| R1 | Even with expected-text hybridization, recognition of young children's speech misfires; words don't turn green when read correctly. | Core magic breaks; children frustrated. | Close-enough phonetic acceptance is the pinned policy (Unit 4) — the system only ever asks "was that near the word we expected?"; tiered help instead of "wrong!"; tap fallback; metric §4.4 watches this directly. POC posture: prove the happy path with a few real kids before hardening edge cases. |
+| R1 | Even with expected-text hybridization, recognition of young children's speech misfires; words don't turn green when read correctly. | Core magic breaks; children frustrated. | **Unit 0 spike (week one) tests this on real kids before anything builds on it.** Close-enough phonetic acceptance is the pinned policy (Unit 4); tiered help instead of "wrong!"; tap fallback; engine-swap seam if on-device proves too coarse; signal §4.4 watches this in pilot. |
 | R2 | If a metered cloud engine backs the hybrid layer, cost scales with free usage. | Product owner funds unbounded bill. | Default engine is on-device (A-10), making this moot; if a cloud engine substitutes, hard per-profile daily cap (A-7) with silent downgrade. |
 | R3 | Shipping publicly without COPPA consent machinery. | Legal exposure; app-store removal. | Explicitly post-POC: the PRD records verifiable consent + counsel review as ship-gates (see §6 POC posture). POC distribution stays private (TestFlight/internal testing, known families). No audio retention regardless (Unit 4). |
 | R4 | Content pipeline too slow/expensive per story (illustration + Rive + editing + TTS). | Library stalls at launch size; retention decays. | Pipeline is a first-class unit (Unit 3) with per-story cost tracked from story #1; style guide constrains art scope; hybrid voice strategy avoids per-story recording sessions. |
@@ -202,7 +228,30 @@ ID and profile ordinal only — never names, audio, or device identifiers.
 
 Each unit lists its **pinned design** (ratified decisions — not builder
 latitude) and **testable acceptance**. Units are ordered roughly
-build-first-to-last; Units 1–4 are the critical path.
+build-first-to-last; Unit 0 is mandatory first, then Units 1–4 are the
+critical path.
+
+---
+
+### Unit 0 — Recognition spike (week one, ratified)
+
+**Pinned design**
+- Time-boxed (≤ 1 week) throwaway build, the first work done: a bare-bones
+  Flutter screen with a live microphone, one hardcoded sentence, and raw
+  hypothesis logging from the platform on-device recognizer (A-10) with
+  contextual biasing enabled.
+- Real children (pilot/family kids, with parental permission) read the
+  sentence; the spike answers two questions before Units 4–6 build on the
+  answers: (1) are on-device word hypotheses granular and reliable enough
+  for the close-enough matcher with young voices? (2) is any usable
+  phone-level detail exposed (needed by twister sound mode, Unit 14)?
+- Output is a written verdict in the repo (keep on-device / swap engine /
+  hybrid), including sample hypothesis logs. Code is disposable.
+
+**Acceptance**
+- Verdict document exists in-repo with at least 3 children's sessions of
+  logged hypotheses and an explicit go/no-go on A-10 and on phone-level
+  availability; Unit 4's engine choice cites it.
 
 ---
 
@@ -224,8 +273,10 @@ build-first-to-last; Units 1–4 are the critical path.
   - Vocabulary word (unread): **blue**, visually distinct from green at a
     glance for color-typical and protan/deutan viewers (blue chosen partly
     for this; verify with simulation).
-  - Helped word: green with a small dot marker beneath (records "we helped
-    here" without shaming — used by review logic, visible only subtly).
+  - Helped word: visually identical to any other read-correct green word
+    (ratified: no visible marker — the child's finished sentence is purely
+    triumphant). Help is tracked invisibly in WordHelpRecord for review
+    logic and the parent pilot view.
 - Layout: every screen defines phone-portrait, phone-landscape,
   tablet-portrait, tablet-landscape. Reading screen: text region and
   animation stage; in landscape they sit side-by-side (book-like), in
@@ -262,15 +313,19 @@ build-first-to-last; Units 1–4 are the critical path.
 - Profile start level from age band: 5–6 → level 1; 7–8 → first
   multiSentence level; 9–10 → first paragraph level. Parent can override in
   parent corner. (Placement test is v2 — Non-scope.)
-- Unlock rule: completing any story at the profile's current level unlocks
-  the next story; completing the level's story set advances
-  `currentLevelId`. Earlier stories remain replayable forever.
+- Unlock rule (ratified): **rolling window of 3** — the child always has the
+  next 3 uncompleted stories of their current level available and picks
+  freely among them; completing one pulls the next authored story into the
+  window, and unchosen stories remain offered until read. Completing the
+  level's story set advances `currentLevelId` (the window then draws from
+  the new level). Earlier stories remain replayable forever.
 - Engine exposes: `storiesFor(profile)`, `advance(profile, story)`,
   `isUnlocked(profile, story)` — pure functions over Profile + content data.
 
 **Acceptance**
-- Unit tests: age-band placement, sequential unlock, level advancement, and
-  replayability of completed stories.
+- Unit tests: age-band placement, rolling-window-of-3 behavior (refill on
+  completion, unchosen stories persist, window crosses level boundary),
+  level advancement, and replayability of completed stories.
 - Property test: no reachable state where a profile has zero available
   stories.
 - Scope & sequence loads from data files; changing story order requires no
@@ -284,9 +339,13 @@ build-first-to-last; Units 1–4 are the critical path.
 - Authoring flow per story: (1) AI-drafted text against the level's
   decodability constraint → (2) human edit & approval (every published word
   human-approved) → (3) automatic tagging: grapheme-phoneme mapping per word,
-  vocab word selection + card authoring → (4) TTS generation for word
-  pronunciations + definition audio → (5) Rive animation + collectible
-  commissioned per the style guide → (6) pack build.
+  vocab word selection + card authoring → (4) audio ingestion: word
+  pronunciations + definition audio from product-owner-supplied recordings
+  (source-agnostic refs; TTS may substitute post-v1) → (5) Rive animation +
+  collectible
+  commissioned per the style guide → (6) pack build. Product-owner-supplied
+  assets (sentence narration recordings, tongue-twister text + audio) enter
+  at steps 3–4 and flow through the same validation and loudness pipeline.
 - **Decodability linter** (pinned as a build-time tool, not a runtime
   feature): rejects any story containing a word not decodable from the
   cumulative grapheme set at its level, unless whitelisted as a heart word
@@ -338,9 +397,13 @@ build-first-to-last; Units 1–4 are the critical path.
 - Engine: any ASR exposing word/phone hypotheses + contextual biasing.
   Default start = platform on-device recognition (A-10: iOS
   SFSpeechRecognizer with `contextualStrings`, Android SpeechRecognizer
-  with biasing). A cloud engine may substitute behind the same interface if
-  on-device hypotheses prove too coarse — the hybrid matching layer does
-  not change.
+  with biasing), validated by the Unit 0 spike. A cloud engine may
+  substitute behind the same interface if on-device hypotheses prove too
+  coarse — the hybrid matching layer does not change.
+- The engine adapter surfaces phone-level detail where the engine provides
+  it; the matcher runs in **word mode** (stories — close-enough word
+  acceptance) or **sound mode** (tongue twisters, Unit 14 — phoneme-sequence
+  tracking).
 - Fallback chain: engine failure or mic unavailable → tap-the-word (child
   taps the current word to advance; always available, visually discreet).
 - **No audio is ever stored** — not on device, not server-side; any
@@ -378,6 +441,12 @@ build-first-to-last; Units 1–4 are the critical path.
 - Renders the story text per the design-system word states (Unit 1). One
   sentence (early levels) up to one paragraph (later levels) per page;
   multi-page stories page with a full-bleed page-turn transition.
+- **Listen-first at early levels (ratified):** at sentence-format levels,
+  opening a story plays the recorded human narration of the sentence once
+  before listening begins; a listen button (ear icon, design system)
+  replays it anytime, pausing recognition while it plays. No per-word
+  karaoke highlighting during narration in v1 (A-11). Narration is off at
+  multiSentence/paragraph levels unless a level opts in (content flag).
 - Word state machine per WordToken:
   `unread → current → (accepted | helped) → done(green)`; driven solely by
   Unit 4's event stream — the screen contains no recognition logic.
@@ -397,7 +466,8 @@ build-first-to-last; Units 1–4 are the critical path.
 
 **Acceptance**
 - Widget tests: fixture event streams produce the exact expected word-state
-  sequence, including lookahead back-fill and helped-word markers.
+  sequence, including lookahead back-fill; helped words render identically
+  to accepted words while WordHelpRecord rows differ (no visual marker).
 - Golden tests for all four layout classes at sentence and paragraph levels.
 - Vocab tap mid-listening: state restored to the same cursor position after
   card close (integration test).
@@ -418,12 +488,14 @@ build-first-to-last; Units 1–4 are the critical path.
   `graphemePhonemeMap`). The child is then given **T2 = 4 s** to say the
   word.
 - **Tier 2 — model it:** if the child still doesn't produce the word after
-  T2, the app says the whole word (TTS pronunciation audio), gently prompts
+  T2, the app says the whole word (recorded pronunciation audio), gently
+  prompts
   "your turn" (recorded line), and accepts the child's repeat — or, after
   one more T2 with no repeat, accepts the word and moves on (never
   hard-blocks).
-- Any word that received Tier 1 or Tier 2 is marked `helped` (subtle dot,
-  Unit 1) and recorded in WordHelpRecord with the tier reached.
+- Any word that received Tier 1 or Tier 2 is marked `helped` internally
+  (no visible marker, Unit 1) and recorded in WordHelpRecord with the tier
+  reached.
 - Phoneme audio is the recorded 44-phoneme human set (clean phonemes,
   minimal schwa tail — recording direction pinned in the audio brief,
   Unit 13). Sound-out order and grouping come from the story's authored
@@ -460,7 +532,7 @@ build-first-to-last; Units 1–4 are the critical path.
 - Blue words open a **playful popover card** over the reading screen
   (storybook style, Unit 1): the word large at top, the authored
   kid-friendly definition beneath, optional small illustration.
-- The definition auto-plays as audio (TTS, same voice as word
+- The definition auto-plays as audio (recorded narrator voice, same as word
   pronunciations) on open; a replay button repeats it; the word itself is
   tappable to hear just the word.
 - Card dismisses by tap-outside or a single clear close affordance; on
@@ -488,6 +560,13 @@ build-first-to-last; Units 1–4 are the critical path.
   the plant), synchronized with the celebration audio: a happy musical
   sting + one recorded celebration voice line (from a fixed recorded set,
   rotated randomly so it doesn't repeat verbatim every story).
+- **Narrated read-back (ratified):** where the story has narration audio
+  (all sentence-format levels), the fluent narration replays over the start
+  of the animation — stitching the just-decoded words into meaning at the
+  moment of payoff. Skipped at levels without narration.
+- **Replay behavior (ratified):** re-reading a completed story ends with
+  the full animation + celebration audio; the collectible is granted only
+  on first completion.
 - The stage is present during reading (showing the story's idle scene —
   same Rive artboard, idle state machine) so the payoff transforms the scene
   the child has been looking at, rather than cutting to a new screen.
@@ -501,8 +580,11 @@ build-first-to-last; Units 1–4 are the critical path.
 
 **Acceptance**
 - Integration test with a fixture story: completion triggers `celebrate`
-  input, celebration audio plays, collectible persisted to CollectionState,
-  navigation returns to map.
+  input, narrated read-back plays when narration exists (and is absent
+  when it doesn't), celebration audio plays, collectible persisted to
+  CollectionState, navigation returns to map.
+- Replay of a completed story plays the full celebration but grants no
+  second collectible (test).
 - A story whose Rive file lacks the required inputs fails pack validation
   (Unit 3 linter), not runtime.
 - Skip works after 2 s and still persists the collectible (test).
@@ -515,9 +597,11 @@ build-first-to-last; Units 1–4 are the critical path.
 
 **Pinned design**
 - **Progress map** (child home screen): the level path drawn as an
-  illustrated trail; completed stories shown by their thumbnail, current
-  story highlighted with a gentle idle animation, future stories visible
-  but visually "asleep". Tapping any completed story allows re-reading.
+  illustrated trail; completed stories shown by their thumbnail; the
+  rolling window's 3 available stories awake and gently animated (Unit 2);
+  future stories visible but visually "asleep". Tapping any completed story
+  allows re-reading. Tongue-twister booster nodes (Unit 14) interleave the
+  trail with a distinct visual treatment.
 - **Collection scene**: one persistent illustrated scene (e.g. a garden)
   where every earned collectible lives, placed by its authored `sceneSlot`;
   collectibles are individually tappable for a small reaction animation
@@ -551,6 +635,9 @@ build-first-to-last; Units 1–4 are the critical path.
 - Parent corner contents (all of it — nothing more in v1):
   - Create/edit/delete profiles: name, age band (sets starting level per
     Unit 2), optional level override.
+  - **Pilot progress view:** one plain screen per child — stories completed
+    and the words that needed help (from WordHelpRecord, with help tier).
+    No charts or trends; exists so pilot parents can report concretely.
   - Per-child microphone toggle (default **off** until enabled). A cloud
     processing toggle appears only if a cloud engine is in use (A-10 default
     is on-device, so POC builds typically show mic only). POC consent is a
@@ -565,6 +652,8 @@ build-first-to-last; Units 1–4 are the critical path.
 **Acceptance**
 - Gate blocks child-plausible interaction patterns (automated test taps/
   random input never passes the gate).
+- Pilot progress view lists completed stories and helped words matching
+  fixture WordHelpRecord data exactly (widget test).
 - Consent matrix tests: (mic off) → tap-only mode, mic never requested;
   (mic on) → recognition enabled. OS-level mic permission denial handled
   gracefully → tap mode.
@@ -613,9 +702,10 @@ build-first-to-last; Units 1–4 are the critical path.
   queued offline, dropped (not persisted forever) after 30 days unsent.
 - A single build flag disables all analytics (for review builds and as a
   kill switch).
-- The four §4 metrics each have a defined query over these events, written
-  down with the schema (metrics are part of this unit's deliverable, not an
-  afterthought).
+- The four §4 signals each have a defined query over these events, written
+  down with the schema (the queries are part of this unit's deliverable,
+  not an afterthought). No pass/fail thresholds are encoded — signals are
+  for observation (§4, ratified).
 
 **Acceptance**
 - Schema tests: every emitted event validates; any PII-shaped field (name
@@ -624,23 +714,25 @@ build-first-to-last; Units 1–4 are the critical path.
   clock manipulation.
 - Kill-switch build emits zero network calls to the analytics endpoint
   (network-recording test).
-- The four §4 metric queries run against fixture event data and return
-  correct values (tests are the executable definition of success criteria).
+- The four §4 signal queries run against fixture event data and return
+  correct values (tests are the executable definition of the signals).
 
 ---
 
 ### Unit 13 — Audio system & voice pipeline
 
 **Pinned design**
-- Hybrid voice strategy (ratified): **recorded human voice actor** for the
-  fixed sets — 44 phonemes (clean articulation, minimal schwa; recording
-  brief is part of this unit), celebration lines (~10), and the handful of
-  fixed prompts ("your turn"); **premium neural TTS** (vendor OQ-3) for
-  per-story word pronunciations and vocab definition read-alouds, generated
-  at pack-build time (Unit 3) — never at runtime.
-- One consistent app voice: the TTS voice is selected to blend with the
-  actor's warmth (both auditioned together, product owner approves — the
-  same approval gate as the style guide).
+- **All v1 voice audio is human-recorded, supplied by the product owner,
+  one narrator throughout (ratified):** the fixed sets — 44 phonemes (clean
+  articulation, minimal schwa; recording brief is part of this unit),
+  celebration lines (~10), fixed prompts ("your turn") — plus sentence
+  narrations, tongue twisters, per-story word pronunciations, and vocab
+  definition read-alouds. All ingested and loudness-normalized by the
+  pipeline (Unit 3); nothing is generated at runtime.
+- **TTS is a post-v1 alternative, not a v1 dependency:** the pipeline's
+  audio manifest is source-agnostic (a word pronunciation is just an audio
+  ref), so a TTS generation step can later substitute or supplement
+  recordings for scale without app changes.
 - Playback engine: low-latency (phoneme sound-out must feel instant),
   gapless sequential phoneme playback, ducking rules (help audio ducks
   ambient/celebration audio; nothing ducks the microphone processing).
@@ -652,10 +744,54 @@ build-first-to-last; Units 1–4 are the critical path.
   device (measured, recorded).
 - All shipped audio passes the loudness check in pack build (Unit 3 linter
   extension).
-- TTS assets exist for every WordToken and VocabCard in every launch story
-  (pack validation).
-- Product owner sign-off on the recorded phoneme set and TTS voice pairing
-  (recorded in repo).
+- Audio assets exist for every WordToken and VocabCard in every launch
+  story (pack validation — source-agnostic: recording or future TTS).
+- Product owner sign-off on the recorded phoneme set (recorded in repo).
+
+---
+
+### Unit 14 — Tongue-twister boosters
+
+**Pinned design** (addition ratified by product owner; mechanics below
+proposed with flagged choice points, ratified during spec walkthrough)
+- A TongueTwister is an enunciation booster, distinct from stories: the goal
+  is clear, confident speech, not decoding. Each targets one phoneme
+  (`targetPhonemeId`) and is alliterative around it.
+- Flow: booster node opened → recorded narration models the twister
+  (product-owner-supplied audio) → child reads it with green-word tracking
+  driven by **sound-level matching (ratified): the matcher listens for the
+  SOUNDS, not word identity** — the twister's phoneme sequence ("SH-ee…
+  sss-ell…") is the target, with the drilled phoneme's instances weighted
+  most; producing the sounds advances the tracker even if word recognition
+  would fail. Thresholds are a separate, looser set in the tuning file
+  (this is practice saying, not proof of decoding) → playful sparkle
+  celebration. No collectible (collectibles remain story-tied); completion
+  recorded in TwisterProgress.
+- Sound mode consumes phone-level hypotheses from the engine interface
+  (Unit 4); where the active engine exposes only word hypotheses, sound
+  mode approximates by phonetic-distance scoring of those hypotheses
+  against the phoneme sequence. Whether on-device engines expose usable
+  phone-level detail is an explicit question for the Unit 0 spike.
+- Optional second pass: after completion, a "say it again — a little
+  faster!" prompt offers one replay round; purely optional, skippable, no
+  extra reward.
+- Placement: booster nodes appear on the progress map interleaved between
+  stories (target ≈ 1 per 3 stories), tagged to a level and unlocked with
+  it; always replayable.
+- Content enters the pipeline like stories minus the decodability linter
+  (modeled-first content is exempt); pack build requires the narration file
+  and `targetPhonemeId`.
+
+**Acceptance**
+- Twister flow test: narration plays before listening; word tracking uses
+  the twister threshold set (asserted via matcher config); completion
+  writes TwisterProgress and grants no collectible.
+- Map shows booster nodes at their level, visually distinct from story
+  nodes (golden test).
+- Pack validation: twister without narration audio or target phoneme fails
+  build; decodability linter skips twisters (tests).
+- "Faster" second pass is offered once, skippable, and its completion is
+  not required for the node to be marked done (test).
 
 ---
 
@@ -686,6 +822,9 @@ build-first-to-last; Units 1–4 are the critical path.
   on-device recognition with contextual biasing (iOS SFSpeechRecognizer
   `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
   Unit 4's engine interface if its hypotheses prove too coarse.
+- **A-11:** Listen-first narration plays without per-word karaoke
+  highlighting in v1 (word-sync timing data is a post-POC enhancement);
+  pack build requires `narrationAudioRef` for every sentence-format story.
 
 ## 10. Open questions (block their units, not the whole build)
 
@@ -698,9 +837,10 @@ build-first-to-last; Units 1–4 are the critical path.
 - **OQ-2 — RESOLVED (product owner):** deferred — v1 is a POC with private
   distribution, so verifiable parental consent and store compliance are
   post-POC ship-gates, recorded in §6 and R3/R8, not v1 work.
-- **OQ-3 (blocks Unit 13/3 asset generation):** TTS vendor whose voice
-  blends with the chosen actor; auditioned together, product-owner
-  approval.
+- **OQ-3 — RESOLVED (product owner):** no TTS in v1 — all voice audio is
+  human-recorded by the product owner's single narrator; the pipeline's
+  source-agnostic audio refs leave TTS available as a post-v1
+  alternative/scale path.
 - **OQ-4 (blocks Unit 3 art commissions):** Illustrator/animator sourcing
   and budget per story; style guide contract deliverable defined in Unit 1.
 - **OQ-5 (content):** Final scope & sequence table (which skills at which
