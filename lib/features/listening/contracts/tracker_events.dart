@@ -140,3 +140,12 @@ class WordHelped extends TrackerEvent {
   @override
   String toString() => 'WordHelped(index: $index, tier: ${tier.name})';
 }
+
+/// Extension to support whereType() on TrackerEvent streams.
+///
+/// Workaround for Dart analyzer compatibility with generic Stream extensions.
+extension TrackerEventStreamExtension on Stream<TrackerEvent> {
+  /// Filters this stream to only emit elements of type [T].
+  Stream<T> whereType<T extends TrackerEvent>() =>
+      where((event) => event is T).cast<T>();
+}

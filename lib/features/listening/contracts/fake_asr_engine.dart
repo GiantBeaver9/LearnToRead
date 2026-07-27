@@ -55,7 +55,7 @@ class FakeAsrEngine implements AsrEngine {
   @override
   Stream<Hypothesis> get hypothesesStream {
     if (shouldFail) {
-      throw StateError('FakeAsrEngine: simulated engine failure');
+      throw Exception('FakeAsrEngine: simulated engine failure');
     }
     return _emitHypotheses();
   }
