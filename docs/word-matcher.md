@@ -20,7 +20,9 @@ All thresholds are read from `lib/domain/tuning.dart` (word mode: `kWordModeShor
 
 ### phoneme_distance.dart
 
-`int phonemeEditDistance(List<String> a, List<String> b)` — standard Levenshtein edit distance over phoneme-id sequences: unit cost for substitution, insertion, deletion; symmetric; zero iff equal. Canonical anchors: `[G,AE,T]` vs `[K,AE,T]` = 1 ("gat"/"cat" near-miss), `[D,AO,G]` vs `[K,AE,T]` = 3 ("dog"/"cat" reject).
+`int phonemeEditDistance(List<String> a, List<String> b)` — standard Levenshtein edit distance over phoneme-id sequences: unit cost for substitution, insertion, deletion; symmetric; zero iff equal. Canonical anchors: `[G,AE,T]` vs `[K,AE,T]` = 1 ("gat"/"cat" near-miss), `[D,AO,G]` vs `[K,AE,T]` = 3 ("dog"/"cat" reject). Untouched by A-18 — no confusability weighting exists in this function.
+
+`const List<(String, String, double)> kConfusablePhonemePairs` and `double phonemeEditDistanceWeighted(List<String> a, List<String> b)` — see the A-18 section below.
 
 ### grapheme_to_phoneme.dart
 
@@ -30,7 +32,7 @@ All thresholds are read from `lib/domain/tuning.dart` (word mode: `kWordModeShor
 
 ### word_matcher.dart
 
-`WordMatcher({required List<WordToken> sentence, shortWordMaxPhonemes, maxSubstitutedPhonemesShortWord, maxSubstitutedPhonemesLongWord})` with `List<MatchResult> onHypothesis(Hypothesis h)`, `int currentIndex` (next expected word; == length when done), `bool isComplete`.
+`WordMatcher({required List<WordToken> sentence, shortWordMaxPhonemes, maxSubstitutedPhonemesShortWord, maxSubstitutedPhonemesLongWord, phonemeDistanceFn})` with `List<MatchResult> onHypothesis(Hypothesis h)`, `int currentIndex` (next expected word; == length when done), `bool isComplete`. `phonemeDistanceFn` is A-18's opt-in confusability-weighted grading — see below; it defaults to `phonemeEditDistance`, so every existing call site is byte-for-byte unchanged.
 
 Per-burst decision order:
 
@@ -58,11 +60,33 @@ A position is matched when a produced phoneme aligns to it within `perPhonemeMax
 
 Production paths: `phoneHypotheses` when the engine surfaces them (a non-null-but-empty list means "phones supported, nothing heard" and contributes nothing — no word fallback); otherwise the comparison G2P of the top word hypothesis approximates by phonetic distance. Both paths are contract-tested to agree.
 
+## A-18: confusability-weighted acceptance (KidSpeak-informed, ratified)
+
+PRD §9 A-18: standard ASR is documented to hallucinate fluent-but-wrong text on children's speech (KidSpeak, arXiv:2512.05994 — Whisper renders a 4-year-old's "looking at the frog" as "recognize the fog… grab this egg?"). Recognition errors must never fail a child on ASR accuracy rather than reading ability, so the phoneme-distance metric gained a **confusability-weighted cost table**: substitutions along documented child-speech / child-ASR confusion axes cost 0.5 instead of 1. Acceptance widens exactly along the axes children and child-ASR actually confuse and nowhere else — all other costs and thresholds are unchanged, and story completion remains the only summative outcome.
+
+Additions, both purely additive (nothing pinned in the frozen 91-test suite moved):
+
+- **`phoneme_distance.dart`:**
+  - `const List<(String, String, double)> kConfusablePhonemePairs` — the A-18 table. Each record is an unordered phoneme-id pair plus its substitution cost (every entry costs exactly 0.5); lookup is symmetric (checked in both orientations). All 15 pairs, across 6 axes, drawn from `kEnglishPhonemeIds`:
+    - Gliding: R/L → W — `(R, W)`, `(L, W)`.
+    - Stopping: TH → D/T, DH → D — `(TH, D)`, `(TH, T)`, `(DH, D)`.
+    - Th-fronting: TH → F, DH → V — `(TH, F)`, `(DH, V)`.
+    - Velar fronting: K → T, G → D — `(K, T)`, `(G, D)`.
+    - Voicing pairs: P/B, T/D, K/G, F/V, S/Z.
+    - Labial/fricative acoustic confusion: W ↔ F (e.g. "while" heard as "file") — `(W, F)`.
+  - `double phonemeEditDistanceWeighted(List<String> a, List<String> b)` — same Levenshtein shape as `phonemeEditDistance` (unit cost for insertion/deletion, 0 for identity), except substitution costs 0.5 when the differing pair is listed in `kConfusablePhonemePairs`, else 1 (unchanged). Symmetric, zero iff equal, and never greater than `phonemeEditDistance` on the same inputs — confusable substitutions only ever discount. `phonemeEditDistance` itself is untouched: no confusability weighting exists in that function at all.
+- **`word_matcher.dart`:** `WordMatcher` gained one optional named constructor parameter, `num Function(List<String> a, List<String> b) phonemeDistanceFn`, defaulting to `phonemeEditDistance`. It replaces the previously hardcoded distance call inside `_score`, so every existing call site (all 91 frozen tests) is byte-for-byte unchanged. Passing `phonemeEditDistanceWeighted` switches ONLY the word-mode ACCEPTANCE path (near-miss/reject grading) to A-18 weighted costs — `MatchKind` classification rules, thresholds, and every other matcher policy are unaffected.
+  - Implementation note: the near-miss floor check (`_score`'s "is this a non-zero, in-threshold distance" guard) reads `best > 0`, not `best >= 1` — the former is required to admit A-18's fractional 0.5 distances and is equivalent to the latter whenever `best` is a positive integer, so the change is behavior-preserving for the default uniform metric.
+
+**Conflict guard (resolved by construction):** A-18's voicing-pair axis includes K/G, and the frozen `phoneme_distance_test.dart` pins the canonical `phonemeEditDistance` (uniform) gat/cat distance at exactly 1 — that anchor does not move, because `phonemeEditDistance` has no confusability weighting at all; A-18 lives entirely in the new `phonemeEditDistanceWeighted` function and the opt-in `WordMatcher` parameter. Under the new weighted function, gat/cat's distance becomes 0.5 (G/K is a voicing pair) — a different number, but the acceptance OUTCOME is unchanged: both 1 and 0.5 clear the short-word near-miss threshold of 1.
+
+`phonemeDistanceFn` is tunable/injectable like every other threshold in this unit (never hardcoded) — passing a different function swaps the acceptance metric entirely; A-18 ships `phonemeEditDistanceWeighted` as the concrete confusability-weighted option.
+
 ## Orchestrator-pinned defaults (transcribed from the ticket)
 
 Behaviors the frozen suite deliberately leaves unasserted — recorded here, tunable, owner-vetoable:
 
-1. **Uniform inter-phoneme distance** — any substitution/insertion/deletion costs 1 (plain Levenshtein over phoneme ids; no confusability weighting). In sound mode this means per-phoneme distance is 0 (same id) or 1 (different id), so the default `perPhonemeMaxDistance` of 1 credits any in-order production one-for-one; tightening it to 0 requires exact identity.
+1. **Uniform inter-phoneme distance (default)** — any substitution/insertion/deletion costs 1 (plain Levenshtein over phoneme ids; no confusability weighting). In sound mode this means per-phoneme distance is 0 (same id) or 1 (different id), so the default `perPhonemeMaxDistance` of 1 credits any in-order production one-for-one; tightening it to 0 requires exact identity. Word mode's acceptance path can opt into A-18's confusability-weighted alternative via `WordMatcher(phonemeDistanceFn: phonemeEditDistanceWeighted)` — see the A-18 section above; sound mode is unaffected by A-18.
 2. **Collision precedence (REVISED at listening-tracker integration)** — a current-word exact always wins; a current-word near-miss yields to an EXACT match of the next word (the PRD's ratified lookahead back-fill: "sat" while the cursor is on "cat" back-fills both words); a next-word near-miss never outranks a current-word near-miss, and lookahead is otherwise consulted only after the current word rejects.
 3. **Homophones grade as exact** — a distance-0 hypothesis with different spelling is `exact`, not `nearMiss`.
 4. **Reject distance aggregates as MIN** across the burst's hypothesis candidates (measured against the current word).
@@ -74,10 +98,11 @@ One implementation-level degenerate guard (not covered by the defaults block or 
 
 ## Test Coverage
 
-Frozen suite `test/features/listening/matcher/` — 91 tests, none edited by this unit:
+Frozen suite `test/features/listening/matcher/` — 6 files, 113 tests total, none edited by this unit (the original 91 stayed untouched; `confusion_cost_test.dart` was the pre-existing red spec that A-18 turned green):
 
 - `phoneme_distance_test.dart` — Levenshtein identity/symmetry/bounds, canonical gat/cat=1 and dog/cat=3 anchors tied to the tuning constants.
 - `word_matcher_test.dart` — exact (case/punctuation both sides), canonical near-miss/reject, authored-map-not-G2P targets, exact threshold boundaries at 4 vs 5 phonemes, tuning injection flips verdicts, multi-candidate bursts, junk/empty/after-completion edges, G2P black-box behavior on the fixture vocabulary.
 - `lookahead_test.dart` — back-fill ordering (current first, graded exact), near-miss grade survives on the heard word, depth exactly 1, current beats next, no double-fire.
 - `self_correction_test.dart` — rejects never poison, repeats are non-events, monotonic index, full hesitant-read integration script.
+- `confusion_cost_test.dart` (A-18) — `kConfusablePhonemePairs` table completeness (all 15 axis pairs present at cost 0.5, symmetric lookup, every id in `kEnglishPhonemeIds`, no vowel pairs); `phonemeEditDistanceWeighted` math (identity, each axis example, stacked confusions, non-confusable pairs unaffected, the gat/cat K/G conflict guard, symmetry, never-exceeds-uniform, dog/cat unaffected); `WordMatcher.phonemeDistanceFn` opt-in (default behavior unchanged, "while"/"file" and "cap"/"tab" concrete acceptance widenings, non-confusable rejects still reject, exact classification unaffected).
 - `sound_mode_scorer_test.dart` — A-13 defaults, exact 60% inclusive boundary, double-weight flipping the verdict in both directions, incremental tracking, word-only approximation path equivalence, degenerate inputs.
