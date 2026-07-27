@@ -63,7 +63,7 @@ Production paths: `phoneHypotheses` when the engine surfaces them (a non-null-bu
 Behaviors the frozen suite deliberately leaves unasserted — recorded here, tunable, owner-vetoable:
 
 1. **Uniform inter-phoneme distance** — any substitution/insertion/deletion costs 1 (plain Levenshtein over phoneme ids; no confusability weighting). In sound mode this means per-phoneme distance is 0 (same id) or 1 (different id), so the default `perPhonemeMaxDistance` of 1 credits any in-order production one-for-one; tightening it to 0 requires exact identity.
-2. **Current-first precedence on collision** — a current-word near-miss is evaluated before an exact match of the next word; lookahead is consulted only after the current word rejects.
+2. **Collision precedence (REVISED at listening-tracker integration)** — a current-word exact always wins; a current-word near-miss yields to an EXACT match of the next word (the PRD's ratified lookahead back-fill: "sat" while the cursor is on "cat" back-fills both words); a next-word near-miss never outranks a current-word near-miss, and lookahead is otherwise consulted only after the current word rejects.
 3. **Homophones grade as exact** — a distance-0 hypothesis with different spelling is `exact`, not `nearMiss`.
 4. **Reject distance aggregates as MIN** across the burst's hypothesis candidates (measured against the current word).
 5. **Repeats reach back one word** — "repeats always accepted" applies only to the most recently accepted word, and near-miss-shaped repeats are likewise non-events (no acceptance, no reject).
