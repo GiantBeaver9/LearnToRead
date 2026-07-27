@@ -227,6 +227,11 @@ Future<(StoryPack, Directory)> _buildRealPack({
     await f.writeAsBytes(_goodAudioBytes());
   }
   for (final riveRef in {story.riveAnimationRef, collectible.riveRef}) {
+    // Orchestrator test-fix: buildPack lists .riv files in assetRefs, but
+    // the fixture wrote only the A-16 sidecar - the tests' own bundle
+    // encoder then threw PathNotFoundException before any implementation
+    // code ran. Write a placeholder Rive binary alongside the sidecar.
+    await (await File(p.join(dir.path, riveRef)).create(recursive: true)).writeAsBytes([82, 73, 86, 69]);
     final f = File(p.join(dir.path, '$riveRef.inputs.json'));
     await f.parent.create(recursive: true);
     await f.writeAsString(
