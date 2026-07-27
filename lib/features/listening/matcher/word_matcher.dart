@@ -53,11 +53,15 @@ class _Candidate {
 }
 
 /// Internal grade of a burst against one target word.
+///
+/// [distance] is `num`, not `int`, so that A-18's weighted metric (which can
+/// return fractional costs like 0.5) flows through the same grading path as
+/// the default uniform metric.
 class _Score {
   _Score({required this.kind, required this.distance});
 
   final MatchKind kind;
-  final int distance;
+  final num distance;
 }
 
 /// Stateful word-mode matcher for one sentence read.
@@ -69,6 +73,13 @@ class WordMatcher {
   /// Creates a matcher for [sentence]. Threshold parameters default to the
   /// tuning-file constants (single source of truth); inject overrides only
   /// for tests or pilot experiments.
+  ///
+  /// [phonemeDistanceFn] (A-18, PRD §9) is the phoneme-distance metric used
+  /// by the acceptance path's near-miss/reject grading; it defaults to the
+  /// uniform [phonemeEditDistance], so every caller that omits it is
+  /// byte-for-byte unchanged. Pass `phonemeEditDistanceWeighted` to grade
+  /// with A-18's confusability-weighted costs instead — `MatchKind`
+  /// classification rules and thresholds are unaffected either way.
   WordMatcher({
     required List<WordToken> sentence,
     this.shortWordMaxPhonemes = kWordModeShortWordMaxPhonemes,
@@ -76,6 +87,7 @@ class WordMatcher {
         kWordModeMaxSubstitutedPhonemesShortWord,
     this.maxSubstitutedPhonemesLongWord =
         kWordModeMaxSubstitutedPhonemesLongWord,
+    this.phonemeDistanceFn = phonemeEditDistance,
   }) : _sentence = List.unmodifiable(sentence);
 
   final List<WordToken> _sentence;
@@ -90,6 +102,12 @@ class WordMatcher {
 
   /// Near-miss distance ceiling for long targets.
   final int maxSubstitutedPhonemesLongWord;
+
+  /// A-18 (PRD §9): the phoneme-distance metric used by the acceptance
+  /// path's near-miss/reject grading. Defaults to the uniform
+  /// [phonemeEditDistance]; pass `phonemeEditDistanceWeighted` to opt into
+  /// A-18's confusability-weighted costs.
+  final num Function(List<String> a, List<String> b) phonemeDistanceFn;
 
   int _currentIndex = 0;
 
@@ -129,7 +147,7 @@ class WordMatcher {
         MatchResult(
           kind: current.kind,
           wordIndex: index,
-          phonemeDistance: current.distance,
+          phonemeDistance: current.distance.round(),
         ),
       ];
     }
@@ -145,7 +163,7 @@ class WordMatcher {
           MatchResult(
             kind: current.kind,
             wordIndex: index,
-            phonemeDistance: current.distance,
+            phonemeDistance: current.distance.round(),
           ),
         ];
       }
@@ -167,7 +185,7 @@ class WordMatcher {
           MatchResult(
             kind: next.kind,
             wordIndex: index + 1,
-            phonemeDistance: next.distance,
+            phonemeDistance: next.distance.round(),
           ),
         ];
       }
@@ -188,7 +206,7 @@ class WordMatcher {
       MatchResult(
         kind: MatchKind.reject,
         wordIndex: _currentIndex,
-        phonemeDistance: current.distance,
+        phonemeDistance: current.distance.round(),
       ),
     ];
   }
@@ -241,16 +259,20 @@ class WordMatcher {
         ? maxSubstitutedPhonemesShortWord
         : maxSubstitutedPhonemesLongWord;
 
-    var best = -1;
+    num best = -1;
     for (final candidate in candidates) {
       if (candidate.text == targetText) {
         return _Score(kind: MatchKind.exact, distance: 0);
       }
-      final d = phonemeEditDistance(candidate.phonemes, targetPhonemes);
+      final d = phonemeDistanceFn(candidate.phonemes, targetPhonemes);
       if (d == 0) return _Score(kind: MatchKind.exact, distance: 0);
       if (best < 0 || d < best) best = d;
     }
-    if (best >= 1 && best <= threshold) {
+    // `best > 0` (not `best >= 1`): with the default uniform metric the
+    // minimum non-zero distance is always 1, so this is unchanged behavior;
+    // A-18's weighted metric (phonemeDistanceFn) can return fractional
+    // distances like 0.5, which must still clear the near-miss floor.
+    if (best > 0 && best <= threshold) {
       return _Score(kind: MatchKind.nearMiss, distance: best);
     }
     return _Score(kind: MatchKind.reject, distance: best);
