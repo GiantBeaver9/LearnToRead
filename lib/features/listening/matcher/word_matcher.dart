@@ -114,11 +114,15 @@ class WordMatcher {
     final candidates = _extractCandidates(h);
     if (candidates.isEmpty) return const [];
 
-    // 1. Current word first (orchestrator-pinned default 2: even a current
-    //    near-miss beats an exact match of the next word; lookahead is
-    //    consulted only after the current word rejects).
+    // 1. Current word first. Orchestrator-pinned default 2 (REVISED during
+    //    listening-tracker integration): a current-word EXACT always wins;
+    //    a current-word near-miss yields to an EXACT match of the next word
+    //    (the PRD's ratified lookahead back-fill: an exact production of the
+    //    next word is stronger evidence than a near-miss of the current one,
+    //    e.g. "sat" while the cursor is on "cat"). A near-miss of the next
+    //    word never outranks a near-miss of the current.
     final current = _score(_sentence[_currentIndex], candidates);
-    if (current.kind != MatchKind.reject) {
+    if (current.kind == MatchKind.exact) {
       final index = _currentIndex;
       _currentIndex += 1;
       return [
@@ -128,6 +132,25 @@ class WordMatcher {
           phonemeDistance: current.distance,
         ),
       ];
+    }
+    if (current.kind == MatchKind.nearMiss) {
+      final hasNext = _currentIndex + 1 < _sentence.length;
+      final nextExact = hasNext &&
+          _score(_sentence[_currentIndex + 1], candidates).kind ==
+              MatchKind.exact;
+      if (!nextExact) {
+        final index = _currentIndex;
+        _currentIndex += 1;
+        return [
+          MatchResult(
+            kind: current.kind,
+            wordIndex: index,
+            phonemeDistance: current.distance,
+          ),
+        ];
+      }
+      // Fall through to the lookahead branch: the next word matched exactly,
+      // so back-fill the current word as correct.
     }
 
     // 2. Lookahead 1 with back-fill: hearing the next word confirms the
