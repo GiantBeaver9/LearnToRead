@@ -363,9 +363,9 @@ critical path.
   cumulative grapheme set at its level, unless whitelisted as a heart word
   for that level.
 - Story pack format: versioned bundle (JSON manifest per §5 models + Rive +
-  audio assets), checksummed. Starter pack (~8 stories spanning early
-  levels) ships in the app binary; remaining launch content ships as CDN
-  packs (Unit 11).
+  audio assets), checksummed. Starter pack (~8 stories composed per A-9 —
+  covering all three age-band starting levels) ships in the app binary;
+  remaining launch content ships as CDN packs (Unit 11).
 - Launch content: ~30 stories (~20 sentence/multiSentence, ~10 paragraph),
   each with animation, collectible, celebration audio; paragraph stories
   have 2–4 vocab cards each.
