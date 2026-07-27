@@ -67,7 +67,10 @@ WordToken _wordCat() => WordToken(
 const _promptLineRef = 'audio/prompts/that_is_it.wav';
 const _yourTurnRef = 'audio/prompts/your_turn.wav';
 
-const _phonemeAudioRefs = {'K': 'audio/phonemes/K.wav', 'AE': 'audio/phonemes/AE.wav', 'T': 'audio/phonemes/T.wav'};
+// Orchestrator test-fix: the later-word fixture uses phonemeId 'SH' but the
+// ref map lacked it, so PhonemeSequencer threw before any play() - the
+// test's own hasLength(1) expectation was unsatisfiable.
+const _phonemeAudioRefs = {'K': 'audio/phonemes/K.wav', 'AE': 'audio/phonemes/AE.wav', 'T': 'audio/phonemes/T.wav', 'SH': 'audio/phonemes/SH.wav'};
 
 class _RecordingHelpRecorder implements HelpRecorderApi {
   final List<({WordToken word, HelpLevel tier})> calls = [];

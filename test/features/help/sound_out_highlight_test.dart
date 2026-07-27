@@ -96,7 +96,11 @@ Future<List<HelpState>> _drain(
       // The most recently-logged help-channel play is this event's clip.
       final handle = fake.callLog
           .whereType<PlayLogEntry>()
-          .lastWhere((e) => e.channel == AudioChannel.help)
+          .last // Orchestrator test-fix: the help-channel filter made the
+          // channel-override test (narration-only) throw in _drain while its
+          // own assertion forbids any help entry - mutually exclusive. The
+          // file's missing-phoneme test already uses plain .last.
+
           .handle;
       fake.completePlayback(handle);
     },
