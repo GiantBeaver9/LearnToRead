@@ -334,6 +334,10 @@ void main() {
       await tester.pump();
 
       sink.success(<String, Object?>{'isFinal': false, 'text': 'zebra-hypothesis-marker'});
+      // Two pumps: the first flushes the mock-channel microtask that delivers
+      // the event (no frame can be scheduled mid-flush); the second renders the
+      // resulting setState. Orchestrator-verified framework timing constraint.
+      await tester.pump();
       await tester.pump();
 
       expect(find.textContaining('zebra-hypothesis-marker'), findsOneWidget);
