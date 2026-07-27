@@ -209,7 +209,11 @@ void main() {
           final match = importRegExp.firstMatch(line);
           if (match == null) continue;
           final package = match.group(1)!;
-          if (bannedPackagePrefixes.any((banned) => package == banned)) {
+          // Orchestrator test-fix: the list is named and populated as
+          // PREFIXES (its own fixture imports mixpanel_flutter) but the
+          // comparison used exact equality, so the fixture could never
+          // be flagged under any implementation.
+          if (bannedPackagePrefixes.any((banned) => package.startsWith(banned))) {
             violations.add('${entity.path}: imports package:$package');
           }
         }

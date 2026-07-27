@@ -125,8 +125,15 @@ void main() {
     });
 
     test('NEGATIVE: the hash never equals the raw word text itself', () {
+      // Orchestrator test-fix: the contains() leak check is meaningless for
+      // single hex characters -- this file's own pinned vector for 'a'
+      // (ca978112ca1bbdca, the true A-14 value) necessarily contains 'a',
+      // so the two assertions could never both hold. Equality still checked
+      // for all words; substring leakage only for multi-char words.
       for (final word in ['cat', 'the', 'elephant', 'a']) {
         expect(hashWord(word), isNot(word));
+      }
+      for (final word in ['cat', 'the', 'elephant']) {
         expect(hashWord(word), isNot(contains(word)));
       }
     });
