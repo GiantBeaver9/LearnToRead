@@ -88,6 +88,8 @@ progress data with no export path), without building any of it now.
 - Handwriting, spelling, or letter-formation exercises.
 - Placement/level-assessment test (age band + parent override sets the
   starting level in v1; a proper placement test is v2 — see Unit 2).
+- Adaptive review / spaced re-practice of helped words (WordHelpRecord
+  captures the data now; acting on it is a v2 direction).
 - Social features of any kind.
 
 ## 4. Success criteria
@@ -162,7 +164,7 @@ story packs.
   (`locked` | `available` | `completed`), `completedAt?`, `timesRead`.
 - **WordHelpRecord** — `profileId`, `wordText`, `encounterCount`,
   `helpCount`, `lastHelpLevel` (`none` | `soundOut` | `modeled`). Powers the
-  learning-signal metric and adaptive review.
+  learning signal (§4.3) and the parent pilot view (Unit 10).
 - **TwisterProgress** — `profileId`, `twisterId`, `timesCompleted`.
 - **CollectionState** — `profileId`, `earnedCollectibles: [Collectible.id]`.
 
@@ -282,8 +284,8 @@ critical path.
     for this; verify with simulation).
   - Helped word: visually identical to any other read-correct green word
     (ratified: no visible marker — the child's finished sentence is purely
-    triumphant). Help is tracked invisibly in WordHelpRecord for review
-    logic and the parent pilot view.
+    triumphant). Help is tracked invisibly in WordHelpRecord for the
+    learning signal and the parent pilot view.
 - Layout: every screen defines phone-portrait, phone-landscape,
   tablet-portrait, tablet-landscape. Reading screen: text region and
   animation stage; in landscape they sit side-by-side (book-like), in
@@ -397,8 +399,9 @@ critical path.
   `graphemePhonemeMap` phonemes, threshold: at most 1 substituted phoneme
   for words ≤ 4 phonemes, at most 2 for longer words (tunable constants in
   the Unit 6 tuning file). A near-miss acceptance triggers the dedicated
-  near-miss prompt path (a gentle model-and-repeat variant, distinct from
-  stuck-word help) rather than silent acceptance. Self-corrections and
+  near-miss prompt path (Unit 6 governs: word turns green, brief warm model
+  of the correct word, echo optional, reading continues immediately) rather
+  than silent acceptance. Self-corrections and
   repeats always accepted; lookahead 1 with back-fill (hearing the next
   word confirms the current one).
 - **v1 is get-it-working:** the acceptance bar is the happy path — quiet
@@ -711,6 +714,13 @@ critical path.
 - Transport: batched HTTPS to a self-controlled endpoint or a
   privacy-first service configured anonymous (vendor/self-host = A-5);
   queued offline, dropped (not persisted forever) after 30 days unsent.
+- Pinned event-boundary semantics (signals 2 and 4 are computed over
+  these): a **session** starts at profile selection and ends when the app
+  is backgrounded for more than 120 s, is closed, or the profile switches
+  (timeout is a tunable constant). **`story_abandoned`** fires when the
+  reading screen is exited after `story_started` but before
+  `story_completed` — including via session end — and carries whether a
+  help event occurred in the preceding 30 s (the §4.4 frustration marker).
 - A single build flag disables all analytics (for review builds and as a
   kill switch).
 - The four §4 signals each have a defined query over these events, written
@@ -827,8 +837,10 @@ proposed with flagged choice points, ratified during spec walkthrough)
   cloud-minutes per profile per day cap.
 - **A-8:** Story length bounds: sentence levels 3–8 words; paragraph levels
   40–90 words across 1–3 pages.
-- **A-9:** The ~8-story starter pack spans the first 3 levels so every age
-  band's starting level has bundled content offline on first run.
+- **A-9:** The ~8-story starter pack includes bundled stories at all three
+  age-band starting levels (level 1, the first multiSentence level, and the
+  first paragraph level), distributed across them, so any new profile has
+  offline content at its own starting level on first run.
 - **A-10:** Default ASR engine behind the hybrid matching layer: platform
   on-device recognition with contextual biasing (iOS SFSpeechRecognizer
   `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
