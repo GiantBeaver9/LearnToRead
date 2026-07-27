@@ -38,9 +38,16 @@ class FakeAsrEngine implements AsrEngine {
   /// If true, [hypothesesStream] throws, simulating engine failure.
   final bool shouldFail;
 
-  /// The biasing context recorded from the most recent [start] call.
+  /// The biasing context recorded from the most recent [start] call, or null
+  /// while [start] has never been called.
+  ///
+  /// Null (rather than an uninitialized `late` field) so a test can assert
+  /// that an engine was *never* touched — e.g. the listening tracker must not
+  /// start its on-device fallback before the A-7 cloud-minute cap is reached,
+  /// and must never start any engine without microphone consent.
+  ///
   /// Mutable for test assertions; typically read-only after [start].
-  late List<String> recordedBiasingContext;
+  List<String>? recordedBiasingContext;
 
   @override
   void start(List<String> biasingContext) {
