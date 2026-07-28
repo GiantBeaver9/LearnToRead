@@ -989,6 +989,68 @@ proposed with flagged choice points, ratified during spec walkthrough)
 
 ---
 
+### Unit 17 — Accounts & sync (DESIGNED + STUBBED, not scheduled; ratified 2026-07-28)
+
+**Status:** architecture unit. Nothing here ships in v1 — the app remains
+fully local-first with zero network registration (the ratified v1
+non-scope stands until this unit is explicitly scheduled). What exists
+now is the pinned design below plus compile-time stubs, so the demo can
+show investors "the logical path and the scaling path" (owner's words)
+without building a backend.
+
+**Pinned design (owner-ratified via AskUserQuestion, 2026-07-28)**
+- **Purpose, in priority order:** (1) **backup + cross-device sync** — a
+  child's progress survives device loss and follows them between
+  devices; (2) a **stubbed** pilot-cohort capability — designed into the
+  data model and API surface, explicitly NOT implemented ("#1 plus a
+  stub in for the second… one is definitely more important than the
+  other").
+- **Auth: parent email magic link**, passwordless. Accounts exist only
+  behind the parental gate; the child never sees auth UI. No passwords
+  stored anywhere, ever.
+- **Backend: custom API** (own service + Postgres) — pinned as the
+  scaling architecture, stubbed for the demo. Client speaks a thin
+  vendor-neutral REST+JSON contract through a `SyncService` seam
+  (same seam discipline as `AsrEngine`/`AudioService`); the server is a
+  future unit. Endpoints (reserved contract): `POST /auth/magic-link`,
+  `POST /auth/redeem`, `GET|PUT /family/profiles`,
+  `POST /sync/{profileId}` (delta push/pull), `DELETE /family` (full
+  erasure), and a reserved, unimplemented `/cohort/*` namespace carrying
+  an optional `cohortId` on the parent account (the stub).
+- **Sync scope: everything except audio** — profiles (name, avatar, age
+  band, level, consents), and all per-profile progress tables (story,
+  word-help, twister, collection, flashcards). No audio ever leaves the
+  device (A-7 stands); no free-text beyond the display name.
+- **Local-first invariant:** the on-device SQLite stays the source of
+  truth; the server is a replica. Offline is never degraded. Merge
+  semantics: monotone data merges by union/max (a story completed
+  anywhere stays completed; flashcard box = max, dueAt = earliest);
+  profile scalar fields are last-write-wins by `updatedAt`, device wins
+  ties.
+- **COPPA posture:** account creation runs verifiable parental consent
+  (email-plus method) before any child data uploads; consent is
+  revocable in the parent corner, and revocation or `DELETE /family`
+  erases server-side data completely (mirror of the local erasure
+  cascade). Data minimization note recorded: the owner chose
+  everything-except-audio over a pseudonymous profile; the erasure and
+  no-third-party-sharing guarantees carry the resulting weight. US
+  region hosting initially; residency expansion is OQ-9.
+
+**Stub acceptance (what exists before scheduling)**
+- A `SyncService` interface + `NoopSyncService` default compile in-app
+  with zero behavior change; the parent corner shows no account UI (or a
+  flagged-off preview) while unscheduled.
+- The REST contract above lives in this PRD; no server code exists.
+
+**Full acceptance (when scheduled — future build loop)**
+- Magic-link round trip; consent-before-upload enforced by test; delta
+  sync converges two devices under the pinned merge semantics
+  (property tests); server erasure verified end-to-end; offline
+  operation byte-identical to v1 behavior; cohort namespace still 404s
+  (stub honored) unless separately scheduled.
+
+---
+
 ## 9. Assumptions (proceeding on these; override any of them)
 
 - **A-1:** English (US) only; single narrator voice gender/character chosen
