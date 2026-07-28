@@ -1605,6 +1605,7 @@
   ],
   "assetRefs": [
     "audio/nav/collection.wav",
+    "audio/nav/flashcards.wav",
     "audio/nav/garden.wav",
     "audio/nav/map.wav",
     "audio/nav/parent-corner.wav",
