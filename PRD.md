@@ -927,7 +927,13 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - **A-13:** Sound-mode (twister/Sound Garden) default thresholds: accept
   when ≥ 60% of the target phoneme sequence is matched with per-phoneme
   distance ≤ 1, target-phoneme instances weighted double. Tunable in the
-  tuning file.
+  tuning file. **Per-phoneme metric (clarified with A-18):** distance is 0
+  for an identical phoneme, 0.5 for an A-18-confusable pair, and 2
+  otherwise — the ≤ 1 gate therefore admits exactly identity and
+  confusable productions. A clearly wrong sound ("Z" for "SH") earns no
+  position credit and no sparkle; a child-typical confusion still passes.
+  This keeps sound mode true to the ratified intent (the app listens for
+  the SOUNDS) without failing children on confusable productions.
 - **A-14:** Analytics word hash: SHA-256 of the lowercased word text,
   truncated to 16 hex chars.
 - **A-15:** Pack integrity v1: SHA-256 checksum listed in the catalog

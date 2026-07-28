@@ -45,9 +45,20 @@ library;
 import 'package:learn_to_read/domain/tuning.dart';
 import 'package:learn_to_read/features/listening/contracts/asr_engine.dart';
 import 'package:learn_to_read/features/listening/matcher/grapheme_to_phoneme.dart';
+import 'package:learn_to_read/features/listening/matcher/phoneme_distance.dart';
 
 /// Uniform inter-phoneme distance (orchestrator-pinned default 1).
-int _perPhonemeDistance(String a, String b) => a == b ? 0 : 1;
+/// A-13 per-phoneme metric (clarified with A-18, PRD §9): 0 for identity,
+/// 0.5 for an A-18-confusable pair, 2 otherwise. With the pinned
+/// perPhonemeMaxDistance of 1 the gate admits exactly identity and
+/// confusable productions — a clearly wrong sound earns no credit.
+double _perPhonemeDistance(String a, String b) {
+  if (a == b) return 0;
+  for (final (p, q, cost) in kConfusablePhonemePairs) {
+    if ((a == p && b == q) || (a == q && b == p)) return cost;
+  }
+  return 2;
+}
 
 /// Incremental scorer for one sound-mode attempt (one twister run or one
 /// Sound Garden echo). Feed every finalized [Hypothesis] to [onHypothesis];
