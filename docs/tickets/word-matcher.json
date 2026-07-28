@@ -1,8 +1,17 @@
 {
   "unit": "word-matcher",
   "title": "Hybrid matching layer: close-enough phonetic word matching + sound-mode scoring (the core)",
-  "prd_refs": ["§8 Unit 4", "§8 Unit 14 (sound mode)", "§6 Speech recognition", "§10 OQ-1", "§5 WordToken"],
-  "deps": ["domain-models", "listening-contracts"],
+  "prd_refs": [
+    "§8 Unit 4",
+    "§8 Unit 14 (sound mode)",
+    "§6 Speech recognition",
+    "§10 OQ-1",
+    "§5 WordToken"
+  ],
+  "deps": [
+    "domain-models",
+    "listening-contracts"
+  ],
   "files": [
     "lib/features/listening/matcher/word_matcher.dart",
     "lib/features/listening/matcher/phoneme_distance.dart",
@@ -31,5 +40,5 @@
   ],
   "pinned_design": "Unit 4 pinned (ratified, OQ-1): expected-text hybrid recognition, KidSpeak-style — the matcher always knows the target sentence; the engine is biased with expected words; hypotheses are scored against the known next word, never open-ended transcription. Match policy pinned: accept when hypothesis is the target OR phonetically close enough; closeness = phoneme-level edit distance against the word's graphemePhonemeMap phonemes; threshold at most 1 substituted phoneme for words <= 4 phonemes, at most 2 for longer (tunable constants in the Unit 6 tuning file). Near-miss acceptance is deliberately distinguishable (§5 analytics) and triggers the near-miss prompt path (Unit 6 governs the prompt; the matcher only classifies). Self-corrections and repeats always accepted; lookahead 1 with back-fill (hearing the next word confirms the current one). Word mode (stories) vs sound mode (twisters + Sound Garden echo: phoneme-sequence tracking, drilled/target phoneme weighted most, looser thresholds — A-13 pinned defaults: >= 60% of sequence matched at per-phoneme distance <= 1, target phoneme weighted double, tunable). v1 bar is the happy path: quiet room, one child, cooperative reading — noise/accents/cross-talk explicitly deferred post-POC.",
   "tier": "intensive",
-  "notes": "This is the product's core risk (R1) and the hardest pure-logic unit — hence intensive. Fully headless: no audio, only hypothesis strings. The comparison G2P for out-of-vocabulary hypotheses is matcher-internal machinery (the PRD pins phoneme-level edit distance but hypothesis words arrive as text); keep it minimal and deterministic, cover the test vocabulary, and document its limits — do NOT let it grow into a linguistics project. Sound-mode default thresholds are now pinned (A-13; former OD-1 resolved) — still read them from the tuning file, never hardcode. Sound mode serves both twister-flow (Unit 14) and sound-garden (Unit 15). Emission of tracker events is listening-tracker's job; this ticket returns MatchResults only."
+  "notes": "This is the product's core risk (R1) and the hardest pure-logic unit — hence intensive. Fully headless: no audio, only hypothesis strings. The comparison G2P for out-of-vocabulary hypotheses is matcher-internal machinery (the PRD pins phoneme-level edit distance but hypothesis words arrive as text); keep it minimal and deterministic, cover the test vocabulary, and document its limits — do NOT let it grow into a linguistics project. Sound-mode default thresholds are now pinned (A-13; former OD-1 resolved) — still read them from the tuning file, never hardcode. Sound mode serves both twister-flow (Unit 14) and sound-garden (Unit 15). Emission of tracker events is listening-tracker's job; this ticket returns MatchResults only. ORCHESTRATOR-PINNED DEFAULTS for behaviors the test suite deliberately leaves unasserted (recorded, tunable, owner-vetoable): (1) inter-phoneme distance is uniform — any substitution/insertion/deletion costs 1 (plain Levenshtein over phoneme ids); (2) [REVISED at listening-tracker integration, orchestrator-ruled against the original default after it contradicted the PRD's ratified lookahead back-fill text and the tracker's frozen fixture]: current-word exact always wins; current-word near-miss yields to next-word EXACT (back-fill both); next-word near-miss never outranks current-word near-miss; (3) distance-0 hypotheses with different spelling (homophones) grade as exact; (4) reject phonemeDistance aggregates as the MIN across hypothesis candidates; (5) 'repeats always accepted' reaches back only to the most-recently-accepted word, and near-miss-shaped repeats are likewise non-events; (6) sound-mode alignment is greedy in-order matching — out-of-order productions are ignored without penalty; (7) multi-word hypothesis candidates are whitespace-split into individual candidate tokens."
 }
