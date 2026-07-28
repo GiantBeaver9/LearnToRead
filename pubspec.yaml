@@ -34,3 +34,19 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Owner-chosen typefaces (docs/design/mockup-spec.md §2), bound to the
+  # DesignTokens font-family tokens in lib/design/tokens.dart.
+  fonts:
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-VF.ttf
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-VF.ttf
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-500.ttf
+          weight: 500

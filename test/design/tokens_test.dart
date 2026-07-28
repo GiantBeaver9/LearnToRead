@@ -69,11 +69,16 @@ void main() {
       },
     );
 
+    // AMENDED 2026-07-28: owner mockup ruling (docs/design/mockup-spec.md §9.1) — current word reads amber ("saying now"), superseding the ink+marker PRD line.
     test(
-      'POSITIVE: current-word ink equals unread ink (only a marker is added, '
-      'per PRD: "current word: subtle underline/glow marker, ink color")',
+      'POSITIVE: current-word ink is the mockup\'s "saying now" amber '
+      '(#D79A3C family), distinct from unread ink',
       () {
-        expect(DesignTokens.wordCurrentInk, equals(DesignTokens.wordUnreadInk));
+        expect(DesignTokens.wordCurrentInk, equals(const Color(0xFFD79A3C)));
+        expect(
+          DesignTokens.wordCurrentInk,
+          isNot(equals(DesignTokens.wordUnreadInk)),
+        );
       },
     );
 
