@@ -97,7 +97,10 @@ class _Harness {
   void passNarration(TwisterController controller, FakeAsync async) {
     unawaited(controller.start());
     async.flushMicrotasks();
-    final handle = audio.callLog.whereType<PlayLogEntry>().first.handle;
+    // Orchestrator test-fix: on replay the shared FakeAudioService still
+    // holds run 1's finished handle; .first re-completed that no-op and
+    // run 2+'s narration never resolved. Complete the most recent play.
+    final handle = audio.callLog.whereType<PlayLogEntry>().last.handle;
     audio.completePlayback(handle);
     async.flushMicrotasks();
     async.flushMicrotasks();

@@ -262,7 +262,10 @@ class _Harness {
 void _passNarration(_Harness h, TwisterController controller, FakeAsync async) {
   unawaited(controller.start());
   async.flushMicrotasks();
-  final handle = h.audio.callLog.whereType<PlayLogEntry>().first.handle;
+  // Orchestrator test-fix: on replay the shared FakeAudioService still
+  // holds run 1's finished handle; .first re-completed that no-op and
+  // run 2+'s narration never resolved. Complete the most recent play.
+  final handle = h.audio.callLog.whereType<PlayLogEntry>().last.handle;
   h.audio.completePlayback(handle);
   async.flushMicrotasks();
   async.flushMicrotasks();
@@ -328,7 +331,15 @@ void main() {
         'again once the twister completes', () {
       fakeAsync((async) {
         final h = _Harness();
-        final engine = FakeAsrEngine(script: [_phones(_mainSequence)]);
+        // Orchestrator test-fix: with the default zero delay the accepting
+        // burst is delivered inside the same microtask drain that starts
+        // listening, so consecutive flushMicrotasks() calls (which drain to
+        // exhaustion) could never observe listening-true then listening-false.
+        // Deliver the burst on the fake's own timer instead.
+        final engine = FakeAsrEngine(
+          script: [_phones(_mainSequence)],
+          delayBetweenHypotheses: const Duration(milliseconds: 10),
+        );
         final controller = h.controller(twister: _mainTwister(), engine: engine);
 
         unawaited(controller.start());
@@ -343,6 +354,7 @@ void main() {
 
         // The scripted burst carries the full sequence -- accepted, so the
         // controller auto-completes and stops listening.
+        async.elapse(const Duration(milliseconds: 10));
         async.flushMicrotasks();
         expect(controller.isComplete, isTrue);
         expect(controller.isListening, isFalse, reason: 'session ended on completion');
