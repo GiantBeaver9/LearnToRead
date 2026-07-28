@@ -117,23 +117,82 @@ You should see:
 - Below it, a live-scrolling list that will show raw hypotheses (partial
   and final) as they arrive once you start recording.
 
-## 3. Conduct a session with a child
+## 3. Conduct sessions
 
-For each child (parental permission obtained per step 0):
+The original protocol below assumes real child readers. If no child is
+available, use the **adult-proxy protocol** in §3b instead — it changes
+what you say into the mic and which conclusions the verdict may draw, but
+nothing about how the app is operated.
+
+For each session:
 
 1. Tap **Start**. Grant the microphone/speech-recognition permission
    prompts the first time.
-2. Have the child read the on-screen sentence aloud, once, at a normal
-   pace.
+2. Read the on-screen sentence aloud, once, at a normal pace (or per the
+   proxy script in §3b).
 3. Watch the live hypothesis list — partial hypotheses should update as
-   they speak, ending in a final hypothesis.
+   you speak, ending in a final hypothesis.
 4. Tap **Stop**.
-5. Repeat with the next child. Each Start/Stop cycle is one *session*; the
-   app keeps every session's hypotheses (via `SpikeSessionLogRotator`) for
-   as long as the app process stays alive, so you can run all children's
-   sessions in one app launch without losing earlier sessions.
+5. Repeat. Each Start/Stop cycle is one *session*; the app keeps every
+   session's hypotheses (via `SpikeSessionLogRotator`) for as long as the
+   app process stays alive, so you can run all sessions in one app launch
+   without losing earlier ones.
 
-Collect **at least 3 children's sessions** (ticket acceptance criterion).
+With real children (parental permission per step 0), collect **at least 3
+children's sessions** (original ticket acceptance criterion). With the
+adult proxy, run the full §3b script — it needs roughly 6-8 short
+sessions.
+
+## 3b. Adult-proxy protocol (no child available)
+
+Run each numbered item as its own Start/Stop session so the log files map
+one-to-one to conditions. The point is to probe the recognizer's *behavior
+under imperfect reading*, which an adult can simulate, even though adult
+acoustics cannot stand in for a child's voice (see the caveat at the end).
+
+1. **Clean baseline** — read the sentence once, naturally. Confirms the
+   happy path and gives a reference log.
+2. **Sounding out** — read it the way a struggling 5-year-old would:
+   word by word, with the hard word stretched into its sounds
+   ("kuh... aah... t... cat"). Watch whether partial hypotheses surface
+   *per word* as you go, or whether the engine holds everything until you
+   finish. This is the single most important condition: the tracker's
+   word-advance and struggle detection (A-12) live or die on per-word
+   partial cadence.
+3. **Near-misses on the A-18 confusion axes** — read the sentence but
+   deliberately substitute, one axis per pass:
+   - "f" for "th" (*fin* for *thin* — th-fronting),
+   - "w" for "r" or "l" (*wabbit* for *rabbit* — gliding),
+   - "f" for "wh"/"w" (*file* for *while* — the KidSpeak W↔F axis),
+   - a voicing swap (*sip* for *zip*, or *gat* for *cat*).
+   What matters is what the engine *transcribes*: does "wabbit" come back
+   as "rabbit" (engine auto-corrects — biasing is strong), as "wabbit"
+   (faithful — the matcher's phoneme distance does the work), or as
+   something unrelated? Note it per axis; A-18's acceptance widening
+   assumes the faithful-or-corrected cases, not garbage.
+4. **Abandon mid-word** — start a word, stop halfway, go silent. Does a
+   final hypothesis still arrive, and after how long?
+5. **Silence** — Start, say nothing for ~10 s, Stop. Records the engine's
+   timeout/no-speech behavior (feeds the T1=4 s silence-detector design).
+6. **Fast mumble** — read it quickly and indistinctly once. A rough lower
+   bound on hypothesis quality.
+7. *(Optional)* **Pitched-up read** — a higher-pitched, child-cadenced
+   read. A weak acoustic proxy, but costs one session.
+
+In every session, also note whether any line has `phoneDetailPresent:
+true` — that single boolean answers the Unit 14 phone-level question
+regardless of who is speaking.
+
+**What the proxy can and cannot conclude.** Hypothesis cadence, partial
+granularity, biasing behavior, near-miss transcription fidelity, timeout
+behavior, and phone-detail availability are all legitimately answerable by
+an adult — they are engine properties. What the proxy *cannot* establish
+is recognition accuracy on genuine child acoustics (pitch, formants,
+disfluency patterns — the reason KidSpeak exists). The verdict must say
+so: mark the child-acoustics dimension **provisional**, to be revisited
+with the `[DEVICE]` real-child recorded-audio contract tests when real
+recordings exist. A keep/swap/hybrid verdict on the engine-property
+questions is still decision-grade and unblocks Unit 4.
 
 ## 4. Where the shareable log lands
 
@@ -180,7 +239,9 @@ acceptance criteria:
 
 - Write the verdict as a new in-repo document (e.g.
   `docs/spike/verdict.md`, alongside this README) once you've collected
-  the >= 3 children's sessions.
+  the >= 3 children's sessions — or completed the §3b adult-proxy script,
+  in which case the verdict must carry the provisional-acoustics caveat
+  from §3b.
 - Include or reference the collected `.jsonl` session logs (e.g. copy a
   representative sample into `docs/spike/sessions/` alongside the verdict).
 - Unit 4 (the engine adapter / matching layer) cites this verdict when it
