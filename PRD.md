@@ -953,6 +953,11 @@ proposed with flagged choice points, ratified during spec walkthrough)
   decodable at the profile's current level come before ahead-of-level
   words. The deep feedback loop deliberately lives in the reading
   puzzles (stories); flashcards stay light foundation practice.
+  **Swipe affordance (owner refinement 2026-07-28):** the card is never
+  static — a gentle idle sway plus a **faint shadow/outline arrow** at
+  the trailing edge give the impression to swipe ("If we don't show
+  anything, there's no visual cue"). Both cues pause during the impress
+  hold.
 - **Grading: exactly two buttons** as the manual/fallback path (no mic,
   or parent-assisted) — amber "practice again", green "got it" (app-wide
   color semantics; Anki's four buttons are too many for the age band).

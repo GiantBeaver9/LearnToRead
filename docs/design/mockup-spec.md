@@ -239,6 +239,12 @@ spirit but two-button kid-simple. Everything phonetics-first.
   impresses (green flash) + intensity-1 seeded confetti + auto "got it";
   horizontal swipe advances anytime, success never gates. Deck ordered
   phonics-first (current-level decodable words before ahead-of-level).
+  **Swipe cue (owner, 2026-07-28)**: "adding an arrow that is a faint
+  shadow/outline and moving the card (no more static) gives the
+  impression to swipe. If we don't show anything, there's no visual
+  cue." — faint outline chevron (mutedLabel at low alpha) at the
+  trailing edge + a gentle repeating horizontal sway (~6 px,
+  ease-in-out); both suppressed during the impress hold.
 - **Grading — exactly two buttons** as the manual/fallback path (Anki's
   4 is too many for a 5-year-old): amber **"practice again"** and green
   **"got it"**, identical color semantics to the rest of the app.
