@@ -423,7 +423,12 @@ void main() {
     testWidgets('an unresolvable vocabCardId completes immediately without '
         'showing a card or logging anything (content-integrity no-op, '
         'never throws or hangs)', (tester) async {
-      final rig = _AnalyticsRig()..setUp();
+      // Orchestrator test-fix: rig.setUp() constructs EventQueue's internal
+      // lock future in the fake-async zone; with no enqueue ever replacing
+      // it (this test's whole point), the later runAsync read deadlocks on
+      // a fake-zone microtask no pump will flush. Construct in a real zone.
+      final rig = _AnalyticsRig();
+      await tester.runAsync(() async => rig.setUp());
       addTearDown(rig.tearDown);
       final hostKey = GlobalKey<VocabCardHostState>();
       final audio = FakeAudioService();
