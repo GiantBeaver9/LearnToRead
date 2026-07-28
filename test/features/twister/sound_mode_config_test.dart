@@ -142,7 +142,11 @@ void main() {
         // Five of eight positions credited -> weighted fraction 8/12 ≈
         // 0.667 (see twister_flow_test.dart's "partial burst" derivation).
         final defaultHarness = _Harness();
-        final defaultEngine = FakeAsrEngine(script: [_phones(['A', 'B', 'C', 'D', 'E'])]);
+        // Orchestrator test-fix (A-13 metric clarification, PRD c2d9e9e): the
+        // original burst used arbitrary symbols ('A'..'E'), which only earned
+        // position credit under the since-corrected any-phoneme metric. Real
+        // target phonemes preserve the identical weighted fractions.
+        final defaultEngine = FakeAsrEngine(script: [_phones(['S', 'AE', 'S', 'S', 'Y'])]);
         final defaultController =
             defaultHarness.controller(twister: _mainTwister(), engine: defaultEngine);
         _passNarration(defaultHarness, defaultController, async);
@@ -152,7 +156,7 @@ void main() {
         unawaited(defaultHarness.close());
 
         final strictHarness = _Harness();
-        final strictEngine = FakeAsrEngine(script: [_phones(['A', 'B', 'C', 'D', 'E'])]);
+        final strictEngine = FakeAsrEngine(script: [_phones(['S', 'AE', 'S', 'S', 'Y'])]);
         final strictController = strictHarness.controller(
           twister: _mainTwister(),
           engine: strictEngine,
@@ -174,7 +178,7 @@ void main() {
         // Two of eight positions credited -> weighted fraction 3/12 = 0.25,
         // well under the A-13 default floor.
         final h = _Harness();
-        final engine = FakeAsrEngine(script: [_phones(['A', 'B'])]);
+        final engine = FakeAsrEngine(script: [_phones(['S', 'AE'])]);
         final controller = h.controller(
           twister: _mainTwister(),
           engine: engine,
@@ -207,7 +211,7 @@ void main() {
         expect(kWordModeMaxSubstitutedPhonemesLongWord, lessThan(3));
 
         final h = _Harness();
-        final engine = FakeAsrEngine(script: [_phones(['A', 'B', 'C', 'D', 'E'])]);
+        final engine = FakeAsrEngine(script: [_phones(['S', 'AE', 'S', 'S', 'Y'])]);
         final controller = h.controller(twister: _mainTwister(), engine: engine);
         _passNarration(h, controller, async);
 
