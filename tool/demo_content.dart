@@ -486,6 +486,7 @@ List<String> _collectAssetRefs(StoryPack pack) {
     'audio/nav/collection.wav',
     'audio/nav/garden.wav',
     'audio/nav/parent-corner.wav',
+    'audio/nav/flashcards.wav',
   ]);
   return refs.toList()..sort();
 }

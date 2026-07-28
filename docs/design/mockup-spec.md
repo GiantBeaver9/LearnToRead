@@ -202,6 +202,43 @@ Frozen Sound Garden tests that pin "accept is terminal for the card" or
 single-attempt semantics are superseded by this ruling; amendments carry
 provenance comments and orchestrator review, like §9.
 
+## 10b. Phonics flashcards (OWNER ADDITION, 2026-07-28 — MVP scaffold)
+
+> "add in basic vocab (WE CAN ADD LATER, JUST SCAFFOLDING IT IN FOR AN
+> MVP) Ankidroid style flash cards to learn, and it's all about phonetics
+> and how to sound things out"
+
+A fourth child area: a spaced-repetition flashcard deck, AnkiDroid in
+spirit but two-button kid-simple. Everything phonetics-first.
+
+- **Deck source (MVP)**: the unique `WordToken`s of installed packs —
+  each already carries `graphemePhonemeMap` + `pronunciationAudioRef`;
+  no new content type. (Owner can curate dedicated decks LATER; the deck
+  loader is the seam.)
+- **Card front**: the word, huge, Literata ink on the §3 parchment card.
+  Tapping the word sounds it out (PhonemeSequencer, existing) — the card
+  is about decoding, not memorizing shapes.
+- **Flip** (tap the card / a flip affordance): 3D horizontal flip to the
+  back: the word decomposed into grapheme chips (syllable-chip styling,
+  §4) each labeled with its phoneme id in mono type; a play button for
+  the whole-word pronunciation clip.
+- **Grading — exactly two buttons** (Anki's 4 is too many for a
+  5-year-old): amber **"practice again"** and green **"got it"**,
+  identical color semantics to the rest of the app.
+- **Scheduling (MVP Leitner, consts in tuning.dart)**: 3 boxes;
+  "practice again" → box 1 (due again this session, after the rest of
+  the queue); "got it" → next box, due in 1 d (box 2) / 3 d (box 3,
+  stays with 7 d re-dues). Session queue = all due cards, then a gentle
+  "all done" state (no pressure copy). Per-profile persistence
+  (new Drift table `FlashcardProgress`: profile, card key = A-14-style
+  word hash, box, dueAt; schema migration to v2).
+- **No failure state**: "practice again" is amber, never red; copy stays
+  warm. No streaks/scores in v1 — reps are their own reward (confetti
+  only on clearing the day's queue, intensity 1).
+- Navigation: entry from the child shell alongside map/collection/garden
+  (icon + nav voice prompt "Flash cards" — one more owner recording,
+  `audio/nav/flashcards.wav`).
+
 ## 10. What the prototype contains that the app does NOT copy
 
 - The level-pill header (Ages 4–6/6–8/8–10 switcher) — prototype chrome;

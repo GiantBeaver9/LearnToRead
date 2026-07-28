@@ -918,6 +918,53 @@ proposed with flagged choice points, ratified during spec walkthrough)
 
 ---
 
+### Unit 16 — Phonics flashcards (MVP scaffold, ratified 2026-07-28)
+
+**Pinned design** (owner-directed; full visual spec in
+`docs/design/mockup-spec.md` §10b — normative appendix per A-19)
+- A fourth child-facing area: an **AnkiDroid-style spaced-repetition
+  flashcard deck, phonetics-first** — every card is about how to sound a
+  word out, not shape memorization. Explicitly an MVP scaffold: the deck
+  loader is a seam; owner-curated decks come LATER.
+- **Deck source (MVP)**: the unique `WordToken`s across installed packs
+  (each already carries `graphemePhonemeMap` and
+  `pronunciationAudioRef`) — no new content type ships in v1.
+- **Card front**: the word large in the reading typeface on the standard
+  card surface; tapping the word plays its gapless phoneme sound-out
+  (PhonemeSequencer). **Flip** (tap card/flip affordance, 3D horizontal
+  flip): grapheme chips each labeled with its phoneme id (mono type) +
+  a whole-word pronunciation play button.
+- **Grading: exactly two buttons** — amber "practice again", green "got
+  it" (app-wide color semantics; Anki's four buttons are too many for the
+  age band).
+- **Scheduling (MVP Leitner, consts in the tuning file)**: 3 boxes.
+  "practice again" → box 1, re-queued after the remaining due cards this
+  session; "got it" → next box; dues: box 2 = +1 day, box 3 = +3 days,
+  then +7 day re-dues. Session = all due cards; clearing the queue earns
+  a single intensity-1 confetti and a warm "all done" state.
+- **Persistence**: per-profile `FlashcardProgress` (Drift; card key =
+  A-14-style word hash, box, dueAt) — schema migration v1→v2.
+- **No failure state**: "practice again" is amber, never red; no scores
+  or streaks in v1.
+- Navigation: entry in the child shell alongside map/collection/garden;
+  icon + nav voice prompt ("Flash cards", `audio/nav/flashcards.wav` —
+  owner recording added to the checklist).
+
+**Acceptance**
+- Deck builds from installed-pack fixtures: unique words, stable card
+  keys, due-ordering (unit tests).
+- Front→flip→grade cycle: front sound-out plays the mapped phoneme refs
+  in order; flip reveals exactly the word's `graphemePhonemeMap` chips;
+  each grade button moves the box and reschedules per the Leitner consts
+  (widget + unit tests, fake audio/clock).
+- "practice again" cards reappear later in the same session; cleared
+  queue → confetti once + all-done state (widget tests).
+- Schema migration v1→v2 preserves existing rows of every v1 table
+  (migration test).
+- No red/error/negative state reachable (grep-level + widget test).
+
+---
+
 ## 9. Assumptions (proceeding on these; override any of them)
 
 - **A-1:** English (US) only; single narrator voice gender/character chosen

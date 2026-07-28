@@ -1,4 +1,4 @@
-# Recording checklist — demo starter pack (121 clips)
+# Recording checklist — demo starter pack (122 clips)
 
 This is the concrete, file-by-file companion to `docs/audio/recording-brief.md`
 (read that first for voice direction and the phoneme table). Every clip below
@@ -79,7 +79,7 @@ Short (<2 s), upbeat, varied. Final copy is yours; suggested set:
 | `your_turn.wav` | "Your turn" | warm and inviting; played after modeled help |
 | `near_miss.wav` | "Good try! Listen —" | warm, zero disappointment; plays right before the app models the word after a close-but-not-quite reading. Final copy is yours; keep it under ~1.5 s |
 
-## 5b. Navigation voice prompts — 4 files, `content/demo/audio/nav/`
+## 5b. Navigation voice prompts — 5 files, `content/demo/audio/nav/`
 
 Played as a non-reading child taps a destination, so they hear where they
 are going. Short and plain:
@@ -90,6 +90,7 @@ are going. Short and plain:
 | `collection.wav` | "Your collection" |
 | `garden.wav` | "The Sound Garden" |
 | `parent-corner.wav` | "The parent corner" |
+| `flashcards.wav` | "Flash cards" |
 
 ## 6. Vocab definitions — 2 files, `content/demo/vocab/`
 
@@ -104,7 +105,7 @@ are going. Short and plain:
 - [ ] 54 words (§2)
 - [ ] 5 narrations (§3)
 - [ ] 10 celebration lines (§4)
-- [ ] 2 prompts (§5) + 4 nav prompts (§5b)
+- [ ] 2 prompts (§5) + 5 nav prompts (§5b)
 - [ ] 2 vocab definitions (§6)
 - [ ] Everything −16 LUFS, trimmed, mono 44.1 kHz WAV
 - [ ] Re-run the pack build; zero loudness/presence errors
