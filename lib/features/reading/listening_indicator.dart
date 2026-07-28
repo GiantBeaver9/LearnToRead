@@ -8,15 +8,12 @@
 /// and it reports it quietly. It is deliberately incapable of expressing
 /// anything about how the reading is going.
 ///
-/// HARNESS NOTE (frozen-test compatibility): the mockup's `wave` animation
-/// loops forever, but the frozen reading suites `pumpAndSettle` this screen
-/// while listening is active (test/features/reading/page_turn_test.dart:259,
-/// 282), and a perpetually-ticking animation would hang them. The waveform
-/// is therefore rendered as a static [WaveBars] frame -- the same bars, the
-/// same tokens, staggered at their natural phase offsets -- by mounting the
-/// motion-library widget under `TickerMode(enabled: false)`, which mutes its
-/// ticker so no frame is ever scheduled. The looping motion itself stays
-/// parked until the frozen contract is relaxed (see the restyle report).
+/// AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5). The waveform
+/// was previously parked as a static frame under `TickerMode(enabled:
+/// false)` because the then-frozen reading suites `pumpAndSettle`d this
+/// screen while listening was active. Those two sites were re-expressed as
+/// bounded stepped pumps in the same ruling's amendments, so [WaveBars] now
+/// animates live (mockup-spec §7 `wave`: 900 ms loop, 120 ms stagger).
 library;
 
 import 'package:flutter/material.dart';
@@ -71,12 +68,8 @@ class ListeningIndicator extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          // Static frame of the motion library's waveform (see the harness
-          // note in the file doc comment).
-          const TickerMode(
-            enabled: false,
-            child: WaveBars(height: kListeningWaveHeight),
-          ),
+          // The motion library's live waveform (mockup-spec §4/§7).
+          const WaveBars(height: kListeningWaveHeight),
           const SizedBox(width: DesignTokens.spacingSm),
           Text(
             'Listening…',

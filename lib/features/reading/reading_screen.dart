@@ -11,8 +11,11 @@
 ///    landscape, stacked in portrait, via the shared [ReadingLayout],
 ///  - listen-first narration (A-11) at [Level.narrationEnabled] levels, and
 ///    the ear-icon replay that suspends recognition while it plays,
-///  - the page host, turning pages full-bleed at the authored page
-///    boundaries the merged word state machine reports,
+///  - the page host, plus the ratified page-turn hold (PRD §8 Unit 5,
+///    mockup-spec §8, owner-confirmed 2026-07-28): completing a non-final
+///    page STOPS the machine, a dog-ear appears at the reading card's
+///    bottom-right corner, and the child's curl gesture -- the reward beat
+///    -- is what turns the page,
 ///  - the two always-available touch affordances: the discreet tap fallback
 ///    on the current word, and blue vocabulary words, which pause listening
 ///    and restore the cursor exactly when their card closes, and
@@ -30,6 +33,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:learn_to_read/design/layout.dart';
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart'
@@ -80,6 +84,7 @@ class ReadingScreen extends StatefulWidget {
     required this.stage,
     required this.vocabCardOpener,
     this.onStoryComplete,
+    this.onPageTurned,
     this.onReadingExited,
     this.helpState = kNoHelp,
   });
@@ -120,6 +125,13 @@ class ReadingScreen extends StatefulWidget {
   /// the celebration sequence.
   final VoidCallback? onStoryComplete;
 
+  /// Fired once per completed page-curl turn, after the word state machine
+  /// has advanced onto the new page. The app shell wires it to
+  /// `ReadingSession.advancePage`, which is what moves the listening
+  /// tracker to the new page's words at turn time (PRD §8 Unit 5 page-turn
+  /// hold).
+  final VoidCallback? onPageTurned;
+
   /// Fired once when this screen leaves the tree. The app shell wires it to
   /// `SessionTracker.onReadingScreenExited`, which is what turns leaving
   /// mid-story into `story_abandoned` (Unit 12 owns that judgement).
@@ -148,6 +160,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       profileOrdinal: widget.profileOrdinal,
       levelOrdinal: widget.levelOrdinal,
       onStoryComplete: widget.onStoryComplete,
+      onPageTurned: widget.onPageTurned,
     );
     _narration = NarrationController(
       audioService: widget.audioService,
@@ -291,11 +304,61 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
+  /// The child's page-curl completed: turn the held page. `turnPage()` is a
+  /// no-op unless the machine is actually holding, so a stray second gesture
+  /// can never advance twice.
+  void _onPageTurned() => _controller.turnPage();
+
   Widget _buildPage(BuildContext context, int pageIndex) {
     final snapshot = _controller.snapshot;
     if (pageIndex < 0 || pageIndex >= snapshot.pages.length) {
       return const SizedBox.shrink();
     }
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        WordTextView(
+          words: _controller.pages[pageIndex],
+          wordStates: snapshot.pages[pageIndex],
+          helpState: widget.helpState,
+          textSize: _readingTextSize(context),
+          onCurrentWordTap: _onCurrentWordTap,
+          onVocabWordTap: _onVocabWordTap,
+        ),
+        const SizedBox(height: DesignTokens.spacingLg),
+        const _WordStateLegend(),
+      ],
+    );
+
+    // Page-turn hold (PRD §8 Unit 5, mockup-spec §8): while the machine is
+    // holding at this completed non-final page, the reading card grows to
+    // fill the page region (a book page) and carries the bottom-right
+    // page-curl dog-ear. [PageCurlCorner] needs bounded constraints for its
+    // corner geometry, which is why the held layout swaps the
+    // centered/scrollable card for a stretched one.
+    final held =
+        snapshot.isPageComplete && pageIndex == snapshot.currentPageIndex;
+    if (held) {
+      return Padding(
+        key: ValueKey<String>('page-$pageIndex'),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DesignTokens.spacingLg,
+          vertical: DesignTokens.spacingMd,
+        ),
+        child: PageCurlCorner(
+          enabled: true,
+          page: _ReadingCard(child: SingleChildScrollView(child: content)),
+          // The face revealed under the curl is a blank sheet of the same
+          // cream paper, NOT the next page's live words: the next page has
+          // not started yet (its words go current only on turnPage()), and
+          // rendering it here would duplicate the per-word widget keys.
+          nextPage: const _ReadingCard(child: SizedBox.expand()),
+          onTurned: _onPageTurned,
+        ),
+      );
+    }
+
     return Center(
       key: ValueKey<String>('page-$pageIndex'),
       child: SingleChildScrollView(
@@ -303,24 +366,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           horizontal: DesignTokens.spacingLg,
           vertical: DesignTokens.spacingMd,
         ),
-        child: _ReadingCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              WordTextView(
-                words: _controller.pages[pageIndex],
-                wordStates: snapshot.pages[pageIndex],
-                helpState: widget.helpState,
-                textSize: _readingTextSize(context),
-                onCurrentWordTap: _onCurrentWordTap,
-                onVocabWordTap: _onVocabWordTap,
-              ),
-              const SizedBox(height: DesignTokens.spacingLg),
-              const _WordStateLegend(),
-            ],
-          ),
-        ),
+        child: _ReadingCard(child: content),
       ),
     );
   }

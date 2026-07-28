@@ -80,7 +80,8 @@ class ReadingController extends ChangeNotifier {
   /// [installId], [profileOrdinal] and [levelOrdinal] are the §5 analytics
   /// base fields, passed straight through to every event this controller
   /// emits. [onStoryComplete] fires [celebrationBeat] after the last word of
-  /// the last page resolves. [clock] and [celebrationBeat] are injectable so
+  /// the last page resolves. [onPageTurned] fires each time [turnPage]
+  /// advances a held page. [clock] and [celebrationBeat] are injectable so
   /// timing is scriptable.
   ReadingController({
     required this.story,
@@ -91,6 +92,7 @@ class ReadingController extends ChangeNotifier {
     required this.profileOrdinal,
     required this.levelOrdinal,
     this.onStoryComplete,
+    this.onPageTurned,
     Clock clock = systemClock,
     Duration celebrationBeat = kCelebrationBeat,
   })  : _tracker = tracker,
@@ -128,6 +130,13 @@ class ReadingController extends ChangeNotifier {
   /// to the celebration sequence (Unit 8). The app shell wires it; this
   /// unit deliberately has no dependency on that one.
   final VoidCallback? onStoryComplete;
+
+  /// Fired once per completed page turn, immediately after [turnPage] moves
+  /// the machine onto the next page (PRD §8 Unit 5 page-turn hold). The app
+  /// shell wires it to the listening session's own page advance, so the
+  /// tracker moves to the new page's words at TURN time, not at the moment
+  /// the previous page's last word resolved.
+  final VoidCallback? onPageTurned;
 
   final ReadingTrackerHandle _tracker;
   final AnalyticsClient _analytics;
@@ -186,6 +195,24 @@ class ReadingController extends ChangeNotifier {
   void tapCurrentWord() {
     if (_disposed) return;
     _tracker.tapCurrentWord();
+  }
+
+  /// Turns a held page (PRD §8 Unit 5 page-turn hold, mockup-spec §8): the
+  /// screen's page-curl gesture lands here.
+  ///
+  /// Only meaningful while the machine reports
+  /// [WordStateSnapshot.isPageComplete]; any other call -- including a
+  /// double gesture for the same hold -- is a no-op, so a page can never be
+  /// skipped. On a real turn the machine advances first, then
+  /// [onPageTurned] fires (the session rebuilds its tracker for the new
+  /// page), then listeners are notified.
+  void turnPage() {
+    if (_disposed) return;
+    if (!_snapshot.isPageComplete) return;
+    _machine.turnPage();
+    _snapshot = _machine.snapshot;
+    onPageTurned?.call();
+    notifyListeners();
   }
 
   void _onEvent(TrackerEvent event) {

@@ -883,6 +883,9 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
               stage: stage,
               vocabCardOpener: _openVocabCard,
               onStoryComplete: _onStoryComplete,
+              // Page-turn hold (PRD §8 Unit 5): the child's curl gesture is
+              // what moves the listening session onto the next page.
+              onPageTurned: session.advancePage,
               onReadingExited: _onReadingExited,
               helpState: helpState,
             ),

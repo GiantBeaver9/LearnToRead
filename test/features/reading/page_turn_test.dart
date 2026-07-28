@@ -20,10 +20,13 @@
 ///    page's keyed content is gone once the transition settles
 ///    (`pumpAndSettle`).
 ///  - `ReadingScreen`: a `WordStateResult.pageCompleted` (multi-page story,
-///    a non-final page's last word resolves) turns the page -- the widget
-///    tree shows the new page's first word as current and the old page's
-///    words are no longer reachable via `WordTextView`'s per-word keys, all
-///    without throwing.
+///    a non-final page's last word resolves) HOLDS the finished page with
+///    the page-curl dog-ear; the child's turn gesture on the bottom-right
+///    corner is what advances -- the widget tree then shows the new page's
+///    first word as current and the old page's words are no longer
+///    reachable via `WordTextView`'s per-word keys, all without throwing.
+///    (AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): these
+///    pins previously asserted an automatic turn at resolution time.)
 ///  - The last page's last word does NOT page-turn (`pageCompleted` is
 ///    mutually exclusive with `storyCompleted` per WordStateMachine) --
 ///    covered here structurally (no second page exists to turn to);
@@ -36,6 +39,9 @@ import 'dart:io';
 import 'package:flutter/material.dart' hide Page;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learn_to_read/design/fake_rive_stage.dart';
+// AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): the turn is now
+// a child gesture on the PageCurlCorner dog-ear.
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/features/analytics/analytics_client.dart';
@@ -181,6 +187,21 @@ Widget _buildScreen({
 void _resolveWord(_FakeTrackerHandle tracker, int index) =>
     tracker.emit(WordAccepted(index: index));
 
+// AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5).
+/// Turns the held page with the real corner gesture -- a tap on the
+/// dog-ear's bottom-right hit region -- then pumps the curl + page
+/// transition with BOUNDED stepped pumps: the live WaveBars listening
+/// waveform loops forever, so `pumpAndSettle` while listening would hang.
+Future<void> _turnPage(WidgetTester tester) async {
+  final corner =
+      tester.getBottomRight(find.byType(PageCurlCorner)) - const Offset(8, 8);
+  await tester.tapAt(corner);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400)); // curl completes
+  await tester.pump(const Duration(milliseconds: 400)); // PageTurn switch
+  await tester.pump(const Duration(milliseconds: 400)); // settle the sweep
+}
+
 void main() {
   group('PageTurn widget — POSITIVE', () {
     testWidgets('renders pageBuilder for the given pageIndex, keyed and '
@@ -240,8 +261,13 @@ void main() {
 
   group('ReadingScreen — page-turn at WordStateMachine page boundaries '
       '(POSITIVE)', () {
-    testWidgets('resolving the last word of page 0 turns to page 1: word 0 '
-        'of the new page is current, page 0 words are gone', (tester) async {
+    // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): resolving
+    // the last word of a non-final page no longer auto-turns. The machine
+    // holds -- page 0 stays visible, done/green, with the page-curl dog-ear
+    // -- and the child's turn gesture is what reveals page 1.
+    testWidgets('resolving the last word of page 0 HOLDS with the dog-ear; '
+        'the turn gesture reveals page 1: word 0 of the new page is current, '
+        'page 0 words are gone', (tester) async {
       final tracker = _FakeTrackerHandle();
       await tester.pumpWidget(_buildScreen(
         story: _multiPageStory(),
@@ -255,8 +281,20 @@ void main() {
       await tester.pump();
       await tester.pump(DesignTokens.greenSweepDuration);
       _resolveWord(tracker, 1);
+      // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): bounded
+      // stepped pumps replace pumpAndSettle -- the live WaveBars waveform
+      // never settles.
       await tester.pump();
-      await tester.pumpAndSettle();
+      await tester.pump(DesignTokens.greenSweepDuration);
+
+      // Held: page 0 is still on screen with the dog-ear; page 1 has not
+      // started.
+      expect(find.text('one'), findsOneWidget);
+      expect(find.text('two'), findsOneWidget);
+      expect(find.text('three'), findsNothing);
+      expect(find.byType(PageCurlCorner), findsOneWidget);
+
+      await _turnPage(tester);
 
       expect(find.text('one'), findsNothing);
       expect(find.text('two'), findsNothing);
@@ -279,8 +317,22 @@ void main() {
       _resolveWord(tracker, 0);
       await tester.pump(DesignTokens.greenSweepDuration);
       _resolveWord(tracker, 1);
-      await tester.pumpAndSettle();
+      // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): bounded
+      // stepped pumps replace pumpAndSettle (live WaveBars), and the
+      // listening-uninterrupted intent is re-expressed ACROSS the child's
+      // turn: uninterrupted through the hold, and through the turn itself.
+      await tester.pump();
+      await tester.pump(DesignTokens.greenSweepDuration);
 
+      // Uninterrupted through the hold...
+      expect(tracker.calls, isNot(contains('stop')));
+      expect(tracker.isListening, isTrue);
+      expect(complete, isEmpty);
+
+      await _turnPage(tester);
+
+      // ...and through the turn.
+      expect(find.text('three'), findsOneWidget);
       expect(tracker.calls, isNot(contains('stop')));
       expect(tracker.isListening, isTrue);
       expect(complete, isEmpty);
