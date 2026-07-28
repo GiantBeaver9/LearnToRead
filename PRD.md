@@ -286,17 +286,28 @@ critical path.
   textured; soft palette; characters with personality; the UI feels drawn,
   not assembled from Material/Cupertino components. No stock component
   styling may be visible in child-facing screens.
-- Typography: a purpose-built early-reader typeface for all reading text
-  (unambiguous a/g forms, generous x-height); a friendly display face for
-  titles. Reading text minimum sizes: 28pt (phone) / 36pt (tablet) at
-  sentence levels; 20pt/24pt at paragraph levels.
+- Typography (RATIFIED via the owner's "Sound It Out" mockup, A-19):
+  reading text is **Literata** (serif, variable weight, bundled at
+  `assets/fonts/Literata-VF.ttf`); UI text is **Nunito** (variable);
+  syllable/meta notation is **IBM Plex Mono**. Reading text minimum sizes:
+  28pt (phone) / 36pt (tablet) at sentence levels; 20pt/24pt at paragraph
+  levels (the mockup's desktop-scale sizes 62/46/34px by level clamp down
+  responsively).
+- Palette (RATIFIED, A-19; full table in `docs/design/mockup-spec.md` §1 —
+  that document is a normative appendix of this PRD): warm parchment
+  ("storybook paper") — page `#F3EADA`, card `#FDFAF3`, borders `#E2D6BF`,
+  ink `#33302B`.
 - Word color states (single source of truth, used by Units 5–7):
-  - Unread: near-black ink (not pure #000; warm ink tone from palette).
-  - Current word: subtle underline/glow marker, ink color.
-  - Read-correct: **green** (palette green, WCAG AA against background).
-  - Vocabulary word (unread): **blue**, visually distinct from green at a
-    glance for color-typical and protan/deutan viewers (blue chosen partly
-    for this; verify with simulation).
+  - Unread: warm near-black ink `#33302B` (not pure #000).
+  - Current word: **amber `#D79A3C`** — the "saying now" indicator
+    (owner ruling 2026-07-28, superseding the earlier "ink with subtle
+    marker" line; the amber IS the marker).
+  - Read-correct: **green** (`#4E8B5C` family; WCAG AA ≥4.5:1 against the
+    card background — darken minimally along the same hue if the mockup
+    value falls short; `#3C7A4B` is the known-good floor).
+  - Vocabulary word (unread): **blue** (`#5A79B8` family, weight 600,
+    dotted underline), visually distinct from green at a glance for
+    color-typical and protan/deutan viewers (verify with simulation).
   - Helped word: visually identical to any other read-correct green word
     (ratified: no visible marker — the child's finished sentence is purely
     triumphant). Help is tracked invisibly in WordHelpRecord for the
@@ -312,6 +323,12 @@ critical path.
   Rive runtime. Product owner co-develops frontend; design tokens
   (colors, type scale, spacing, motion durations) live in one Dart file
   reviewed by the product owner before UI build starts.
+- Motion system (RATIFIED, A-19; exact durations/curves in
+  `docs/design/mockup-spec.md` §7): fadeUp panel entrances, sceneReveal
+  stage entrance, pulseWord stuck-word pulse, waveform listening bars,
+  260 ms word-color transitions, and a pure-code confetti celebration
+  (falling ribbons + spark bursts + rings, intensity scaling with the
+  story streak — spec §6). No asset-based confetti.
 
 **Acceptance**
 - Golden tests render library, reading, and collection screens in all four
@@ -476,8 +493,18 @@ critical path.
 
 **Pinned design**
 - Renders the story text per the design-system word states (Unit 1). One
-  sentence (early levels) up to one paragraph (later levels) per page;
-  multi-page stories page with a full-bleed page-turn transition.
+  sentence (early levels) up to one paragraph (later levels) per page.
+- **Page turn = book page-curl (RATIFIED, A-19,
+  `docs/design/mockup-spec.md` §8):** on multi-page stories, once the
+  current page is complete a small folded dog-ear appears at the
+  **bottom-right corner** of the reading card; the child drags it (or taps
+  it) and the page curls over like a real paper page, revealing the next
+  page underneath — release past ~40% completes the turn, earlier release
+  springs back; forward-only. The curl is the page-advance control (it
+  invokes the same advance path as any prior control; the logic does not
+  change) and exists deliberately to reinforce physical-book reading
+  habits. Implementation is a corner-anchored clip+rotate curl with a
+  shaded back face — simple and 60fps — not a cloth simulation.
 - **Listen-first at early levels (ratified):** at sentence-format levels,
   opening a story plays the recorded human narration of the sentence once
   before listening begins; a listen button (ear icon, design system)
@@ -960,6 +987,21 @@ proposed with flagged choice points, ratified during spec walkthrough)
   exactly along the axes children and child-ASR actually confuse and
   nowhere else; all other costs and thresholds are unchanged. Story
   completion remains the only summative outcome and is always reachable.
+- **A-19 ("Sound It Out" visual system, ratified 2026-07-28):** The
+  product owner supplied an HTML prototype of the reading experience; its
+  distilled spec, `docs/design/mockup-spec.md`, is a **normative appendix
+  of this PRD** — a fresh build run reproduces the frontend from that
+  document plus the amended Unit 1/Unit 5 lines, with no access to the
+  original HTML needed. Load-bearing rulings folded into this PRD: warm
+  parchment palette and Literata/Nunito/IBM Plex Mono typography (fonts
+  bundled in-repo at `assets/fonts/`); current word renders amber
+  (`#D79A3C`, "saying now") superseding the earlier ink+marker line;
+  read-green holds the WCAG AA ≥4.5:1 floor by darkening minimally within
+  its hue where the mockup value falls short (owner-confirmed); page
+  advance on multi-page stories is a bottom-right book page-curl (Unit 5);
+  celebration confetti is pure code, no assets. The mockup's level-switcher
+  header, demo engine controls, and auto-read are prototype chrome, not
+  product features.
 
 ## 10. Open questions (block their units, not the whole build)
 
@@ -987,10 +1029,11 @@ proposed with flagged choice points, ratified during spec walkthrough)
   build and test against local fixture servers.
 - **OQ-7 (blocks pilot distribution, not build):** Privacy policy, contact,
   and licenses URLs for the parent corner; placeholders until supplied.
-- **OQ-8 (blocks the owner token-review gate, not unit builds):** Final
-  typeface selections (early-reader reading face, display face) and
-  concrete design-token values — builders use placeholder tokens behind
-  the pinned token interface until the owner's Unit 1 sign-off.
+- **OQ-8 (MOSTLY RESOLVED by A-19, 2026-07-28):** Typefaces and concrete
+  design-token values are now owner-ratified (Literata/Nunito/IBM Plex
+  Mono + the `docs/design/mockup-spec.md` palette). Remaining sliver: the
+  owner flips `DesignTokens.tokensAreOwnerSignedOff` to `true` after
+  seeing the theme on a real device.
 
 ---
 
