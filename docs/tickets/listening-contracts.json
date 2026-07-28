@@ -1,0 +1,28 @@
+{
+  "unit": "listening-contracts",
+  "title": "Engine-agnostic ASR interface, tracker event stream types, help-state contract, fakes",
+  "prd_refs": ["§8 Unit 4", "§8 Unit 5 (state-machine inputs)", "§8 Unit 6 (helped marking)", "§9 A-10"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/features/listening/contracts/asr_engine.dart",
+    "lib/features/listening/contracts/tracker_events.dart",
+    "lib/features/listening/contracts/help_state.dart",
+    "lib/features/listening/contracts/fake_asr_engine.dart",
+    "lib/features/listening/contracts/fake_reading_tracker.dart"
+  ],
+  "test_files": [
+    "test/features/listening/contracts/contracts_test.dart",
+    "test/features/listening/contracts/fake_engine_test.dart"
+  ],
+  "accept": [
+    "asr_engine.dart defines the engine-agnostic interface every engine implements: start/stop with a biasing context (the expected words / contextual strings), and a stream of Hypothesis objects carrying word hypotheses and OPTIONAL phone-level detail (phone hypotheses surfaced where the engine provides them) — engine choice (on-device / cloud / tap) must be invisible above this interface.",
+    "tracker_events.dart defines the single event stream contract consumed by Units 5-6, exactly: wordAccepted(index), wordAcceptedNearMiss(index), struggleDetected(index), silence(duration) — plus wordHelped(index, tier) required by Unit 5's pinned word state machine (unread → current → (accepted | helped) → done) and Unit 6's helped marking; tier enum matches WordHelpRecord.lastHelpLevel (none | soundOut | modeled).",
+    "help_state.dart defines the shared help/highlight contract rendered by the reading screen and produced by the stuck-word scaffold: current help tier, and the currently-highlighted graphemePhonemeMap entry index during Tier-1 sound-out (so digraphs highlight as one unit).",
+    "FakeAsrEngine plays scripted hypothesis sequences with configurable timing (works under fake_async), supports simulating engine-unavailable failure, and records the biasing context it was started with (so tests can assert expected-text hybridization).",
+    "FakeReadingTracker emits a scripted tracker-event stream for Unit 5/6/14 tests without any matcher or engine.",
+    "Contract types are pure Dart (no Flutter imports except foundation), equatable, and printable for test diffs."
+  ],
+  "pinned_design": "Unit 4 pinned: the hybrid matching layer is ours and engine-agnostic; the engine is any ASR exposing word/phone hypotheses + contextual biasing (default A-10 platform on-device; a cloud engine may substitute behind the SAME interface; tap fallback also lives behind tracker events). The tracker emits a single event stream consumed by Units 5-6: wordAccepted(index), wordAcceptedNearMiss(index), struggleDetected(index), silence(duration). The adapter surfaces phone-level detail where the engine provides it (sound mode, Unit 14, consumes it; engines exposing only word hypotheses are approximated downstream in the matcher — the interface must express both). No audio is ever stored — the interface exposes no audio buffers to consumers, only hypotheses. wordHelped(index, tier) is the transcription of Unit 5's 'helped' state-machine input and Unit 6's 'marked helped internally'; it is emitted by the scaffold controller, not the engine.",
+  "tier": "simple",
+  "notes": "Small but load-bearing: every listening-pipeline ticket (word-matcher, listening-tracker, platform-asr-adapter, reading-screen, stuck-word-scaffold, twister-flow) builds against these types and fakes. Keep it interface + fakes only — no matching or timing logic here (that is word-matcher / listening-tracker). This is what lets everything except platform-asr-adapter proceed without the Unit 0 spike verdict."
+}

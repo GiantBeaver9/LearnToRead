@@ -1,0 +1,30 @@
+{
+  "unit": "audio-playback",
+  "title": "Audio system: playback interface, gapless phoneme sequencing, ducking rules, recording brief (Unit 13 app half)",
+  "prd_refs": ["§8 Unit 13", "§8 Unit 6 (phoneme sound-out)", "§8 Unit 15 (gapless phonemeIds playback)", "§6 Art & audio pipeline", "§9 A-17", "§10 OQ-3"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/features/audio/audio_service.dart",
+    "lib/features/audio/phoneme_sequencer.dart",
+    "lib/features/audio/ducking_policy.dart",
+    "lib/features/audio/fake_audio_service.dart",
+    "docs/audio/recording-brief.md"
+  ],
+  "test_files": [
+    "test/features/audio/phoneme_sequencer_test.dart",
+    "test/features/audio/ducking_policy_test.dart",
+    "test/features/audio/fake_audio_service_test.dart"
+  ],
+  "accept": [
+    "AudioService interface: play(audioRef) by opaque source-agnostic ref, stop, completion futures/streams, and channel tagging (help, narration, celebration, ambient) for ducking; FakeAudioService records an ordered log of play/stop/duck calls with fake-clock timing so every downstream ticket (scaffold, reading screen, vocab, celebration, twister) can assert audio behavior headlessly.",
+    "PhonemeSequencer plays a word's phoneme audio sequence ('kuh… aah… tuh') gaplessly in graphemePhonemeMap order, emitting a per-phoneme started event carrying the map index (the reading screen's grapheme-highlight sync point); order and events asserted for digraph and silent-e fixture words ('ship', 'cake').",
+    "Ducking rules pinned and tested as a pure policy: help audio ducks ambient/celebration audio; NOTHING ducks the microphone processing (the policy has no interaction with the listening pipeline — asserted by API absence and a test that help audio during 'listening' issues no mic-affecting command).",
+    "Nothing is generated at runtime: the service only plays shipped refs; there is no TTS code path (asserted by API shape).",
+    "[DEVICE] Phoneme sequence playback latency < 150 ms from trigger on min-spec device (A-6) — owner-measured in profile mode, recorded in repo; headless proxy: the sequencer issues its first play command synchronously (same event-loop turn) from trigger under fake_async (test).",
+    "docs/audio/recording-brief.md transcribes the pinned recording direction for the owner's narrator sessions: one narrator throughout; fixed sets = 44 phonemes (clean articulation, minimal schwa tail), ~10 celebration lines, fixed prompts ('your turn'); plus sentence narrations, tongue twisters, per-story word pronunciations, vocab definition read-alouds; all normalized to -16 LUFS integrated by the pipeline.",
+    "[DEVICE] Product-owner sign-off on the recorded phoneme set — owner deliverable, tracked in notes, not testable here."
+  ],
+  "pinned_design": "Unit 13 pinned: all v1 voice audio is human-recorded, supplied by the product owner, one narrator throughout (ratified, OQ-3): 44 phonemes with clean articulation and minimal schwa (recording brief is part of this unit), ~10 celebration lines, fixed prompts, sentence narrations, twisters, word pronunciations, definition read-alouds — ingested and loudness-normalized by the pipeline (Unit 3 owns the -16 LUFS check); nothing generated at runtime. TTS is a post-v1 alternative only: the audio manifest is source-agnostic (a pronunciation is just an audio ref) so TTS can later substitute without app changes — therefore this service takes opaque refs. Playback engine pinned requirements: low-latency (phoneme sound-out must feel instant), gapless sequential phoneme playback, ducking rules (help audio ducks ambient/celebration; nothing ducks microphone processing).",
+  "tier": "standard",
+  "notes": "Playback plugin is pinned by A-17 (former OD-8 resolved): just_audio + audio_session, added centrally to pubspec by the orchestrator — the concrete impl is a thin adapter behind AudioService, owner-verified on device (Unit 13 latency measured against it per A-17). Everything in this ticket is interface + pure logic + fake, fully headless; no real audio files exist in the container (tests reference refs only). Latency and phoneme-set sign-off acceptance are [DEVICE]/owner."
+}

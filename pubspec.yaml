@@ -1,0 +1,36 @@
+name: learn_to_read
+description: "LearnToRead — a mobile app that teaches children ages 5-10 to read by listening to them read aloud. See PRD.md."
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Pinned stack (PRD A-2)
+  flutter_riverpod: ^2.6.1
+  go_router: ^15.1.2
+  drift: ^2.26.0
+  sqlite3_flutter_libs: ^0.5.32
+  rive: ^0.13.20
+
+  just_audio: ^0.9.46
+  audio_session: ^0.1.25
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  crypto: ^3.0.6
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.15
+  drift_dev: ^2.26.0
+
+flutter:
+  uses-material-design: true

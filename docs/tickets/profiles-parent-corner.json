@@ -1,0 +1,38 @@
+{
+  "unit": "profiles-parent-corner",
+  "title": "Profile picker, parent corner, pilot progress view, consent, erasure (Unit 10)",
+  "prd_refs": ["§8 Unit 10", "§5 Profile", "§5 WordHelpRecord", "§8 Unit 2 (placement/override)", "§8 Unit 4 (consent gating)", "§6 POC posture"],
+  "deps": ["design-tokens", "domain-models", "local-storage", "phonics-engine", "parental-gate"],
+  "files": [
+    "lib/features/profiles/profile_picker_screen.dart",
+    "lib/features/profiles/profile_avatar.dart",
+    "lib/features/parent/parent_corner_screen.dart",
+    "lib/features/parent/profile_editor.dart",
+    "lib/features/parent/pilot_progress_view.dart",
+    "lib/features/parent/consent_controller.dart",
+    "lib/features/parent/parent_links.dart"
+  ],
+  "test_files": [
+    "test/features/profiles/profile_picker_test.dart",
+    "test/features/parent/parent_corner_test.dart",
+    "test/features/parent/profile_crud_test.dart",
+    "test/features/parent/pilot_progress_view_test.dart",
+    "test/features/parent/consent_matrix_test.dart",
+    "test/features/parent/erasure_test.dart"
+  ],
+  "accept": [
+    "Child-facing profile picker at launch: icon/avatar based, no reading required to navigate (icons + voice prompt hooks); up to 4 profiles shown; selecting one enters that child's home (map) and triggers session_start semantics via the injected hook (widget tests).",
+    "Parent corner is reachable only through the parental-gate (route test: corner unreachable without gate pass; re-entry requires re-passing).",
+    "Profile CRUD: create/edit/delete with name, age band (sets starting level per Unit 2 placement: 5-6 → level 1; 7-8 → first multiSentence; 9-10 → first paragraph), optional level override; 5th create blocked (tests over local-storage).",
+    "Pilot progress view: one plain screen per child listing stories completed and the words that needed help with help tier, matching fixture WordHelpRecord data exactly (widget test — transcribed acceptance); no charts or trends anywhere.",
+    "Per-child microphone toggle defaults OFF until enabled; a cloud-processing toggle appears ONLY if a cloud engine is in use (A-10 default on-device → typically mic only; test both engine configurations).",
+    "Consent matrix tests (transcribed): mic off → reading uses tap-only mode and the mic is never requested; mic on → recognition enabled; OS-level mic permission denial handled gracefully → tap mode (permission service faked); consent changes take effect immediately (tracker hook re-read per session start and on change).",
+    "Deleting a profile shows a plain confirmation and erases all its local data irreversibly — progress, help records, twister progress, collection; deleted profile leaves zero rows (test over local-storage erasure).",
+    "Links present: privacy policy, licenses, contact (destinations owner-supplied — placeholder targets flagged).",
+    "Parent corner contains NOTHING beyond the pinned list (negative test: no other routes/controls exposed).",
+    "Post-POC (recorded, not blocking, not tested): store-policy checklist both stores; verifiable-consent (COPPA) flow."
+  ],
+  "pinned_design": "Unit 10 pinned: up to 4 local profiles; child-facing picker at launch (icon/avatar, no reading). Parental gate per parental-gate ticket (A-4). Parent corner contents — ALL of it, nothing more in v1: profile CRUD (name, age band setting start level per Unit 2, optional level override); pilot progress view (one plain screen per child: stories completed + words that needed help from WordHelpRecord with tier — no charts/trends; exists so pilot parents can report concretely); per-child mic toggle default OFF, cloud toggle only when a cloud engine is in use; POC consent is a plain-language in-app toggle — verifiable parental consent is a post-POC ship-gate (§6); links: privacy policy, licenses, contact. Consent changes effective immediately (Unit 4 reads per session start and on change). Profile deletion erases all local data irreversibly with plain confirmation.",
+  "tier": "hard",
+  "notes": "Headless: Drift in-memory, fake permission service, fake tracker consent hook, recording analytics fake for session_start. Voice-prompt audio refs for navigation are owner-recorded content — placeholder refs. Privacy policy / contact / licenses URLs are OQ-7 — owner-supplied, blocks pilot distribution not build; placeholders until supplied. [DEVICE] goldens routed to owner; headless layout tests included in widget tests."
+}

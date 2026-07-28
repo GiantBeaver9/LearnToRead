@@ -1,0 +1,28 @@
+{
+  "unit": "vocab-cards",
+  "title": "Vocabulary definition cards: playful popover, autoplay audio, cursor-safe pause/resume (Unit 7)",
+  "prd_refs": ["§8 Unit 7", "§5 VocabCard", "§8 Unit 5 (pause/restore contract)", "§5 Analytics events"],
+  "deps": ["design-tokens", "domain-models", "audio-playback", "analytics", "reading-screen"],
+  "files": [
+    "lib/features/vocab/vocab_card.dart",
+    "lib/features/vocab/vocab_card_opener.dart"
+  ],
+  "test_files": [
+    "test/features/vocab/vocab_card_test.dart",
+    "test/features/vocab/vocab_integration_test.dart",
+    "test/features/vocab/vocab_layout_test.dart",
+    "test/features/vocab/vocab_disabled_test.dart"
+  ],
+  "accept": [
+    "Card is a playful popover over the reading screen (storybook style, tokens only): the word large at top, authored kid-friendly definition beneath, optional small illustration when illustrationRef present (widget tests with and without illustration).",
+    "Definition audio auto-plays on open (recorded narrator voice ref from VocabCard.definitionAudioRef); a replay button repeats it; tapping the word itself plays just the word's pronunciation audio (FakeAudioService assertions for all three).",
+    "Dismiss by tap-outside or the single clear close affordance; on close, reading resumes exactly where it paused (Unit 5 contract).",
+    "Integration test (real reading screen + fake tracker): tap blue word mid-listening → card opens, autoplay invoked, listening paused; close → listening resumed, cursor at the identical position (transcribed Unit 7 + Unit 5 acceptance).",
+    "Opening a card logs vocab_card_opened (recording analytics fake). No quiz/check exists anywhere in the flow (ratified).",
+    "Cards render within safe areas in all four layout classes (headless layout tests; [DEVICE] goldens routed to owner).",
+    "A story with zero vocab words renders no blue styling; a vocabEnabled=false level renders vocab-tagged words in normal ink (unit tests, transcribed acceptance)."
+  ],
+  "pinned_design": "Unit 7 pinned: blue words open a playful popover card over the reading screen — word large at top, authored kid-friendly definition, optional small illustration; definition auto-plays on open, replay button, word tappable to hear just the word; dismiss via tap-outside or single close affordance; on close reading resumes exactly where paused. Definitions are authored per story (usage-specific) as VocabCards in the pack. vocab_card_opened logged. No quiz/mini-check in v1 (ratified). Blue styling rules come from Unit 1 tokens and Level.vocabEnabled (§5: vocabCardId present ⇒ blue when enabled).",
+  "tier": "standard",
+  "notes": "Implements the VocabCardOpener interface that reading-screen injects (defined concrete here; reading-screen tested against its own fake). All audio via FakeAudioService; illustrations are refs — tests use placeholder bytes/no-op image provider (no real art in container)."
+}

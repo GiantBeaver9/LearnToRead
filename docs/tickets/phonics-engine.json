@@ -1,0 +1,32 @@
+{
+  "unit": "phonics-engine",
+  "title": "Phonics engine: scope & sequence data, levels, rolling-window unlocking (Unit 2)",
+  "prd_refs": ["§8 Unit 2", "§5 PhonicsSkill", "§5 Level", "§5 Profile", "§5 StoryProgress"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/domain/phonics/phonics_engine.dart",
+    "lib/domain/phonics/scope_sequence_loader.dart",
+    "lib/domain/phonics/placement.dart"
+  ],
+  "test_files": [
+    "test/domain/phonics/phonics_engine_test.dart",
+    "test/domain/phonics/rolling_window_test.dart",
+    "test/domain/phonics/placement_test.dart",
+    "test/domain/phonics/no_empty_window_property_test.dart",
+    "test/domain/phonics/scope_sequence_loader_test.dart",
+    "test/domain/phonics/fixtures/fixture_sequence.json",
+    "test/domain/phonics/fixtures/alternate_sequence.json"
+  ],
+  "accept": [
+    "Engine exposes exactly storiesFor(profile), advance(profile, story), isUnlocked(profile, story) as pure functions over Profile + content data (no I/O, no state).",
+    "Age-band placement: 5-6 → level 1; 7-8 → first multiSentence level; 9-10 → first paragraph level; parent override supported as an input (unit tests per band + override).",
+    "Rolling window of 3: the child always has the next 3 uncompleted stories in global authored order; completing one pulls the next authored story into the window (refill test); unchosen stories remain offered until read (persistence test); when fewer than 3 uncompleted stories remain at the current level the window back-fills from the next level's authored order (level-boundary crossing test).",
+    "currentLevelId advances only when the level's full story set is completed; it gates vocabEnabled and twister tagging, not story availability (advancement test asserting availability is unaffected).",
+    "Completed stories remain replayable forever: isUnlocked stays true and storiesFor never removes completed stories from re-read eligibility (replayability test).",
+    "Property test: across random completion orders and profiles, no reachable state has zero available stories.",
+    "Scope & sequence loads from data files (JSON), ordered CVC short vowels → consonant digraphs → blends → long vowels/silent-e → vowel teams → r-controlled → multisyllable, with per-level heart-word lists; changing story order requires no code change — a test swaps in alternate_sequence.json and behavior follows the data."
+  ],
+  "pinned_design": "Unit 2 pinned verbatim: single ordered scope & sequence of PhonicsSkills, science-of-reading aligned, stored as data not code, with the structural order pinned (CVC short vowels → consonant digraphs → blends → long vowels/silent-e → vowel teams → r-controlled → multisyllable) and heart words introduced per level (exact table is authored content, OQ-5 — engine consumes it as data). One continuum, no named modes: Level.format sentence → multiSentence → paragraph; Level.vocabEnabled true from the first paragraph level. Start level by age band (5-6 → level 1; 7-8 → first multiSentence; 9-10 → first paragraph), parent override in parent corner. Unlock rule ratified: rolling window of 3 over global authored order (which is level-ordered); pick freely among the 3; completion pulls the next authored story in; unchosen stories stay offered; window back-fills across level boundaries ('no strict block'); currentLevelId advances only on full-level completion and gates vocab enablement + twister tagging only; earlier stories replayable forever.",
+  "tier": "standard",
+  "notes": "Pure Dart, fully headless. The REAL scope-&-sequence table (which skills at which level, heart-word lists) is OQ-5, authored in the content pipeline and owner-reviewed — this ticket ships fixture sequences only and must not invent a canonical table. Twister map-node tagging consumes level unlock state; that is twister-flow/map territory — this engine only exposes level state."
+}

@@ -1,0 +1,30 @@
+{
+  "unit": "spike-asr-app",
+  "title": "Unit 0 recognition-spike app (owner runs on device with real children)",
+  "prd_refs": ["§8 Unit 0", "§9 A-10", "§7 R1"],
+  "deps": [],
+  "files": [
+    "lib/spike/spike_main.dart",
+    "lib/spike/spike_screen.dart",
+    "lib/spike/spike_channel.dart",
+    "lib/spike/hypothesis_log.dart",
+    "ios/Runner/SpikeSpeechHandler.swift",
+    "android/app/src/main/kotlin/com/learntoread/learn_to_read/SpikeSpeechHandler.kt",
+    "docs/spike/README.md"
+  ],
+  "test_files": [
+    "test/spike/spike_channel_test.dart",
+    "test/spike/hypothesis_log_test.dart"
+  ],
+  "accept": [
+    "A separate Flutter entrypoint (lib/spike/spike_main.dart, run via `flutter run -t lib/spike/spike_main.dart`) shows a bare-bones screen with one hardcoded sentence, a mic start/stop control, and a live scrolling view of raw hypotheses.",
+    "spike_channel.dart streams hypotheses from a platform event channel fed by the on-device recognizer (iOS SFSpeechRecognizer with contextualStrings, Android SpeechRecognizer with biasing), with contextual biasing set to the hardcoded sentence's words; Dart-side behavior verified headlessly with a mocked platform channel emitting scripted hypothesis payloads.",
+    "Every hypothesis event (partial and final, with word detail and any phone-level/confidence detail the platform exposes) is appended to a timestamped, shareable log file (JSON lines) named per session; log format round-trip tested headlessly.",
+    "The log records whether phone-level detail was present in platform output (the Unit 0 question for twister sound mode, Unit 14) — field exists and is populated from the channel payload; asserted with mocked payloads with and without phone detail.",
+    "docs/spike/README.md tells the owner exactly how to run the spike on a device, how to register the native handlers (two-line snippets for AppDelegate.swift / MainActivity.kt — see notes), how to collect >= 3 children's session logs, and where the verdict document goes.",
+    "[DEVICE] Real-children sessions and the written verdict (keep on-device / swap engine / hybrid, with sample hypothesis logs, explicit go/no-go on A-10 and on phone-level availability) are OWNER deliverables, not this ticket's — the platform-asr-adapter ticket blocks on that verdict."
+  ],
+  "pinned_design": "Unit 0 pinned verbatim: time-boxed (<= 1 week) throwaway build, the first work done — a bare-bones Flutter screen, live microphone, one hardcoded sentence, raw hypothesis logging from the platform on-device recognizer (A-10) with contextual biasing enabled. It answers, before Units 4-6 build on them: (1) are on-device word hypotheses granular and reliable enough for the close-enough matcher with young voices? (2) is any usable phone-level detail exposed (needed by Unit 14 sound mode)? Output is a written verdict in-repo with at least 3 children's logged sessions; Unit 4's engine choice cites it. Code is disposable — do not architect it into the main app; the only shared thing is nothing (main app's engine interface is a separate ticket).",
+  "tier": "standard",
+  "notes": "OWNER-COORDINATED: physical device + real children (with parental permission) required; the verdict document is owner-delivered and is NOT a deliverable of this ticket. Native Swift/Kotlin handler files cannot be compiled or tested in this container — Dart side is tested with mocked channels only; native side needs owner device testing. To keep file ownership disjoint, this ticket does NOT edit AppDelegate.swift/MainActivity.kt (owned by platform-asr-adapter): the spike's native handlers are self-contained files plus documented registration snippets in docs/spike/README.md that the owner applies locally when running the spike (acceptable: spike code is ratified-disposable). No mic, no audio in container — all tests are channel-mock based."
+}

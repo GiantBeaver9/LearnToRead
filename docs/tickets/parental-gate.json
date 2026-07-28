@@ -1,0 +1,24 @@
+{
+  "unit": "parental-gate",
+  "title": "Parental gate widget: hold-two-corners + multiplication challenge (Unit 10, leaf)",
+  "prd_refs": ["§8 Unit 10 (gate)", "§9 A-4", "§7 R8"],
+  "deps": ["design-tokens"],
+  "files": [
+    "lib/features/parent/parental_gate.dart",
+    "lib/features/parent/gate_challenge.dart"
+  ],
+  "test_files": [
+    "test/features/parent/parental_gate_test.dart",
+    "test/features/parent/gate_challenge_test.dart"
+  ],
+  "accept": [
+    "Gate mechanism per A-4: stage 1 = hold two opposite screen corners simultaneously for 3 seconds (fake-clock widget test: releasing early or holding one corner never passes); stage 2 = a written multiplication challenge (e.g. two random single/double-digit factors) that must be answered correctly to pass.",
+    "Automated child-plausible interaction never passes: a fuzz widget test performing random taps/drags/multi-taps for many iterations never unlocks the gate (negative property test).",
+    "Wrong challenge answer regenerates a new challenge (no retry on the same product); gate result is a simple callback/Future<bool> the parent-corner route awaits.",
+    "Gate uses design tokens only (token-lint clean) and renders within safe areas in all four layout classes (widget layout tests; [DEVICE] goldens routed to owner).",
+    "The challenge is written (numeric keypad entry), age-appropriate for adults but not pre-readers, and is not bypassable by back-navigation state reuse (re-entering the route requires re-passing; test)."
+  ],
+  "pinned_design": "Unit 10 pinned: parental gate guards the parent corner — hold-to-enter plus a spoken/written age-appropriate challenge satisfying both Apple Kids Category and Google Families requirements. A-4 pins the mechanism: hold-two-corners-for-3-seconds plus a written multiplication challenge — an accepted pattern in both stores; final mechanism is checked against current store policy at build time (post-POC checklist, R8 — recorded, not blocking). The 3-second hold duration is part of A-4; challenge parameters (factor ranges) are builder-mechanical.",
+  "tier": "simple",
+  "notes": "Pure widget + logic, fully headless. Store-policy re-check at eventual public ship is an owner/post-POC item (R8) — record in ticket only. profiles-parent-corner depends on this."
+}

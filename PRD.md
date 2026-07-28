@@ -63,6 +63,11 @@ progress data with no export path), without building any of it now.
   seashells…") as bonus nodes interleaved on the progress map — modeled
   first by recorded narration (files supplied by the product owner), then
   read by the child with extra-forgiving tracking (Unit 14).
+- **Sound Garden — phonetic practice area:** a third child-facing area of
+  grapheme-sound cards (digraphs, vowel teams, diphthongs, r-controlled…)
+  — tap to hear the sound, say it back with forgiving sound-level matching,
+  with example words that appear based on the student's capability
+  (Unit 15).
 - Up to 4 local child profiles; minimal parent corner behind a parental gate,
   including per-child microphone consent and a single pilot progress view
   (stories completed, words that needed help, per child) (Unit 10).
@@ -123,7 +128,10 @@ story packs.
 
 ### Content models (authored, immutable once published)
 
-- **PhonicsSkill** — `id`, `name` (e.g. "short a", "digraph sh"), `sequenceOrder`.
+- **PhonicsSkill** — `id`, `name` (e.g. "short a", "digraph sh"),
+  `sequenceOrder`, `introducesGraphemes: [String]` (the graphemes this skill
+  teaches; the decodability linter's cumulative grapheme set at level N is
+  the union over all skills of levels ≤ N — one shared type, one schema).
   The ordered list is the scope & sequence (Unit 2).
 - **Level** — `id`, `ordinal`, `newSkills: [PhonicsSkill]`, `format`
   (`sentence` | `multiSentence` | `paragraph`), `vocabEnabled: bool`,
@@ -152,6 +160,12 @@ story packs.
   `targetPhonemeId` (the sound it drills), `narrationAudioRef`
   (product-owner-supplied recording), `packId`. Exempt from decodability
   linting (modeled-first content may use above-level words).
+- **GraphemeSound** — `id`, `grapheme` ("oi", "sh"), `phonemeIds` (ordered;
+  plays via the recorded phoneme set), `introducedAtLevelId` (drives
+  awake/muted state in the Sound Garden), `exampleWords:
+  [(wordText, pronunciationAudioRef, minLevelId)]` (a word appears on the
+  card only when the profile's level ≥ its `minLevelId`). Full inventory
+  ships in the binary starter content; example words extend via packs.
 - **StoryPack** — `id`, `version`, `minAppVersion`, manifest of stories +
   twisters + assets, signed checksum.
 
@@ -175,7 +189,8 @@ near-miss acceptances are deliberately distinguishable so pilot data shows
 where "close enough" is doing the work), `help_given` (tier),
 `story_completed`, `story_abandoned`,
 `vocab_card_opened`, `collectible_earned`, `twister_started`,
-`twister_completed`. Events carry a random per-install
+`twister_completed`, `sound_card_played`, `sound_card_echo`
+(matched: bool). Events carry a random per-install
 ID and profile ordinal only — never names, audio, or device identifiers.
 
 ## 6. Constraints & dependencies
@@ -291,7 +306,8 @@ critical path.
   animation stage; in landscape they sit side-by-side (book-like), in
   portrait stacked text-above-stage.
 - All child-facing navigation is icon + voice prompt; no reading required to
-  navigate. Child-facing screens: Home/progress map, Reading, Collection.
+  navigate. Child-facing screens: Home/progress map, Reading, Collection,
+  Sound Garden (Unit 15).
 - App shell: Flutter, Riverpod for state (A-2), go_router navigation,
   Rive runtime. Product owner co-develops frontend; design tokens
   (colors, type scale, spacing, motion durations) live in one Dart file
@@ -412,7 +428,13 @@ critical path.
   SFSpeechRecognizer with `contextualStrings`, Android SpeechRecognizer
   with biasing), validated by the Unit 0 spike. A cloud engine may
   substitute behind the same interface if on-device hypotheses prove too
-  coarse — the hybrid matching layer does not change.
+  coarse — the hybrid matching layer does not change. Post-spike engine
+  candidates should prefer **phonetically-informed encoders**
+  (KidSpeak-style multi-head Whisper — dual orthographic+phonetic decoder
+  training with contrastive alignment — cuts phonetic error rate ~15% and
+  materially improves child transcription vs stock Whisper); the engine
+  seam's phone-level hypothesis surface anticipates exactly this class of
+  engine.
 - The engine adapter surfaces phone-level detail where the engine provides
   it; the matcher runs in **word mode** (stories — close-enough word
   acceptance) or **sound mode** (tongue twisters, Unit 14 — phoneme-sequence
@@ -427,9 +449,11 @@ critical path.
   (on-device/cloud/tap) is invisible above this interface.
 - If a metered cloud engine is in use: per-profile daily minute cap
   (default A-7); when reached, silently switch to on-device.
-- Microphone lifecycle: mic active only on the reading screen; a small,
-  non-alarming "listening" indicator (design system) is always visible while
-  the mic is open.
+- Microphone lifecycle: mic active only during active reading/practice
+  interactions — the reading screen, tongue-twister nodes (Unit 14), and
+  Sound Garden echo (Unit 15); never on navigation or parent screens. A
+  small, non-alarming "listening" indicator (design system) is always
+  visible while the mic is open.
 
 **Acceptance**
 - Matching-layer unit tests need no audio: hypothesis strings vs expected
@@ -816,6 +840,50 @@ proposed with flagged choice points, ratified during spec walkthrough)
 
 ---
 
+### Unit 15 — Sound Garden (phonetic practice area)
+
+**Pinned design** (ratified by product owner)
+- A third child-facing area alongside the progress map and collection: an
+  illustrated, browsable space of grapheme-sound cards covering the full
+  scope & sequence grapheme inventory (short vowels, digraphs, blends,
+  vowel teams, diphthongs like oi/ou, r-controlled).
+- Card face: the letter combination rendered large in the reading typeface.
+  Tap → the recorded human phoneme audio plays (grapheme's `phonemeIds` in
+  order, gapless). Then a gentle prompt invites the child to **say it
+  back**, scored with sound-level matching (the twister threshold set,
+  Unit 4 sound mode); a match earns a warm sparkle. The echo is optional
+  and there is no failure state — a card never says "wrong"; the child can
+  just listen.
+- Visibility (ratified): **all cards visible from day one** — curious kids
+  can explore ahead. Cards whose grapheme is introduced at or below the
+  profile's current level render "awake"; ahead-of-level cards are present
+  but muted. Muted cards are still fully tappable and echoable.
+- **Example words appear based on the student's capability (ratified):**
+  each card lists example words using the grapheme, showing only those with
+  `minLevelId` ≤ the profile's current level; more words surface as the
+  child's level rises. Tapping an example word plays its pronunciation
+  audio and highlights the grapheme within the word.
+- No completion state, no collectibles, no progression mechanics — this is
+  a free practice space. Practice is observed via `sound_card_played` /
+  `sound_card_echo` analytics only.
+- Fully offline: phoneme audio and the grapheme inventory ship in the
+  binary; example-word audio arrives with story packs (a card with no
+  downloaded example-word audio shows the words it has audio for).
+
+**Acceptance**
+- Card grid renders the full fixture inventory with awake/muted state
+  exactly matching the profile's level (widget tests; golden tests for the
+  four layout classes [DEVICE]).
+- Tap plays the mapped phoneme refs in order (fake audio service asserts);
+  echo path routes through the sound-mode matcher with the twister
+  threshold set; match → sparkle state; non-match → no negative state
+  (integration tests with fake engine).
+- Example-word filtering matches fixture `minLevelId` data exactly as the
+  profile level changes; tapping a word plays its audio ref.
+- Events emitted per §5 with correct payloads (schema tests).
+
+---
+
 ## 9. Assumptions (proceeding on these; override any of them)
 
 - **A-1:** English (US) only; single narrator voice gender/character chosen
@@ -846,8 +914,52 @@ proposed with flagged choice points, ratified during spec walkthrough)
   `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
   Unit 4's engine interface if its hypotheses prove too coarse.
 - **A-11:** Listen-first narration plays without per-word karaoke
-  highlighting in v1 (word-sync timing data is a post-POC enhancement);
-  pack build requires `narrationAudioRef` for every sentence-format story.
+  highlighting in v1 (word-sync timing data is a post-POC enhancement;
+  when built, timing extraction should use a FASA-style forced aligner —
+  KidSpeak's Flexible and Automatic Speech Aligner tolerates imperfect
+  transcripts and beats human annotation by ~13.6× on children's-speech
+  alignment — run at pack-build time over the owner's narration
+  recordings); pack build requires `narrationAudioRef` for every
+  sentence-format story.
+- **A-12:** `struggleDetected` default semantics: (a) two consecutive
+  finalized hypothesis bursts containing speech that fails to match the
+  current word, or (b) sustained silence ≥ T1. Tunable in the tuning file.
+- **A-13:** Sound-mode (twister/Sound Garden) default thresholds: accept
+  when ≥ 60% of the target phoneme sequence is matched with per-phoneme
+  distance ≤ 1, target-phoneme instances weighted double. Tunable in the
+  tuning file. **Per-phoneme metric (clarified with A-18):** distance is 0
+  for an identical phoneme, 0.5 for an A-18-confusable pair, and 2
+  otherwise — the ≤ 1 gate therefore admits exactly identity and
+  confusable productions. A clearly wrong sound ("Z" for "SH") earns no
+  position credit and no sparkle; a child-typical confusion still passes.
+  This keeps sound mode true to the ratified intent (the app listens for
+  the SOUNDS) without failing children on confusable productions.
+- **A-14:** Analytics word hash: SHA-256 of the lowercased word text,
+  truncated to 16 hex chars.
+- **A-15:** Pack integrity v1: SHA-256 checksum listed in the catalog
+  (§5 "signed checksum" is satisfied by this in v1; cryptographic signing
+  is post-POC hardening).
+- **A-16:** Pack-build Rive state-machine validation uses a declared-inputs
+  sidecar JSON committed alongside each `.riv` (authoritative for
+  validation); runtime introspection may supplement where available.
+- **A-17:** Audio playback plugin: `just_audio` (+ `audio_session`), added
+  centrally to pubspec by the orchestrator; low-latency phoneme sequencing
+  per Unit 13 measured against it on device.
+- **A-18 (KidSpeak-informed, ratified):** Recognition errors must never
+  fail a child — the product passes children on reading ability, not on
+  ASR accuracy. Standard ASR is documented to hallucinate fluent-but-wrong
+  text on children's speech (KidSpeak, arXiv:2512.05994: Whisper renders a
+  4-year-old's "looking at the frog" as "recognize the fog… grab this
+  egg?"). Therefore the phoneme-distance metric uses a
+  **confusability-weighted cost table** (tunable, in the tuning file):
+  substitutions along documented child-speech and child-ASR confusion axes
+  cost 0.5 instead of 1 — gliding (R/L → W), stopping (TH → D/T, DH → D),
+  th-fronting (TH → F, DH → V), velar fronting (K → T, G → D), voicing
+  pairs (P/B, T/D, K/G, F/V, S/Z), and labial/fricative acoustic
+  confusions (W ↔ F, e.g. "while" heard as "file"). Acceptance widens
+  exactly along the axes children and child-ASR actually confuse and
+  nowhere else; all other costs and thresholds are unchanged. Story
+  completion remains the only summative outcome and is always reachable.
 
 ## 10. Open questions (block their units, not the whole build)
 
@@ -867,8 +979,18 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - **OQ-4 (blocks Unit 3 art commissions):** Illustrator/animator sourcing
   and budget per story; style guide contract deliverable defined in Unit 1.
 - **OQ-5 (content):** Final scope & sequence table (which skills at which
-  level, heart-word lists) — authored in Unit 3, reviewed by product owner
-  before story writing begins.
+  level, heart-word lists, grapheme inventory + example words for the Sound
+  Garden) — authored in Unit 3, reviewed by product owner before story
+  writing begins.
+- **OQ-6 (blocks pilot distribution, not build):** Hosting choices — the
+  anonymous-analytics endpoint (A-5) and the pack CDN/catalog host. Units
+  build and test against local fixture servers.
+- **OQ-7 (blocks pilot distribution, not build):** Privacy policy, contact,
+  and licenses URLs for the parent corner; placeholders until supplied.
+- **OQ-8 (blocks the owner token-review gate, not unit builds):** Final
+  typeface selections (early-reader reading face, display face) and
+  concrete design-token values — builders use placeholder tokens behind
+  the pinned token interface until the owner's Unit 1 sign-off.
 
 ---
 

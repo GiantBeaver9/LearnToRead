@@ -1,0 +1,31 @@
+{
+  "unit": "celebration-sequence",
+  "title": "Celebration: Rive celebrate, narrated read-back, collectible grant + flight, skip (Unit 8)",
+  "prd_refs": ["§8 Unit 8", "§5 Collectible", "§5 CollectionState", "§8 Unit 1 (motion tokens)", "§9 A-6", "§5 Analytics events"],
+  "deps": ["design-tokens", "domain-models", "audio-playback", "local-storage", "analytics"],
+  "files": [
+    "lib/features/celebration/celebration_controller.dart",
+    "lib/features/celebration/celebration_view.dart",
+    "lib/features/celebration/collectible_flight.dart"
+  ],
+  "test_files": [
+    "test/features/celebration/celebration_controller_test.dart",
+    "test/features/celebration/replay_test.dart",
+    "test/features/celebration/skip_test.dart",
+    "test/features/celebration/narrated_readback_test.dart"
+  ],
+  "accept": [
+    "On story completion the controller fires the 'celebrate' input on the story's StoryStage (FakeStoryStage assertion) and plays celebration audio: happy musical sting + ONE recorded celebration voice line chosen by rotation from the fixed recorded set so it does not repeat verbatim every story (test: consecutive celebrations pick different lines until the set cycles).",
+    "Narrated read-back: where the story has narration audio (all sentence-format levels), the fluent narration replays over the START of the animation; absent at levels without narration (both cases tested via FakeAudioService — transcribed acceptance).",
+    "Fixture-story integration test: completion triggers celebrate input, read-back per narration presence, celebration audio plays, collectible persisted to CollectionState, then navigation returns to the map with the next story highlighted (navigation via injected callback; transcribed acceptance).",
+    "Replay of a completed story plays the FULL animation + celebration audio but grants no second collectible (first-completion-only; test over local-storage idempotent grant).",
+    "After the animation the earned collectible flies to the collection icon using the Unit 1 motion token, then return-to-map; total post-completion sequence <= 10 s (fake-clock assertion on the sequence budget).",
+    "Skippable by tap after the first 2 s; skip before 2 s does nothing; skipping still persists the collectible (tests, transcribed acceptance).",
+    "collectible_earned and story_completed analytics emitted (recording fake).",
+    "Rive-input validation is pack-build's (build-time, not runtime) — this controller assumes valid inputs and never special-cases a story (asserted: controller API takes only the StoryStage contract).",
+    "[DEVICE] Stage holds 60 fps during celebration on min-spec devices (A-6), measured in profile mode and recorded in repo — owner task; headless proxy: controller performs no synchronous work over one frame budget during sequence transitions (test with fake clock timeline)."
+  ],
+  "pinned_design": "Unit 8 pinned: completion plays the story's hand-authored Rive animation depicting what the child just read, synchronized with celebration audio (sting + one rotated recorded voice line). Narrated read-back ratified: narration replays over the start of the animation where narration exists; skipped otherwise. Replay ratified: re-reading a completed story ends with the full animation + celebration audio; collectible granted only on first completion. The stage is present during reading showing the idle scene (same artboard, idle state machine) so the payoff transforms the scene in place — idle display is reading-screen's; this ticket drives celebrate/collect. Post-completion: collectible flies to the collection icon (Unit 1 motion token), then back to map with next story highlighted; total <= 10 s; skippable by tap after 2 s. Rive contract: every story artboard exposes idle/celebrate/collect — app code never special-cases a story.",
+  "tier": "standard",
+  "notes": "No real Rive files or audio in container: FakeStoryStage + FakeAudioService throughout; real rendering + the 60fps measurement are [DEVICE]/owner. Celebration-line rotation state can be in-memory per session (PRD pins 'rotated randomly so it doesn't repeat verbatim every story' — implement as shuffle-cycle). Map highlight of next story is delivered via the return-navigation callback payload; progress-map renders it."
+}

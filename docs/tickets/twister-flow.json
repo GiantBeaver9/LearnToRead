@@ -1,0 +1,33 @@
+{
+  "unit": "twister-flow",
+  "title": "Tongue-twister boosters: narration-modeled, sound-mode tracking, sparkle celebration (Unit 14)",
+  "prd_refs": ["§8 Unit 14", "§5 TongueTwister", "§5 TwisterProgress", "§8 Unit 4 (sound mode)", "§9 A-13", "§5 Analytics events"],
+  "deps": ["design-tokens", "domain-models", "listening-contracts", "word-matcher", "word-state-machine", "audio-playback", "local-storage", "analytics"],
+  "files": [
+    "lib/features/twister/twister_screen.dart",
+    "lib/features/twister/twister_controller.dart",
+    "lib/features/twister/sparkle_celebration.dart",
+    "lib/features/twister/faster_pass.dart"
+  ],
+  "test_files": [
+    "test/features/twister/twister_flow_test.dart",
+    "test/features/twister/sound_mode_config_test.dart",
+    "test/features/twister/faster_pass_test.dart",
+    "test/features/twister/no_collectible_test.dart"
+  ],
+  "accept": [
+    "Flow (transcribed): booster node opened → recorded narration models the twister (owner-supplied audio ref) BEFORE listening begins → child reads with green-word tracking → playful sparkle celebration; narration-before-listening asserted via FakeAudioService + tracker start ordering.",
+    "Tracking uses SOUND-LEVEL matching (ratified): the matcher runs in sound mode against the twister's phoneme sequence with the drilled targetPhonemeId's instances weighted most; producing the sounds advances the tracker even if word recognition would fail (scripted phone-hypothesis test); where the engine exposes only word hypotheses, the sound-mode approximation path is used (scripted word-hypothesis test).",
+    "Word tracking uses the twister threshold set, not the story set — asserted via matcher config injection (transcribed acceptance).",
+    "Completion writes TwisterProgress (timesCompleted incremented) and grants NO collectible (collectibles remain story-tied; no_collectible_test asserts CollectionState untouched — transcribed acceptance).",
+    "twister_started and twister_completed analytics emitted (recording fake).",
+    "Optional second pass: after completion, a 'say it again — a little faster!' prompt offers ONE replay round; purely optional and skippable; no extra reward; its completion is NOT required for the node to be marked done (transcribed acceptance tests: offered once, skippable, done-state independent).",
+    "Sparkle celebration is playful but distinct from story celebration: no Rive story artboard, no collectible flight (widget test).",
+    "Twisters are always replayable (re-entry allowed after completion; timesCompleted increments).",
+    "Runtime orchestration is owned by twister_controller: it runs the engine+sound_mode_scorer loop directly (echo_session pattern; real engine injected by app-shell via provider) — it does NOT depend on listening-tracker; asserted by construction with a FakeAsrEngine driving the controller.",
+    "Never hard-blocked (§6 transcription): with micConsent off or on engine failure, the twister node remains completable via listen-then-tap (narration plays, child taps words to advance); tests assert completion path exists with engine absent and with consent off."
+  ],
+  "pinned_design": "Unit 14 pinned: a TongueTwister is an enunciation booster distinct from stories — goal is clear, confident speech, not decoding; each targets one phoneme and is alliterative around it. Flow: node opened → narration models it (owner-supplied recording) → child reads with green-word tracking driven by sound-level matching (ratified: matcher listens for the SOUNDS, not word identity — phoneme sequence is the target, drilled phoneme weighted most); thresholds are a separate looser set in the tuning file (practice saying, not proof of decoding) → playful sparkle celebration; no collectible; completion recorded in TwisterProgress. Sound mode consumes phone-level hypotheses from the Unit 4 engine interface; word-hypothesis-only engines are approximated by phonetic-distance scoring (whether platform engines expose phone detail is a Unit 0 spike question). Optional single 'faster' second pass, skippable, no extra reward. Placement on the map (≈1 per 3 stories, level-tagged, unlocked with level, always replayable) is rendered by progress-map-collection; pack validation (narration + targetPhonemeId required, decodability exempt) is pack-build-cli's.",
+  "tier": "hard",
+  "notes": "Validator fix applied: controller owns the engine+scorer loop (no listening-tracker dep) and consent/failure fallback is pinned to listen-then-tap. Fully headless via FakeAsrEngine + FakeAudioService + in-memory Drift. Reuses word-state-machine for green-word visual tracking and word-matcher's sound_mode_scorer — do not fork matcher logic. Twister threshold defaults are pinned by A-13 (former OD-1 resolved: >= 60% of sequence matched at per-phoneme distance <= 1, target phoneme weighted double), read from the tuning file. If the Unit 0 spike verdict reports no usable phone-level detail, the approximation path becomes the primary on-device path — flag to orchestrator when the verdict lands."
+}
