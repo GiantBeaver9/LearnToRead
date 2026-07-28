@@ -878,9 +878,16 @@ proposed with flagged choice points, ratified during spec walkthrough)
   Tap → the recorded human phoneme audio plays (grapheme's `phonemeIds` in
   order, gapless). Then a gentle prompt invites the child to **say it
   back**, scored with sound-level matching (the twister threshold set,
-  Unit 4 sound mode); a match earns a warm sparkle. The echo is optional
-  and there is no failure state — a card never says "wrong"; the child can
-  just listen.
+  Unit 4 sound mode). The echo is optional and there is no failure state —
+  a card never says "wrong"; the child can just listen.
+- **Practice loop (RATIFIED 2026-07-28, supersedes the one-shot "warm
+  sparkle" line; details in `docs/design/mockup-spec.md` §10a):** while
+  the card listens, the grapheme renders **amber** ("saying now"
+  semantics); on a scorer match it turns **green for 1 s with a small
+  confetti burst**, then **resets to amber with a fresh echo attempt** —
+  unlimited reps for practice. The card carries the Unit 5 bottom-right
+  page-curl dog-ear, **always enabled**, to turn to the next card in the
+  garden's order (wrapping) — advancing never requires success.
 - Visibility (ratified): **all cards visible from day one** — curious kids
   can explore ahead. Cards whose grapheme is introduced at or below the
   profile's current level render "awake"; ahead-of-level cards are present

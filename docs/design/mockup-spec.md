@@ -167,6 +167,41 @@ Full-screen non-interactive overlay, z-top, plays on story completion:
    `tokensAreOwnerSignedOff` stays `false` until the owner sees it on
    device and says so.
 
+## 10a. Sound Garden practice card (OWNER ADDITION, 2026-07-28)
+
+> "we need a good design for dipthongs and sounding out letters, that are
+> amber then turn green for a second when they're recognized, confetti,
+> then reset (but allow turning to the next one) for practice"
+
+The Sound Garden card (any `GraphemeSound` — single letters, digraphs,
+diphthongs) becomes an infinite practice loop:
+
+- **Card face**: the letter combination huge in Literata on the standard
+  parchment card (§3 surface); below it the example words (existing
+  behavior unchanged).
+- **Live/awaiting state**: the grapheme renders **amber**
+  (`wordCurrentInk` `#D79A3C`) whenever the card is listening for the
+  child's echo — the same "saying now" semantics as the reading screen.
+- **Recognition**: when the sound-mode scorer accepts (existing A-13
+  threshold, unchanged), the grapheme turns **read-green** and a small
+  confetti burst plays (ConfettiOverlay, intensity 1, seeded from card id
+  + rep count so each rep's confetti differs deterministically).
+- **Reset**: after ~1 s of green (pinned: 1000 ms hold), the card resets
+  to amber with a fresh echo attempt — unlimited reps, this is practice.
+  No failure state exists (unchanged invariant: wrong/no sound simply
+  keeps listening).
+- **Next card**: the practice card carries the §8 **bottom-right
+  page-curl dog-ear, always enabled** — turning to the next sound never
+  requires success (practice, not a gate). Forward through the garden's
+  existing card order, wrapping at the end.
+- Mic lifecycle, phoneme model playback, and scorer tuning are all
+  unchanged — this is a presentation-loop change only, plus the
+  rep-reset (one new fresh `EchoSession` per rep).
+
+Frozen Sound Garden tests that pin "accept is terminal for the card" or
+single-attempt semantics are superseded by this ruling; amendments carry
+provenance comments and orchestrator review, like §9.
+
 ## 10. What the prototype contains that the app does NOT copy
 
 - The level-pill header (Ages 4–6/6–8/8–10 switcher) — prototype chrome;
