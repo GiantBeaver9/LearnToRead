@@ -266,6 +266,12 @@ Future<void> _drainSequentialPlayback(
     audioService.completePlayback(playEntries[drained].handle);
     drained++;
   }
+  // Orchestrator test-fix: two pumps, not one. The completion delivered
+  // above resolves during the next pump's microtask flush, which runs
+  // after that pump's hasScheduledFrame check - a setState fired there
+  // (engine start, listening marker) can only render on a second pump.
+  // Same framework constraint fixed in spike_channel_test (929dc3b).
+  await tester.pump();
   await tester.pump();
 }
 
@@ -390,7 +396,15 @@ void main() {
         'and the engine is started; a matching hypothesis earns the '
         'sparkle', (tester) async {
       final audioService = FakeAudioService();
-      final echoEngine = FakeAsrEngine(script: [_phones(const ['SH'])]);
+      // Orchestrator test-fix: with zero delivery delay the SH hypothesis
+      // resolves in the same microtask flush as engine.start, so the
+      // pinned intermediate state (prompt visible, sparkle absent) is
+      // unobservable. Deliver on the fake's own timer; pumpAndSettle
+      // then advances it to the match.
+      final echoEngine = FakeAsrEngine(
+        script: [_phones(const ['SH'])],
+        delayBetweenHypotheses: const Duration(milliseconds: 50),
+      );
       await tester.pumpWidget(_wrap(SoundGardenScreen(
         profile: _profile(micConsent: true),
         profileOrdinal: 1,
