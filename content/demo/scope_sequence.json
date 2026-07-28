@@ -1,0 +1,127 @@
+{
+  "levels": [
+    {
+      "id": "level.demo.1",
+      "ordinal": 1,
+      "format": "sentence",
+      "vocabEnabled": false,
+      "skills": [
+        {
+          "id": "skill.demo.satpin",
+          "name": "s a t p i n c",
+          "sequenceOrder": 1,
+          "introducesGraphemes": [
+            "s",
+            "a",
+            "t",
+            "p",
+            "i",
+            "n",
+            "c"
+          ]
+        }
+      ],
+      "heartWords": [
+        "the",
+        "The"
+      ]
+    },
+    {
+      "id": "level.demo.2",
+      "ordinal": 2,
+      "format": "multiSentence",
+      "vocabEnabled": false,
+      "skills": [
+        {
+          "id": "skill.demo.set2",
+          "name": "m d g o e h r u b f l",
+          "sequenceOrder": 2,
+          "introducesGraphemes": [
+            "m",
+            "d",
+            "g",
+            "o",
+            "e",
+            "h",
+            "r",
+            "u",
+            "b",
+            "f",
+            "l"
+          ]
+        },
+        {
+          "id": "skill.demo.digraphs",
+          "name": "sh ck ll ss",
+          "sequenceOrder": 3,
+          "introducesGraphemes": [
+            "sh",
+            "ck",
+            "ll",
+            "ss"
+          ]
+        }
+      ],
+      "heartWords": []
+    },
+    {
+      "id": "level.demo.3",
+      "ordinal": 3,
+      "format": "paragraph",
+      "vocabEnabled": true,
+      "skills": [
+        {
+          "id": "skill.demo.set3",
+          "name": "w y z j v k",
+          "sequenceOrder": 4,
+          "introducesGraphemes": [
+            "w",
+            "y",
+            "z",
+            "j",
+            "v",
+            "k"
+          ]
+        },
+        {
+          "id": "skill.demo.vowel-teams",
+          "name": "ee ea ay ai oa ar or th ng zz",
+          "sequenceOrder": 5,
+          "introducesGraphemes": [
+            "ee",
+            "ea",
+            "ay",
+            "ai",
+            "oa",
+            "ar",
+            "or",
+            "th",
+            "ng",
+            "zz",
+            "re"
+          ]
+        }
+      ],
+      "heartWords": [
+        "to",
+        "To",
+        "of",
+        "Of"
+      ]
+    }
+  ],
+  "stories": [
+    {
+      "id": "story.demo.cat",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.ship",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.garden",
+      "levelId": "level.demo.3"
+    }
+  ]
+}
