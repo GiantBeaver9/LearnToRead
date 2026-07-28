@@ -19,6 +19,7 @@ library;
 import 'package:learn_to_read/domain/tuning.dart';
 import 'package:learn_to_read/features/flashcards/flashcard_deck.dart';
 import 'package:learn_to_read/features/flashcards/flashcard_progress.dart';
+import 'package:learn_to_read/features/flashcards/phonics_first_order.dart';
 
 /// The exactly-two grades a child can give a card (PRD §8 Unit 16
 /// "Grading: exactly two buttons" — amber "practice again", green "got
@@ -82,13 +83,22 @@ bool isDueAt(FlashcardProgress? progress, DateTime at) =>
 /// [isDueAt], in deck (first-appearance) order. [progressByKey] maps
 /// `cardKey` -> stored progress; cards absent from it are new (box 1, due
 /// now).
+///
+/// [cumulativeGraphemes] is the OPTIONAL phonics-first ordering input (PRD
+/// §8 Unit 16 speech-first layer): when non-null, the due cards are
+/// reordered by [phonicsFirstOrder] — decodable-at-level first,
+/// ahead-of-level after, stable within each group. When null the deck
+/// order stands unchanged (the committed scaffold behavior).
 List<FlashcardCard> dueCardsAt({
   required FlashcardDeck deck,
   required Map<String, FlashcardProgress> progressByKey,
   required DateTime at,
+  Set<String>? cumulativeGraphemes,
 }) {
-  return [
+  final due = [
     for (final card in deck.cards)
       if (isDueAt(progressByKey[card.cardKey], at)) card,
   ];
+  if (cumulativeGraphemes == null) return due;
+  return phonicsFirstOrder(due, cumulativeGraphemes);
 }

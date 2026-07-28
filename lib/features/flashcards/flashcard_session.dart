@@ -47,4 +47,18 @@ class FlashcardSession {
       _queue.add(card);
     }
   }
+
+  /// Advances past [current] WITHOUT grading it (PRD §8 Unit 16 speech-first
+  /// layer, ratified 2026-07-28: "a horizontal swipe advances to the next
+  /// card at any time — never gated on success"). The card rotates to the
+  /// END of the queue: no box/dueAt write happens anywhere, so it stays due
+  /// and still owed a rep this session — swiping can never complete the
+  /// session (completion, and its confetti, stay grade-only).
+  ///
+  /// A no-op on a completed or single-card queue (with one card, the "next"
+  /// card is the same card).
+  void skipCurrent() {
+    if (_queue.length < 2) return;
+    _queue.add(_queue.removeAt(0));
+  }
 }

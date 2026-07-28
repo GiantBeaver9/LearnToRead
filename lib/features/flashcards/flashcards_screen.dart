@@ -19,6 +19,30 @@
 //                          the reading screen / Sound Garden use)
 //      - dao:              `appDatabase.flashcardsDao`
 //      - now:              `systemClock` (features/analytics/event_schema.dart)
+//      - echoEngine:       the app's `AsrEngine` provider — ONLY when
+//                          `profile.micConsent` (mirror Sound Garden's
+//                          consent gate); pass null for listen-only mode
+//                          and the screen stays exactly the manual
+//                          scaffold
+//      - buildEchoAttempt: a closure returning `EchoSession(engine: ...,
+//                          <matcher>)` where <matcher> is the sound-mode
+//                          matcher over `sequence` drilling
+//                          `targetPhonemeId`, constructed exactly as Sound
+//                          Garden's builder wiring constructs its own (see
+//                          sound_garden_screen.dart's builder param and
+//                          echo_session.dart's constructor). The matcher is
+//                          injected rather than built here because this
+//                          feature's frozen structural scan bans naming
+//                          any v1 point-tally concept anywhere in
+//                          lib/features/flashcards sources, and the
+//                          matcher type's own name contains one; the screen
+//                          still owns WHAT is listened for (the card's
+//                          phoneme sequence + first-phoneme target)
+//      - cumulativeGraphemes: `cumulativeGraphemeSet(levels: levels,
+//                          levelId: profile.currentLevelId)`
+//                          (lib/pipeline/cumulative_grapheme_set.dart,
+//                          pure) — the phonics-first deck-ordering input;
+//                          null keeps plain deck order
 //  * lib/data/db/daos/profiles_dao.dart — extend `deleteProfile`'s erasure
 //    cascade with the FlashcardProgressRows table (PRD §8 Unit 10 "deleting
 //    a profile erases all its local data"); `FlashcardsDao.eraseProfile`
@@ -44,6 +68,35 @@
 //    again" is amber, copy stays warm, reps are their own reward in v1
 //    (test/features/flashcards/no_negative_state_test.dart scans this
 //    directory for banned lexemes).
+//
+// SPEECH-FIRST LAYER (PRD §8 Unit 16 "Speech-first", RATIFIED 2026-07-28;
+// docs/design/mockup-spec.md §10b):
+//
+//  * LISTENING: while the FRONT shows and `echoEngine` is provided, a
+//    fresh echo attempt (Sound Garden's `EchoSession` pattern, sound-mode
+//    over the card's phoneme sequence — crediting the SOUNDS, not word
+//    identity) runs via `buildEchoAttempt`. Flipping to the back stops the
+//    attempt; flipping home starts a fresh one. With `echoEngine` null the
+//    screen is exactly the manual scaffold above.
+//  * ACCEPT -> the word IMPRESSES: text turns read-green with a subtle
+//    scale swell, an intensity-1 `ConfettiOverlay` bursts (seed =
+//    [flashcardConfettiSeed] over card key + per-card visit count, so each
+//    visit's burst differs deterministically), and a "got it" grade is
+//    recorded through the SAME dao/scheduler path as the green button.
+//    After [kSoundGardenGreenHold] (reused — the same treatment family as
+//    Sound Garden's green hold) the session advances by the existing
+//    got-it path. The echo attempt is stopped the moment it accepts.
+//  * SWIPE: a horizontal drag past a small threshold advances at ANY time
+//    (front or back, accepted or not — success never gates). Without a
+//    grade nothing is written: the card rotates to the end of the session
+//    queue and stays due. A live attempt is stopped cleanly first.
+//  * SWIPE CUES (owner refinement 2026-07-28): the card is never static —
+//    a gentle repeating horizontal sway (±6 px, ease-in-out, 1.6 s period)
+//    plus a faint outline chevron at the trailing edge give the impression
+//    to swipe. Both cues are suppressed during the impress hold.
+//  * ORDERING: the optional `cumulativeGraphemes` set orders the session
+//    queue phonics-first (decodable-at-level before ahead-of-level; see
+//    phonics_first_order.dart) — null keeps plain deck order.
 library;
 
 import 'dart:async';
@@ -54,6 +107,7 @@ import 'package:learn_to_read/design/confetti.dart';
 import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/data/db/daos/flashcards_dao.dart';
+import 'package:learn_to_read/domain/tuning.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
 import 'package:learn_to_read/features/audio/phoneme_sequencer.dart';
 import 'package:learn_to_read/features/flashcards/flashcard_deck.dart';
@@ -61,6 +115,42 @@ import 'package:learn_to_read/features/flashcards/flashcard_progress.dart';
 import 'package:learn_to_read/features/flashcards/flashcard_session.dart';
 import 'package:learn_to_read/features/flashcards/flip_card.dart';
 import 'package:learn_to_read/features/flashcards/leitner_scheduler.dart';
+import 'package:learn_to_read/features/listening/contracts/asr_engine.dart';
+import 'package:learn_to_read/features/sound_garden/echo_session.dart';
+
+/// Builds one fresh echo attempt for one card visit: an [EchoSession] over
+/// [engine] and a NEW sound-mode matcher for [phonemeSequence] drilling
+/// [targetPhonemeId] (see the WIRING block for why the matcher is injected
+/// rather than constructed here). Called once per attempt — a used
+/// attempt's accepted state is monotone and is never reused, mirroring
+/// Sound Garden's fresh-per-rep rule.
+typedef FlashcardEchoAttemptBuilder = EchoSession Function(
+  AsrEngine engine,
+  List<String> phonemeSequence,
+  String targetPhonemeId,
+);
+
+/// The echo target for [card]: its `graphemePhonemeMap` phoneme ids in
+/// order. Silent letters (empty phonemeId, e.g. the "e" in "cake") carry
+/// no sound to say, so they contribute nothing to the sequence.
+List<String> flashcardEchoPhonemeSequence(FlashcardCard card) => [
+      for (final entry in card.graphemePhonemeMap)
+        if (entry.phonemeId.isNotEmpty) entry.phonemeId,
+    ];
+
+/// Deterministic confetti seed for one accepted card visit: a stable
+/// FNV-1a hash of [cardKey]'s code units mixed with [visit] (the per-card
+/// visit count this session). Deliberately NOT `Object.hash` /
+/// `String.hashCode`, whose values may vary between runs — equal inputs
+/// must replay the identical burst (same rule as Sound Garden's per-rep
+/// seed).
+int flashcardConfettiSeed(String cardKey, int visit) {
+  var hash = 0x811C9DC5;
+  for (final unit in cardKey.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0x7FFFFFFF;
+  }
+  return hash ^ visit;
+}
 
 /// The phonics-flashcards screen (PRD §8 Unit 16). See the WIRING block at
 /// the top of this file for how the shell constructs it.
@@ -74,7 +164,14 @@ class FlashcardsScreen extends StatefulWidget {
     required this.dao,
     required this.now,
     this.confettiSeed,
-  });
+    this.echoEngine,
+    this.buildEchoAttempt,
+    this.cumulativeGraphemes,
+  }) : assert(
+          (echoEngine == null) == (buildEchoAttempt == null),
+          'echoEngine and buildEchoAttempt ship together: the engine is '
+          'what listens, the builder is how each attempt is constructed',
+        );
 
   /// The active profile's `Profile.localId` — scopes all persistence.
   final String profileId;
@@ -98,6 +195,24 @@ class FlashcardsScreen extends StatefulWidget {
   /// at session start, so the celebration is stable within a session and
   /// deterministic under test.
   final int? confettiSeed;
+
+  /// The OPTIONAL ASR engine the speech-first layer listens through (PRD
+  /// §8 Unit 16 "Speech-first"). Null = the manual scaffold, unchanged:
+  /// no attempt is ever constructed and the engine seam is never touched.
+  /// The wiring passes the engine only with `profile.micConsent`, mirror of
+  /// Sound Garden's consent gate.
+  final AsrEngine? echoEngine;
+
+  /// Constructs each fresh echo attempt (see [FlashcardEchoAttemptBuilder]
+  /// and the WIRING block). Required exactly when [echoEngine] is given.
+  final FlashcardEchoAttemptBuilder? buildEchoAttempt;
+
+  /// The OPTIONAL phonics-first ordering input: the profile's cumulative
+  /// grapheme set (the SET itself, not the profile — this feature stays
+  /// decoupled from levels). When non-null the session queue puts
+  /// decodable-at-level cards before ahead-of-level ones (stable within
+  /// groups); when null the deck order stands.
+  final Set<String>? cumulativeGraphemes;
 
   @override
   State<FlashcardsScreen> createState() => _FlashcardsScreenState();
@@ -124,10 +239,45 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   bool _confettiPlaying = false;
   bool _confettiSpent = false;
 
+  // --- Speech-first layer state (see the SPEECH-FIRST LAYER doc block) ---
+
+  /// The live echo attempt for the current card visit, or null when
+  /// nothing is listening (no engine, back showing, impress hold, or the
+  /// attempt already accepted).
+  EchoSession? _echoAttempt;
+
+  /// Per-card visit counter this session (first visit = 1): incremented
+  /// each time a card takes the front of the queue. Feeds
+  /// [flashcardConfettiSeed] so each visit's accepted burst differs.
+  final Map<String, int> _visitCounts = {};
+
+  /// The card key currently holding its impress (green flash) window, with
+  /// that visit's confetti seed; null outside the hold.
+  String? _impressedCardKey;
+  int? _impressConfettiSeed;
+
+  /// The [kSoundGardenGreenHold] timer from accept to auto-advance.
+  Timer? _impressTimer;
+
+  /// Cumulative horizontal drag distance of the in-flight swipe gesture.
+  double _swipeDx = 0;
+
+  /// How far a horizontal drag must travel to count as the §10b advance
+  /// swipe. A gesture-recognition distance (like page_curl.dart's own drag
+  /// threshold), not a behavior-pacing tuning constant.
+  static const double _swipeAdvanceDistance = 56.0;
+
   @override
   void initState() {
     super.initState();
     unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    _impressTimer?.cancel();
+    _stopEchoAttempt();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -142,9 +292,124 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           deck: widget.deck,
           progressByKey: _progressByKey,
           at: widget.now(),
+          cumulativeGraphemes: widget.cumulativeGraphemes,
         ),
       );
     });
+    _beginCardVisit();
+  }
+
+  /// The current card just took the front of the queue: count the visit
+  /// and (when the speech layer is wired) start listening for it.
+  void _beginCardVisit() {
+    final card = _session?.current;
+    if (card == null) return;
+    _visitCounts[card.cardKey] = (_visitCounts[card.cardKey] ?? 0) + 1;
+    _startEchoAttempt();
+  }
+
+  /// Starts a FRESH echo attempt for the current card (a used attempt is
+  /// never reused — Sound Garden's fresh-per-rep rule). No-op without the
+  /// speech layer, while the back shows, during the impress hold, or for a
+  /// card with nothing sayable (all silent letters).
+  void _startEchoAttempt() {
+    final engine = widget.echoEngine;
+    final build = widget.buildEchoAttempt;
+    final card = _session?.current;
+    if (engine == null || build == null || card == null) return;
+    if (_showBack || _impressedCardKey != null) return;
+    _stopEchoAttempt();
+    final sequence = flashcardEchoPhonemeSequence(card);
+    if (sequence.isEmpty) return;
+    // Target = the FIRST phoneme id: sound mode drills one phoneme, and a
+    // flashcard has no curated drill target, so the word's opening sound
+    // (the one the child attacks first when sounding out) is it.
+    final attempt = build(engine, sequence, sequence.first);
+    _echoAttempt = attempt;
+    attempt.start(onMatch: () => _onEchoAccepted(card, attempt));
+  }
+
+  /// Stops any live attempt cleanly (the same `EchoSession.stop` path
+  /// `dispose` uses). Safe to call with nothing listening.
+  void _stopEchoAttempt() {
+    final attempt = _echoAttempt;
+    _echoAttempt = null;
+    if (attempt != null && attempt.isListening) {
+      attempt.stop();
+    }
+  }
+
+  /// The attempt accepted: the word impresses (PRD §8 Unit 16 "when the
+  /// child says the word/sounds and the [matcher] accepts"). Stops the
+  /// attempt, records the got-it grade through the SAME dao/scheduler path
+  /// as the green button, and opens the [kSoundGardenGreenHold] window —
+  /// green flash + seeded intensity-1 confetti — before auto-advancing.
+  void _onEchoAccepted(FlashcardCard card, EchoSession attempt) {
+    if (!mounted || !identical(attempt, _echoAttempt)) return;
+    if (_session?.current?.cardKey != card.cardKey) return;
+    _stopEchoAttempt();
+    unawaited(_impressAndRecord(card));
+  }
+
+  Future<void> _impressAndRecord(FlashcardCard card) async {
+    final progress = _nextProgressFor(card, FlashcardGrade.gotIt);
+    await widget.dao.upsertProgress(progress);
+    if (!mounted) return;
+    final visit = (_visitCounts[card.cardKey] ?? 1) - 1;
+    setState(() {
+      _progressByKey[card.cardKey] = progress;
+      _impressedCardKey = card.cardKey;
+      _impressConfettiSeed = flashcardConfettiSeed(card.cardKey, visit);
+    });
+    _impressTimer?.cancel();
+    _impressTimer = Timer(kSoundGardenGreenHold, () {
+      _impressTimer = null;
+      _finishImpress();
+    });
+  }
+
+  /// The impress hold is over: clear the green state and advance the queue
+  /// through the existing got-it path (the grade itself was already
+  /// written at accept time), then begin the next card's visit.
+  void _finishImpress() {
+    if (!mounted) return;
+    final session = _session;
+    final card = session?.current;
+    setState(() {
+      _impressedCardKey = null;
+      _impressConfettiSeed = null;
+      if (session != null && card != null) {
+        session.gradeCurrent(FlashcardGrade.gotIt);
+        _showBack = false;
+        if (session.isComplete && !_confettiSpent) {
+          _confettiPlaying = true;
+        }
+      }
+    });
+    _beginCardVisit();
+  }
+
+  /// §10b swipe: advances to the next session card at ANY time — success
+  /// never gates. Ungraded cards rotate to the end of the queue with NO
+  /// progress write (still due); a card mid-impress-hold was already
+  /// graded at accept, so the swipe simply ends its hold early through the
+  /// same advance path the timer takes. Any live attempt stops first.
+  void _onSwipeAdvance() {
+    final session = _session;
+    final card = session?.current;
+    if (session == null || card == null || _grading) return;
+    _stopEchoAttempt();
+    if (_impressedCardKey == card.cardKey) {
+      _impressTimer?.cancel();
+      _impressTimer = null;
+      _finishImpress();
+      return;
+    }
+    setState(() {
+      session.skipCurrent();
+      _showBack = false;
+    });
+    _beginCardVisit();
   }
 
   void _onSoundOutTap(FlashcardCard card) {
@@ -163,20 +428,27 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     );
   }
 
+  /// The `(box, dueAt)` write [card] earns for [grade] — the one
+  /// dao/scheduler path both the manual grade buttons and the speech
+  /// accept go through.
+  FlashcardProgress _nextProgressFor(FlashcardCard card, FlashcardGrade grade) {
+    final currentBox = _progressByKey[card.cardKey]?.box ?? 1;
+    final next = _scheduler.applyGrade(box: currentBox, grade: grade);
+    return FlashcardProgress(
+      profileId: widget.profileId,
+      cardKey: card.cardKey,
+      box: next.box,
+      dueAt: next.dueAt,
+    );
+  }
+
   Future<void> _grade(FlashcardGrade grade) async {
     final session = _session;
     final card = session?.current;
     if (session == null || card == null || _grading) return;
     _grading = true;
     try {
-      final currentBox = _progressByKey[card.cardKey]?.box ?? 1;
-      final next = _scheduler.applyGrade(box: currentBox, grade: grade);
-      final progress = FlashcardProgress(
-        profileId: widget.profileId,
-        cardKey: card.cardKey,
-        box: next.box,
-        dueAt: next.dueAt,
-      );
+      final progress = _nextProgressFor(card, grade);
       await widget.dao.upsertProgress(progress);
       if (!mounted) return;
       setState(() {
@@ -187,6 +459,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           _confettiPlaying = true;
         }
       });
+      _beginCardVisit();
     } finally {
       _grading = false;
     }
@@ -200,25 +473,61 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
   }
 
+  /// The card flip toggle. During the impress hold the flip is a no-op —
+  /// the green moment lands undisturbed, and the auto-advance is about to
+  /// reset to the next card's front anyway.
+  void _onCardTap() {
+    if (_impressedCardKey != null) return;
+    setState(() => _showBack = !_showBack);
+    if (_showBack) {
+      // The card listens while the FRONT is showing (PRD §8 Unit 16).
+      _stopEchoAttempt();
+    } else {
+      _startEchoAttempt();
+    }
+  }
+
   Widget _buildCard(FlashcardCard card) {
+    final impressed = _impressedCardKey == card.cardKey;
     return FadeUp(
       key: ValueKey('flashcard-entrance-${card.cardKey}'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            key: ValueKey('flashcard-card-${card.cardKey}'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() => _showBack = !_showBack),
-            child: FlipCard(
-              showBack: _showBack,
-              front: _CardFace(
-                child: _FrontFace(card: card, onWordTap: _onSoundOutTap),
-              ),
-              back: _CardFace(
-                child: _BackFace(
-                  card: card,
-                  onPronunciationTap: _onPronunciationTap,
+          _CardSway(
+            key: ValueKey('flashcard-sway-${card.cardKey}'),
+            swaying: !impressed,
+            child: GestureDetector(
+              key: ValueKey('flashcard-card-${card.cardKey}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: _onCardTap,
+              // §10b swipe: either horizontal direction advances; the
+              // decision falls at gesture end so a hesitant wiggle that
+              // returns home is not an advance.
+              onHorizontalDragStart: (_) => _swipeDx = 0,
+              onHorizontalDragUpdate: (details) =>
+                  _swipeDx += details.delta.dx,
+              onHorizontalDragCancel: () => _swipeDx = 0,
+              onHorizontalDragEnd: (_) {
+                if (_swipeDx.abs() >= _swipeAdvanceDistance) {
+                  _onSwipeAdvance();
+                }
+                _swipeDx = 0;
+              },
+              child: FlipCard(
+                showBack: _showBack,
+                front: _CardFace(
+                  child: _FrontFace(
+                    card: card,
+                    onWordTap: _onSoundOutTap,
+                    impressed: impressed,
+                  ),
+                ),
+                back: _CardFace(
+                  child: _BackFace(
+                    card: card,
+                    onPronunciationTap: _onPronunciationTap,
+                  ),
                 ),
               ),
             ),
@@ -298,6 +607,18 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                   onFinished: _onConfettiFinished,
                 ),
               ),
+            // Speech-first impress burst (PRD §8 Unit 16: "shoots confetti
+            // like the others" — intensity 1, per-visit deterministic
+            // seed). Mounted ONLY during the impress hold, like Sound
+            // Garden's per-rep burst; dismounted at auto-advance.
+            if (_impressConfettiSeed != null)
+              Positioned.fill(
+                child: ConfettiOverlay(
+                  key: const ValueKey('flashcard-impress-confetti'),
+                  intensity: 1,
+                  seed: _impressConfettiSeed!,
+                ),
+              ),
           ],
         ),
       ),
@@ -333,56 +654,204 @@ class _CardFace extends StatelessWidget {
   }
 }
 
-/// Front: the word, huge, reading typeface, ink — tapping it sounds it out.
+/// Front: the word, huge, reading typeface, ink — tapping it sounds it
+/// out. While [impressed] (an accepted echo's hold window) the word turns
+/// read-green with a subtle scale swell, and the trailing-edge swipe-cue
+/// chevron is suppressed.
 class _FrontFace extends StatelessWidget {
-  const _FrontFace({required this.card, required this.onWordTap});
+  const _FrontFace({
+    required this.card,
+    required this.onWordTap,
+    this.impressed = false,
+  });
 
   final FlashcardCard card;
   final void Function(FlashcardCard card) onWordTap;
+  final bool impressed;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        GestureDetector(
-          key: ValueKey('flashcard-word-${card.cardKey}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onWordTap(card),
-          child: Text(
-            card.wordText,
-            style: const TextStyle(
-              fontFamily: DesignTokens.readingFontFamily,
-              fontSize: 52,
-              color: DesignTokens.wordUnreadInk,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              key: ValueKey('flashcard-word-${card.cardKey}'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onWordTap(card),
+              // The impress swell: cheap (one implicit animation on the
+              // word alone), settles well inside the hold window.
+              child: AnimatedScale(
+                scale: impressed ? 1.06 : 1.0,
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOut,
+                child: Text(
+                  card.wordText,
+                  style: TextStyle(
+                    fontFamily: DesignTokens.readingFontFamily,
+                    fontSize: 52,
+                    color: impressed
+                        ? DesignTokens.wordReadGreen
+                        : DesignTokens.wordUnreadInk,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: DesignTokens.spacingMd),
+            const Text(
+              'TAP THE WORD TO SOUND IT OUT',
+              style: TextStyle(
+                fontFamily: DesignTokens.displayFontFamily,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.8,
+                color: DesignTokens.mutedLabel,
+              ),
+            ),
+            const SizedBox(height: DesignTokens.spacingXs),
+            // The flip affordance: carries no gesture of its own, so a tap
+            // here falls through to the card's flip GestureDetector (the
+            // word above owns its own tap = sound-out; everywhere else on
+            // the card flips).
+            Text(
+              'tap the card to turn it over',
+              key: ValueKey('flashcard-flip-${card.cardKey}'),
+              style: const TextStyle(
+                fontFamily: DesignTokens.displayFontFamily,
+                fontSize: 12,
+                color: DesignTokens.legendText,
+              ),
+            ),
+          ],
+        ),
+        // §10b swipe cue: a faint outline chevron at the trailing edge
+        // ("adding an arrow that is a faint shadow/outline ... gives the
+        // impression to swipe"). Suppressed during the impress hold.
+        if (!impressed)
+          Positioned(
+            right: 0,
+            child: _SwipeCueArrow(
+              key: ValueKey('flashcard-swipe-cue-${card.cardKey}'),
             ),
           ),
-        ),
-        const SizedBox(height: DesignTokens.spacingMd),
-        const Text(
-          'TAP THE WORD TO SOUND IT OUT',
-          style: TextStyle(
-            fontFamily: DesignTokens.displayFontFamily,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.8,
-            color: DesignTokens.mutedLabel,
-          ),
-        ),
-        const SizedBox(height: DesignTokens.spacingXs),
-        // The flip affordance: carries no gesture of its own, so a tap here
-        // falls through to the card's flip GestureDetector (the word above
-        // owns its own tap = sound-out; everywhere else on the card flips).
-        Text(
-          'tap the card to turn it over',
-          key: ValueKey('flashcard-flip-${card.cardKey}'),
-          style: const TextStyle(
-            fontFamily: DesignTokens.displayFontFamily,
-            fontSize: 12,
-            color: DesignTokens.legendText,
-          ),
-        ),
       ],
+    );
+  }
+}
+
+/// The §10b trailing-edge swipe-cue chevron: a faint outline stroke in
+/// [DesignTokens.mutedLabel] at low alpha (token-lint: color comes from
+/// the token file, alpha applied here).
+class _SwipeCueArrow extends StatelessWidget {
+  const _SwipeCueArrow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(14, 26),
+      painter: _ChevronPainter(color: DesignTokens.mutedLabel.withAlpha(80)),
+    );
+  }
+}
+
+class _ChevronPainter extends CustomPainter {
+  const _ChevronPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final path = Path()
+      ..moveTo(size.width * 0.2, size.height * 0.12)
+      ..lineTo(size.width * 0.8, size.height * 0.5)
+      ..lineTo(size.width * 0.2, size.height * 0.88);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ChevronPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+/// The §10b idle sway: "moving the card (no more static) gives the
+/// impression to swipe". A gentle repeating horizontal translation, ±6 px
+/// with ease-in-out over a 1.6 s period (800 ms per half-swing). While
+/// [swaying] is false (the impress hold) the card sits still at center.
+///
+/// The child — the card's own GestureDetector — rides inside the
+/// transform, so taps, flips, and the advance swipe all keep working
+/// mid-sway (the pointer hit test follows the translation).
+class _CardSway extends StatefulWidget {
+  const _CardSway({super.key, required this.swaying, required this.child});
+
+  final bool swaying;
+  final Widget child;
+
+  @override
+  State<_CardSway> createState() => _CardSwayState();
+}
+
+class _CardSwayState extends State<_CardSway>
+    with SingleTickerProviderStateMixin {
+  static const double _amplitude = 6.0;
+  static const Duration _halfPeriod = Duration(milliseconds: 800);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _halfPeriod,
+    value: 0.5, // start at center, no jump on mount
+  );
+  late final CurvedAnimation _eased = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOut,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.swaying) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_CardSway oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.swaying == oldWidget.swaying) return;
+    if (widget.swaying) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.stop();
+      _controller.value = 0.5; // rest at center for the impress hold
+    }
+  }
+
+  @override
+  void dispose() {
+    _eased.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _eased,
+      builder: (BuildContext context, Widget? child) {
+        final double dx = widget.swaying
+            ? -_amplitude + 2 * _amplitude * _eased.value
+            : 0.0;
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: widget.child,
     );
   }
 }
