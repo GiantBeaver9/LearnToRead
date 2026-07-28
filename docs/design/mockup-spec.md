@@ -230,9 +230,18 @@ spirit but two-button kid-simple. Everything phonetics-first.
   back: the word decomposed into grapheme chips (syllable-chip styling,
   §4) each labeled with its phoneme id in mono type; a play button for
   the whole-word pronunciation clip.
-- **Grading — exactly two buttons** (Anki's 4 is too many for a
-  5-year-old): amber **"practice again"** and green **"got it"**,
-  identical color semantics to the rest of the app.
+- **Speech-first (owner refinement, 2026-07-28)**: "when the word/sound
+  is said, it impresses then shoots out confetti like the others and
+  allows a swipe to the next one. The goal is phonics, not all the
+  words, the foundation is important and the feedback loop is inside of
+  the reading puzzles." The front card listens (Sound Garden echo
+  pattern, sound-mode over the word's phonemes); on accept the word
+  impresses (green flash) + intensity-1 seeded confetti + auto "got it";
+  horizontal swipe advances anytime, success never gates. Deck ordered
+  phonics-first (current-level decodable words before ahead-of-level).
+- **Grading — exactly two buttons** as the manual/fallback path (Anki's
+  4 is too many for a 5-year-old): amber **"practice again"** and green
+  **"got it"**, identical color semantics to the rest of the app.
 - **Scheduling (MVP Leitner, consts in tuning.dart)**: 3 boxes;
   "practice again" → box 1 (due again this session, after the rest of
   the queue); "got it" → next box, due in 1 d (box 2) / 3 d (box 3,

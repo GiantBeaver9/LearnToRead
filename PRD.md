@@ -941,9 +941,21 @@ proposed with flagged choice points, ratified during spec walkthrough)
   (PhonemeSequencer). **Flip** (tap card/flip affordance, 3D horizontal
   flip): grapheme chips each labeled with its phoneme id (mono type) +
   a whole-word pronunciation play button.
-- **Grading: exactly two buttons** — amber "practice again", green "got
-  it" (app-wide color semantics; Anki's four buttons are too many for the
-  age band).
+- **Speech-first (RATIFIED 2026-07-28, owner refinement):** the card
+  listens while the front is showing (Sound Garden echo pattern:
+  sound-mode scoring over the word's phoneme sequence — the goal is
+  phonics, crediting the SOUNDS, not word-list coverage). When the child
+  says the word/sounds and the scorer accepts, the word **impresses**
+  (green flash, same treatment family as Sound Garden) and **shoots
+  confetti like the others** (intensity 1, seeded), auto-recording a
+  "got it" grade. A **horizontal swipe advances to the next card at any
+  time** — never gated on success. Deck ordering is phonics-first: words
+  decodable at the profile's current level come before ahead-of-level
+  words. The deep feedback loop deliberately lives in the reading
+  puzzles (stories); flashcards stay light foundation practice.
+- **Grading: exactly two buttons** as the manual/fallback path (no mic,
+  or parent-assisted) — amber "practice again", green "got it" (app-wide
+  color semantics; Anki's four buttons are too many for the age band).
 - **Scheduling (MVP Leitner, consts in the tuning file)**: 3 boxes.
   "practice again" → box 1, re-queued after the remaining due cards this
   session; "got it" → next box; dues: box 2 = +1 day, box 3 = +3 days,
