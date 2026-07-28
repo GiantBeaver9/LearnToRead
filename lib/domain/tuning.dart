@@ -52,3 +52,33 @@ const int kSoundModePerPhonemeMaxDistance = 1;
 /// A-13: weight applied to matches of the twister/card's target phoneme when
 /// scoring a sound-mode echo attempt against [kSoundModeMatchThreshold].
 const int kSoundModeTargetPhonemeWeight = 2;
+
+/// PRD §8 Unit 16 (Phonics flashcards, MVP Leitner scheduling): the number
+/// of Leitner boxes. "got it" advances a card one box, capped here;
+/// "practice again" always returns a card to box 1 (due immediately,
+/// re-queued after the remaining due cards this session).
+const int kFlashcardMaxBox = 3;
+
+/// PRD §8 Unit 16: how far ahead a card is scheduled when "got it" promotes
+/// it into box 2 — "dues: box 2 = +1 day".
+const Duration kFlashcardBox2Due = Duration(days: 1);
+
+/// PRD §8 Unit 16: how far ahead a card is scheduled when "got it" promotes
+/// it into box 3 — "box 3 = +3 days".
+const Duration kFlashcardBox3Due = Duration(days: 3);
+
+/// PRD §8 Unit 16: how far ahead a card already in box 3 is re-scheduled on
+/// each subsequent "got it" — "then +7 day re-dues".
+const Duration kFlashcardBox3Redue = Duration(days: 7);
+
+/// Sound Garden practice loop (docs/design/mockup-spec.md §10a, ratified
+/// 2026-07-28): how long the grapheme holds green (with the confetti burst)
+/// after an accepted echo before the card resets to amber with a fresh echo
+/// attempt. Pinned: 1000 ms.
+///
+/// Home rationale: motion/visual durations conventionally live in
+/// `DesignTokens` (lib/design/tokens.dart), but this value paces the
+/// practice-loop *behavior* (like [kStruggleT1]/[kTier2WaitT2] pace theirs),
+/// and this file's contract is that Sound Garden reads its tuning constants
+/// from here and nowhere else.
+const Duration kSoundGardenGreenHold = Duration(milliseconds: 1000);

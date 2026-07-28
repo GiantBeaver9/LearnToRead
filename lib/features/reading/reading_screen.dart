@@ -11,8 +11,11 @@
 ///    landscape, stacked in portrait, via the shared [ReadingLayout],
 ///  - listen-first narration (A-11) at [Level.narrationEnabled] levels, and
 ///    the ear-icon replay that suspends recognition while it plays,
-///  - the page host, turning pages full-bleed at the authored page
-///    boundaries the merged word state machine reports,
+///  - the page host, plus the ratified page-turn hold (PRD §8 Unit 5,
+///    mockup-spec §8, owner-confirmed 2026-07-28): completing a non-final
+///    page STOPS the machine, a dog-ear appears at the reading card's
+///    bottom-right corner, and the child's curl gesture -- the reward beat
+///    -- is what turns the page,
 ///  - the two always-available touch affordances: the discreet tap fallback
 ///    on the current word, and blue vocabulary words, which pause listening
 ///    and restore the cursor exactly when their card closes, and
@@ -30,6 +33,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:learn_to_read/design/layout.dart';
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart'
@@ -80,6 +84,7 @@ class ReadingScreen extends StatefulWidget {
     required this.stage,
     required this.vocabCardOpener,
     this.onStoryComplete,
+    this.onPageTurned,
     this.onReadingExited,
     this.helpState = kNoHelp,
   });
@@ -120,6 +125,13 @@ class ReadingScreen extends StatefulWidget {
   /// the celebration sequence.
   final VoidCallback? onStoryComplete;
 
+  /// Fired once per completed page-curl turn, after the word state machine
+  /// has advanced onto the new page. The app shell wires it to
+  /// `ReadingSession.advancePage`, which is what moves the listening
+  /// tracker to the new page's words at turn time (PRD §8 Unit 5 page-turn
+  /// hold).
+  final VoidCallback? onPageTurned;
+
   /// Fired once when this screen leaves the tree. The app shell wires it to
   /// `SessionTracker.onReadingScreenExited`, which is what turns leaving
   /// mid-story into `story_abandoned` (Unit 12 owns that judgement).
@@ -148,6 +160,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       profileOrdinal: widget.profileOrdinal,
       levelOrdinal: widget.levelOrdinal,
       onStoryComplete: widget.onStoryComplete,
+      onPageTurned: widget.onPageTurned,
     );
     _narration = NarrationController(
       audioService: widget.audioService,
@@ -240,7 +253,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignTokens.readingBackground,
+      // Mockup §1: the page body is warm parchment; the reading card sits on
+      // it as cream paper (see [_ReadingCard]).
+      backgroundColor: DesignTokens.screenBackground,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: _controller,
@@ -289,19 +304,21 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
+  /// The child's page-curl completed: turn the held page. `turnPage()` is a
+  /// no-op unless the machine is actually holding, so a stray second gesture
+  /// can never advance twice.
+  void _onPageTurned() => _controller.turnPage();
+
   Widget _buildPage(BuildContext context, int pageIndex) {
     final snapshot = _controller.snapshot;
     if (pageIndex < 0 || pageIndex >= snapshot.pages.length) {
       return const SizedBox.shrink();
     }
-    return Center(
-      key: ValueKey<String>('page-$pageIndex'),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLg,
-          vertical: DesignTokens.spacingMd,
-        ),
-        child: WordTextView(
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        WordTextView(
           words: _controller.pages[pageIndex],
           wordStates: snapshot.pages[pageIndex],
           helpState: widget.helpState,
@@ -309,6 +326,47 @@ class _ReadingScreenState extends State<ReadingScreen> {
           onCurrentWordTap: _onCurrentWordTap,
           onVocabWordTap: _onVocabWordTap,
         ),
+        const SizedBox(height: DesignTokens.spacingLg),
+        const _WordStateLegend(),
+      ],
+    );
+
+    // Page-turn hold (PRD §8 Unit 5, mockup-spec §8): while the machine is
+    // holding at this completed non-final page, the reading card grows to
+    // fill the page region (a book page) and carries the bottom-right
+    // page-curl dog-ear. [PageCurlCorner] needs bounded constraints for its
+    // corner geometry, which is why the held layout swaps the
+    // centered/scrollable card for a stretched one.
+    final held =
+        snapshot.isPageComplete && pageIndex == snapshot.currentPageIndex;
+    if (held) {
+      return Padding(
+        key: ValueKey<String>('page-$pageIndex'),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DesignTokens.spacingLg,
+          vertical: DesignTokens.spacingMd,
+        ),
+        child: PageCurlCorner(
+          enabled: true,
+          page: _ReadingCard(child: SingleChildScrollView(child: content)),
+          // The face revealed under the curl is a blank sheet of the same
+          // cream paper, NOT the next page's live words: the next page has
+          // not started yet (its words go current only on turnPage()), and
+          // rendering it here would duplicate the per-word widget keys.
+          nextPage: const _ReadingCard(child: SizedBox.expand()),
+          onTurned: _onPageTurned,
+        ),
+      );
+    }
+
+    return Center(
+      key: ValueKey<String>('page-$pageIndex'),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DesignTokens.spacingLg,
+          vertical: DesignTokens.spacingMd,
+        ),
+        child: _ReadingCard(child: content),
       ),
     );
   }
@@ -325,6 +383,140 @@ class _ReadingScreenState extends State<ReadingScreen> {
     widget.onReadingExited?.call();
     super.dispose();
   }
+}
+
+/// The mockup's reading card (docs/design/mockup-spec.md §3): a cream paper
+/// card -- gradient [DesignTokens.readingBackground] ->
+/// [DesignTokens.cardGradientEnd], 1px [DesignTokens.cardBorder], radius 20
+/// -- floating on the parchment page with the spec's soft drop shadow
+/// (`0 18px 40px -28px`, ink at 45%). The spec's 1px inset top highlight is
+/// approximated by the gradient starting at the card's lightest paper tone
+/// (no raw color literals may exist here, and Flutter has no inset shadow).
+class _ReadingCard extends StatelessWidget {
+  const _ReadingCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey<String>('reading-card'),
+      padding: const EdgeInsets.all(DesignTokens.spacingLg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            DesignTokens.readingBackground,
+            DesignTokens.cardGradientEnd,
+          ],
+        ),
+        border: Border.all(color: DesignTokens.cardBorder),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: DesignTokens.wordUnreadInk.withValues(alpha: 0.45),
+            offset: const Offset(0, 18),
+            blurRadius: 40,
+            spreadRadius: -28,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+/// The legend row under the reading text (mockup §3): a dashed divider, then
+/// three dots explaining the word states -- green "read it", amber "saying
+/// now", blue "new word — tap it". Purely additive decoration; it renders no
+/// tappable surface and collides with no pinned key.
+class _WordStateLegend extends StatelessWidget {
+  const _WordStateLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey<String>('reading-legend'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const CustomPaint(
+          painter: _DashedDividerPainter(),
+          child: SizedBox(height: 1, width: double.infinity),
+        ),
+        const SizedBox(height: DesignTokens.spacingSm + DesignTokens.spacingXs),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: DesignTokens.spacingMd,
+          runSpacing: DesignTokens.spacingXs,
+          children: const <Widget>[
+            _LegendItem(color: DesignTokens.wordReadGreen, label: 'read it'),
+            _LegendItem(color: DesignTokens.wordCurrentInk, label: 'saying now'),
+            _LegendItem(color: DesignTokens.wordVocabBlue, label: 'new word — tap it'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One legend entry: a state-colored dot plus its label
+/// (12px, weight 700, [DesignTokens.legendText], mockup §3).
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: const SizedBox(width: 10, height: 10),
+        ),
+        const SizedBox(width: DesignTokens.spacingXs + 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: DesignTokens.displayFontFamily,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: DesignTokens.legendText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Paints the mockup's dashed rule above the legend
+/// ([DesignTokens.dashedDivider], mockup §3).
+class _DashedDividerPainter extends CustomPainter {
+  const _DashedDividerPainter();
+
+  static const double _dashLength = 6.0;
+  static const double _gapLength = 5.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = DesignTokens.dashedDivider
+      ..strokeWidth = 1.0;
+    var x = 0.0;
+    final y = size.height / 2;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, y), Offset(x + _dashLength, y), paint);
+      x += _dashLength + _gapLength;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedDividerPainter oldDelegate) => false;
 }
 
 /// The animation-stage half of the reading layout.

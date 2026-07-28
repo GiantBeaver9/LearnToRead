@@ -41,6 +41,8 @@ import 'package:learn_to_read/data/content/pack_loader.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/pack_manifest.dart';
 import 'package:learn_to_read/domain/phonics/scope_sequence_loader.dart';
+import 'package:learn_to_read/features/audio/audio_service.dart';
+import 'package:learn_to_read/features/audio/just_audio_service.dart';
 
 /// Directory name of the bundled starter pack, under the app support
 /// directory.
@@ -85,6 +87,12 @@ Future<List<Override>> buildBootOverrides() async {
   final packsDirectory = _directory(support, kInstalledPacksDirectoryName);
   final analyticsDirectory = _directory(support, kAnalyticsDirectoryName);
 
+  final resolveAudioRef = _audioRefResolver(starterDirectory, packsDirectory);
+  final celebrationLines = _presentRefs(resolveAudioRef, [
+    for (var i = 4; i <= 10; i++)
+      'celebrations/cheer_${i.toString().padLeft(2, '0')}.wav',
+  ]);
+
   return <Override>[
     starterPackProvider
         .overrideWithValue(await _loadStarterPack(starterDirectory)),
@@ -95,8 +103,63 @@ Future<List<Override>> buildBootOverrides() async {
         .overrideWithValue(await _loadPhonicsContent(support)),
     analyticsStorageDirectoryProvider.overrideWithValue(analyticsDirectory),
     installIdProvider.overrideWithValue(await _readOrCreateInstallId(support)),
+    // Real device audio: the just_audio adapter over every content
+    // directory known at boot. Everything below degrades to the headless
+    // default (or the provider's placeholder ref) when the corresponding
+    // content has not shipped/sideloaded yet, so a content-less install
+    // still boots exactly as before.
+    audioServiceProvider
+        .overrideWithValue(JustAudioService(resolveRef: resolveAudioRef)),
+    phonemeAudioRefsProvider
+        .overrideWithValue(_phonemeRefs(resolveAudioRef)),
+    if (resolveAudioRef('prompts/your_turn.wav') != null)
+      yourTurnPromptAudioRefProvider.overrideWithValue('prompts/your_turn.wav'),
+    if (resolveAudioRef('prompts/near_miss.wav') != null)
+      nearMissPromptAudioRefProvider.overrideWithValue('prompts/near_miss.wav'),
+    if (celebrationLines.isNotEmpty)
+      celebrationVoiceLineRefsProvider.overrideWithValue(celebrationLines),
   ];
 }
+
+/// Maps a pack-relative [AudioRef] to an absolute file path, searching the
+/// starter-pack directory first and then every installed pack directory.
+/// The directory set is fixed at boot (packs installed mid-session are
+/// picked up on next launch — acceptable for the POC).
+String? Function(AudioRef ref) _audioRefResolver(
+  Directory starterDirectory,
+  Directory packsDirectory,
+) {
+  final searchDirectories = <Directory>[
+    starterDirectory,
+    ...packsDirectory.listSync().whereType<Directory>(),
+  ];
+  return (AudioRef ref) {
+    for (final directory in searchDirectories) {
+      final path = p.joinAll([directory.path, ...ref.split('/')]);
+      if (File(path).existsSync()) return path;
+    }
+    return null;
+  };
+}
+
+/// The refs from [candidates] that resolve to a shipped file.
+List<AudioRef> _presentRefs(
+  String? Function(AudioRef ref) resolveAudioRef,
+  List<AudioRef> candidates,
+) =>
+    [for (final ref in candidates) if (resolveAudioRef(ref) != null) ref];
+
+/// Phoneme id -> `phonemes/<id>.wav` for every one of the 44 clips actually
+/// shipped (sound-out help and Sound Garden; empty entries simply fall back
+/// to the app's silent default for that phoneme).
+Map<String, AudioRef> _phonemeRefs(
+  String? Function(AudioRef ref) resolveAudioRef,
+) =>
+    {
+      for (final id in kEnglishPhonemeIds)
+        if (resolveAudioRef('phonemes/$id.wav') != null)
+          id: 'phonemes/$id.wav',
+    };
 
 Directory _directory(Directory parent, String name) =>
     Directory(p.join(parent.path, name))..createSync(recursive: true);

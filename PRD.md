@@ -286,17 +286,35 @@ critical path.
   textured; soft palette; characters with personality; the UI feels drawn,
   not assembled from Material/Cupertino components. No stock component
   styling may be visible in child-facing screens.
-- Typography: a purpose-built early-reader typeface for all reading text
-  (unambiguous a/g forms, generous x-height); a friendly display face for
-  titles. Reading text minimum sizes: 28pt (phone) / 36pt (tablet) at
-  sentence levels; 20pt/24pt at paragraph levels.
+- Typography (RATIFIED via the owner's "Sound It Out" mockup, A-19):
+  reading text is **Literata** (serif, variable weight, bundled at
+  `assets/fonts/Literata-VF.ttf`); UI text is **Nunito** (variable);
+  syllable/meta notation is **IBM Plex Mono**. Reading text minimum sizes:
+  28pt (phone) / 36pt (tablet) at sentence levels; 20pt/24pt at paragraph
+  levels (the mockup's desktop-scale sizes 62/46/34px by level clamp down
+  responsively).
+- Palette (RATIFIED, A-19; full table in `docs/design/mockup-spec.md` §1 —
+  that document is a normative appendix of this PRD): warm parchment
+  ("storybook paper") — page `#F3EADA`, card `#FDFAF3`, borders `#E2D6BF`,
+  ink `#33302B`.
 - Word color states (single source of truth, used by Units 5–7):
-  - Unread: near-black ink (not pure #000; warm ink tone from palette).
-  - Current word: subtle underline/glow marker, ink color.
-  - Read-correct: **green** (palette green, WCAG AA against background).
-  - Vocabulary word (unread): **blue**, visually distinct from green at a
-    glance for color-typical and protan/deutan viewers (blue chosen partly
-    for this; verify with simulation).
+  - Unread: warm near-black ink `#33302B` (not pure #000).
+  - Current word: **amber `#D79A3C`** — the "saying now" indicator
+    (owner ruling 2026-07-28, superseding the earlier "ink with subtle
+    marker" line; the amber IS the marker).
+  - Read-correct: **green** (`#4E8B5C` family; WCAG AA ≥4.5:1 against the
+    card background — darken minimally along the same hue if the mockup
+    value falls short; `#3C7A4B` is the known-good floor).
+  - Vocabulary word (unread): **blue** (`#5A79B8` family, weight 600,
+    dotted underline), visually distinct from green at a glance for
+    color-typical and protan/deutan viewers (verify with simulation).
+  - Vocabulary word (read/helped): **purple** (violet family ~`#7A5AA0`,
+    darkened minimally to hold WCAG AA ≥4.5:1 on the card) — read cue
+    without erasing the word's "new word" identity (owner ruling
+    2026-07-28: "the BLUE instead of turning to GREEN can go PURPLE, so
+    still visible, but still a cue that it was read"). Ordinary words
+    still turn green; helped-vocab renders identically to read-vocab
+    (the invisible-help rule is per-word-kind, unchanged).
   - Helped word: visually identical to any other read-correct green word
     (ratified: no visible marker — the child's finished sentence is purely
     triumphant). Help is tracked invisibly in WordHelpRecord for the
@@ -312,6 +330,12 @@ critical path.
   Rive runtime. Product owner co-develops frontend; design tokens
   (colors, type scale, spacing, motion durations) live in one Dart file
   reviewed by the product owner before UI build starts.
+- Motion system (RATIFIED, A-19; exact durations/curves in
+  `docs/design/mockup-spec.md` §7): fadeUp panel entrances, sceneReveal
+  stage entrance, pulseWord stuck-word pulse, waveform listening bars,
+  260 ms word-color transitions, and a pure-code confetti celebration
+  (falling ribbons + spark bursts + rings, intensity scaling with the
+  story streak — spec §6). No asset-based confetti.
 
 **Acceptance**
 - Golden tests render library, reading, and collection screens in all four
@@ -476,8 +500,18 @@ critical path.
 
 **Pinned design**
 - Renders the story text per the design-system word states (Unit 1). One
-  sentence (early levels) up to one paragraph (later levels) per page;
-  multi-page stories page with a full-bleed page-turn transition.
+  sentence (early levels) up to one paragraph (later levels) per page.
+- **Page turn = book page-curl (RATIFIED, A-19,
+  `docs/design/mockup-spec.md` §8):** on multi-page stories, once the
+  current page is complete a small folded dog-ear appears at the
+  **bottom-right corner** of the reading card; the child drags it (or taps
+  it) and the page curls over like a real paper page, revealing the next
+  page underneath — release past ~40% completes the turn, earlier release
+  springs back; forward-only. The curl is the page-advance control (it
+  invokes the same advance path as any prior control; the logic does not
+  change) and exists deliberately to reinforce physical-book reading
+  habits. Implementation is a corner-anchored clip+rotate curl with a
+  shaded back face — simple and 60fps — not a cloth simulation.
 - **Listen-first at early levels (ratified):** at sentence-format levels,
   opening a story plays the recorded human narration of the sentence once
   before listening begins; a listen button (ear icon, design system)
@@ -851,9 +885,16 @@ proposed with flagged choice points, ratified during spec walkthrough)
   Tap → the recorded human phoneme audio plays (grapheme's `phonemeIds` in
   order, gapless). Then a gentle prompt invites the child to **say it
   back**, scored with sound-level matching (the twister threshold set,
-  Unit 4 sound mode); a match earns a warm sparkle. The echo is optional
-  and there is no failure state — a card never says "wrong"; the child can
-  just listen.
+  Unit 4 sound mode). The echo is optional and there is no failure state —
+  a card never says "wrong"; the child can just listen.
+- **Practice loop (RATIFIED 2026-07-28, supersedes the one-shot "warm
+  sparkle" line; details in `docs/design/mockup-spec.md` §10a):** while
+  the card listens, the grapheme renders **amber** ("saying now"
+  semantics); on a scorer match it turns **green for 1 s with a small
+  confetti burst**, then **resets to amber with a fresh echo attempt** —
+  unlimited reps for practice. The card carries the Unit 5 bottom-right
+  page-curl dog-ear, **always enabled**, to turn to the next card in the
+  garden's order (wrapping) — advancing never requires success.
 - Visibility (ratified): **all cards visible from day one** — curious kids
   can explore ahead. Cards whose grapheme is introduced at or below the
   profile's current level render "awake"; ahead-of-level cards are present
@@ -881,6 +922,70 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - Example-word filtering matches fixture `minLevelId` data exactly as the
   profile level changes; tapping a word plays its audio ref.
 - Events emitted per §5 with correct payloads (schema tests).
+
+---
+
+### Unit 16 — Phonics flashcards (MVP scaffold, ratified 2026-07-28)
+
+**Pinned design** (owner-directed; full visual spec in
+`docs/design/mockup-spec.md` §10b — normative appendix per A-19)
+- A fourth child-facing area: an **AnkiDroid-style spaced-repetition
+  flashcard deck, phonetics-first** — every card is about how to sound a
+  word out, not shape memorization. Explicitly an MVP scaffold: the deck
+  loader is a seam; owner-curated decks come LATER.
+- **Deck source (MVP)**: the unique `WordToken`s across installed packs
+  (each already carries `graphemePhonemeMap` and
+  `pronunciationAudioRef`) — no new content type ships in v1.
+- **Card front**: the word large in the reading typeface on the standard
+  card surface; tapping the word plays its gapless phoneme sound-out
+  (PhonemeSequencer). **Flip** (tap card/flip affordance, 3D horizontal
+  flip): grapheme chips each labeled with its phoneme id (mono type) +
+  a whole-word pronunciation play button.
+- **Speech-first (RATIFIED 2026-07-28, owner refinement):** the card
+  listens while the front is showing (Sound Garden echo pattern:
+  sound-mode scoring over the word's phoneme sequence — the goal is
+  phonics, crediting the SOUNDS, not word-list coverage). When the child
+  says the word/sounds and the scorer accepts, the word **impresses**
+  (green flash, same treatment family as Sound Garden) and **shoots
+  confetti like the others** (intensity 1, seeded), auto-recording a
+  "got it" grade. A **horizontal swipe advances to the next card at any
+  time** — never gated on success. Deck ordering is phonics-first: words
+  decodable at the profile's current level come before ahead-of-level
+  words. The deep feedback loop deliberately lives in the reading
+  puzzles (stories); flashcards stay light foundation practice.
+  **Swipe affordance (owner refinement 2026-07-28):** the card is never
+  static — a gentle idle sway plus a **faint shadow/outline arrow** at
+  the trailing edge give the impression to swipe ("If we don't show
+  anything, there's no visual cue"). Both cues pause during the impress
+  hold.
+- **Grading: exactly two buttons** as the manual/fallback path (no mic,
+  or parent-assisted) — amber "practice again", green "got it" (app-wide
+  color semantics; Anki's four buttons are too many for the age band).
+- **Scheduling (MVP Leitner, consts in the tuning file)**: 3 boxes.
+  "practice again" → box 1, re-queued after the remaining due cards this
+  session; "got it" → next box; dues: box 2 = +1 day, box 3 = +3 days,
+  then +7 day re-dues. Session = all due cards; clearing the queue earns
+  a single intensity-1 confetti and a warm "all done" state.
+- **Persistence**: per-profile `FlashcardProgress` (Drift; card key =
+  A-14-style word hash, box, dueAt) — schema migration v1→v2.
+- **No failure state**: "practice again" is amber, never red; no scores
+  or streaks in v1.
+- Navigation: entry in the child shell alongside map/collection/garden;
+  icon + nav voice prompt ("Flash cards", `audio/nav/flashcards.wav` —
+  owner recording added to the checklist).
+
+**Acceptance**
+- Deck builds from installed-pack fixtures: unique words, stable card
+  keys, due-ordering (unit tests).
+- Front→flip→grade cycle: front sound-out plays the mapped phoneme refs
+  in order; flip reveals exactly the word's `graphemePhonemeMap` chips;
+  each grade button moves the box and reschedules per the Leitner consts
+  (widget + unit tests, fake audio/clock).
+- "practice again" cards reappear later in the same session; cleared
+  queue → confetti once + all-done state (widget tests).
+- Schema migration v1→v2 preserves existing rows of every v1 table
+  (migration test).
+- No red/error/negative state reachable (grep-level + widget test).
 
 ---
 
@@ -960,6 +1065,21 @@ proposed with flagged choice points, ratified during spec walkthrough)
   exactly along the axes children and child-ASR actually confuse and
   nowhere else; all other costs and thresholds are unchanged. Story
   completion remains the only summative outcome and is always reachable.
+- **A-19 ("Sound It Out" visual system, ratified 2026-07-28):** The
+  product owner supplied an HTML prototype of the reading experience; its
+  distilled spec, `docs/design/mockup-spec.md`, is a **normative appendix
+  of this PRD** — a fresh build run reproduces the frontend from that
+  document plus the amended Unit 1/Unit 5 lines, with no access to the
+  original HTML needed. Load-bearing rulings folded into this PRD: warm
+  parchment palette and Literata/Nunito/IBM Plex Mono typography (fonts
+  bundled in-repo at `assets/fonts/`); current word renders amber
+  (`#D79A3C`, "saying now") superseding the earlier ink+marker line;
+  read-green holds the WCAG AA ≥4.5:1 floor by darkening minimally within
+  its hue where the mockup value falls short (owner-confirmed); page
+  advance on multi-page stories is a bottom-right book page-curl (Unit 5);
+  celebration confetti is pure code, no assets. The mockup's level-switcher
+  header, demo engine controls, and auto-read are prototype chrome, not
+  product features.
 
 ## 10. Open questions (block their units, not the whole build)
 
@@ -987,10 +1107,11 @@ proposed with flagged choice points, ratified during spec walkthrough)
   build and test against local fixture servers.
 - **OQ-7 (blocks pilot distribution, not build):** Privacy policy, contact,
   and licenses URLs for the parent corner; placeholders until supplied.
-- **OQ-8 (blocks the owner token-review gate, not unit builds):** Final
-  typeface selections (early-reader reading face, display face) and
-  concrete design-token values — builders use placeholder tokens behind
-  the pinned token interface until the owner's Unit 1 sign-off.
+- **OQ-8 (MOSTLY RESOLVED by A-19, 2026-07-28):** Typefaces and concrete
+  design-token values are now owner-ratified (Literata/Nunito/IBM Plex
+  Mono + the `docs/design/mockup-spec.md` palette). Remaining sliver: the
+  owner flips `DesignTokens.tokensAreOwnerSignedOff` to `true` after
+  seeing the theme on a real device.
 
 ---
 

@@ -33,6 +33,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:learn_to_read/app/providers.dart';
+import 'package:learn_to_read/design/confetti.dart';
+import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
@@ -46,14 +48,19 @@ import 'package:learn_to_read/features/analytics/session_tracker.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
 import 'package:learn_to_read/features/celebration/celebration_controller.dart';
 import 'package:learn_to_read/features/collection/collection_screen.dart';
+import 'package:learn_to_read/features/flashcards/flashcard_deck.dart';
+import 'package:learn_to_read/features/flashcards/flashcards_screen.dart';
 import 'package:learn_to_read/features/help/help_recorder.dart';
+import 'package:learn_to_read/features/listening/contracts/asr_engine.dart';
 import 'package:learn_to_read/features/listening/contracts/help_state.dart';
 import 'package:learn_to_read/features/listening/matcher/sound_mode_scorer.dart';
 import 'package:learn_to_read/features/map/progress_map_screen.dart';
+import 'package:learn_to_read/pipeline/cumulative_grapheme_set.dart';
 import 'package:learn_to_read/features/parent/consent_controller.dart';
 import 'package:learn_to_read/features/parent/parent_corner_screen.dart';
 import 'package:learn_to_read/features/profiles/profile_picker_screen.dart';
 import 'package:learn_to_read/features/reading/reading_screen.dart';
+import 'package:learn_to_read/features/sound_garden/echo_session.dart';
 import 'package:learn_to_read/features/sound_garden/sound_garden_screen.dart';
 import 'package:learn_to_read/features/twister/twister_controller.dart';
 import 'package:learn_to_read/features/twister/twister_screen.dart';
@@ -82,6 +89,9 @@ const String kRoutePathSoundGarden = '/garden';
 /// One tongue-twister booster (Unit 14).
 const String kRoutePathTwister = '/twister/:twisterId';
 
+/// The phonics flashcards deck (Unit 16).
+const String kRoutePathFlashcards = '/flashcards';
+
 /// The parent corner, behind the real parental gate.
 const String kRoutePathParentCorner = '/parent';
 
@@ -103,6 +113,9 @@ const String kRouteNameSoundGarden = 'soundGarden';
 /// Route name of [kRoutePathTwister].
 const String kRouteNameTwister = 'twister';
 
+/// Route name of [kRoutePathFlashcards].
+const String kRouteNameFlashcards = 'flashcards';
+
 /// Route name of [kRoutePathParentCorner].
 const String kRouteNameParentCorner = 'parentCorner';
 
@@ -115,6 +128,9 @@ const List<String> kChildNavDestinationRouteNames = <String>[
   kRouteNameMap,
   kRouteNameCollection,
   kRouteNameSoundGarden,
+  // Unit 16 (ratified 2026-07-28): flashcards join the child nav alongside
+  // map/collection/garden.
+  kRouteNameFlashcards,
 ];
 
 /// Owner-recorded voice-prompt refs, keyed by route name.
@@ -127,6 +143,7 @@ const Map<String, AudioRef> kNavVoicePromptRefs = <String, AudioRef>{
   kRouteNameMap: 'audio/nav/map.wav',
   kRouteNameCollection: 'audio/nav/collection.wav',
   kRouteNameSoundGarden: 'audio/nav/garden.wav',
+  kRouteNameFlashcards: 'audio/nav/flashcards.wav',
   kRouteNameParentCorner: 'audio/nav/parent-corner.wav',
 };
 
@@ -135,6 +152,7 @@ const Map<String, String> _navDestinationPaths = <String, String>{
   kRouteNameMap: kRoutePathMap,
   kRouteNameCollection: kRoutePathCollection,
   kRouteNameSoundGarden: kRoutePathSoundGarden,
+  kRouteNameFlashcards: kRoutePathFlashcards,
   kRouteNameParentCorner: kRoutePathParentCorner,
 };
 
@@ -144,6 +162,7 @@ const Map<String, IconData> _navDestinationIcons = <String, IconData>{
   kRouteNameMap: Icons.home_rounded,
   kRouteNameCollection: Icons.pets_rounded,
   kRouteNameSoundGarden: Icons.spa_rounded,
+  kRouteNameFlashcards: Icons.style_rounded,
   kRouteNameParentCorner: Icons.lock_rounded,
 };
 
@@ -247,6 +266,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         name: kRouteNameSoundGarden,
         pageBuilder: (context, state) =>
             _page(state, const ChildShell(child: SoundGardenRoute())),
+      ),
+      GoRoute(
+        path: kRoutePathFlashcards,
+        name: kRouteNameFlashcards,
+        pageBuilder: (context, state) =>
+            _page(state, const ChildShell(child: FlashcardsRoute())),
       ),
       GoRoute(
         path: kRoutePathTwister,
@@ -881,13 +906,22 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
               stage: stage,
               vocabCardOpener: _openVocabCard,
               onStoryComplete: _onStoryComplete,
+              // Page-turn hold (PRD §8 Unit 5): the child's curl gesture is
+              // what moves the listening session onto the next page.
+              onPageTurned: session.advancePage,
               onReadingExited: _onReadingExited,
               helpState: helpState,
             ),
           ),
         ),
         if (_celebrating)
-          CelebrationView(onSkip: () => _celebration?.skip()),
+          CelebrationView(
+            onSkip: () => _celebration?.skip(),
+            // Deterministic confetti per story: the seed is derived from the
+            // story id the route already holds (stable across replays), per
+            // the mockup-spec §6 restyle. No new data is plumbed.
+            confettiSeed: _story?.id.hashCode ?? 0,
+          ),
       ],
     );
   }
@@ -913,54 +947,136 @@ void _record(AnalyticsClient analytics, AnalyticsEvent event) =>
 // The celebration view
 // ===========================================================================
 
-/// The thin, token-styled view the merged [CelebrationController] runs behind.
+/// The thin, token-styled view the merged [CelebrationController] runs
+/// behind, restyled to the owner mockup's done state (docs/design/
+/// mockup-spec.md §5-§6).
 ///
 /// The controller owns every beat of the sequence (stage triggers, audio,
 /// persistence, the hold phase, the collectible flight); this view owns
-/// exactly two things: it is on screen for the duration, and it carries the
-/// skip affordance. It deliberately renders no text — skipping is one tap on
-/// an icon, and nothing here asks a five-year-old to read.
+/// exactly three things: it is on screen for the duration, it carries the
+/// skip affordance, and it plays the pure-code confetti celebration. It
+/// deliberately renders no text — skipping is one tap on an icon, and
+/// nothing here asks a five-year-old to read; the mockup's stats numbers
+/// and hurray copy need words-read/streak data no one plumbs to this view,
+/// so the success panel is a quiet token-styled emblem instead (see the
+/// restyle report).
 ///
 /// It sits *over* the reading screen rather than replacing it, because the
 /// celebration transforms the story stage that is already on screen (PRD §8
-/// Unit 8).
+/// Unit 8) — which is why the whole overlay (not a new stage) gets the
+/// spec's `sceneReveal` entrance, and the success panel fades up over it.
+///
+/// All three animations here are finite (sceneReveal 620 ms, fadeUp 420 ms,
+/// confetti a bounded one-shot), so settle-based tests can never hang on
+/// this view.
 class CelebrationView extends StatelessWidget {
-  const CelebrationView({super.key, required this.onSkip});
+  const CelebrationView({super.key, required this.onSkip, this.confettiSeed = 0});
 
   /// Wired to `CelebrationController.skip()`, which is a harmless no-op
   /// until the skip-unlock delay has elapsed.
   final VoidCallback onSkip;
 
+  /// Seed for the deterministic confetti overlay; the reading route passes
+  /// the story id's hashCode so a story always replays its own celebration.
+  final int confettiSeed;
+
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       key: const ValueKey<String>('celebration-view'),
-      child: Align(
-        alignment: Alignment.topRight,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(DesignTokens.spacingMd),
-            child: GestureDetector(
-              key: const ValueKey<String>('celebration-skip-button'),
-              behavior: HitTestBehavior.opaque,
-              onTap: onSkip,
-              child: const DecoratedBox(
-                decoration: BoxDecoration(
-                  color: DesignTokens.surfaceBackground,
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(DesignTokens.spacingSm),
-                  child: Icon(
-                    Icons.skip_next_rounded,
-                    size: 28,
-                    color: DesignTokens.wordUnreadInk,
+      child: Stack(
+        children: <Widget>[
+          // Spec §6: full-screen, non-interactive confetti. Intensity is
+          // min(3, stories-in-a-row); no streak data reaches this view, so
+          // it plays at the single-story intensity.
+          Positioned.fill(
+            child: ConfettiOverlay(intensity: 1, seed: confettiSeed),
+          ),
+          SceneReveal(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                child: FadeUp(
+                  duration: const Duration(milliseconds: 420),
+                  child: Container(
+                    margin: const EdgeInsets.all(DesignTokens.spacingLg),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DesignTokens.spacingLg,
+                      vertical: DesignTokens.spacingMd,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.successPanelBackground,
+                      border: Border.all(
+                        color: DesignTokens.successPanelBorder,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                        SizedBox(width: DesignTokens.spacingSm),
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                        SizedBox(width: DesignTokens.spacingSm),
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+          Align(
+            alignment: Alignment.topRight,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(DesignTokens.spacingMd),
+                child: GestureDetector(
+                  key: const ValueKey<String>('celebration-skip-button'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onSkip,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DesignTokens.readingBackground,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: DesignTokens.cardBorder),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: DesignTokens.wordUnreadInk
+                              .withValues(alpha: 0.18),
+                          offset: const Offset(0, 6),
+                          blurRadius: 14,
+                          spreadRadius: -8,
+                        ),
+                      ],
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(DesignTokens.spacingSm),
+                      child: Icon(
+                        Icons.skip_next_rounded,
+                        size: 28,
+                        color: DesignTokens.wordUnreadInk,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1084,6 +1200,90 @@ class _SoundGardenRouteState extends ConsumerState<SoundGardenRoute> {
         targetPhonemeSequence: card.phonemeIds,
         targetPhonemeId: card.phonemeIds.isEmpty ? '' : card.phonemeIds.first,
       );
+}
+
+
+// ===========================================================================
+// Phonics flashcards (Unit 16)
+// ===========================================================================
+
+/// Hosts [FlashcardsScreen] wired per its WIRING contract: the deck is the
+/// unique [WordToken]s of every installed pack's stories and twisters, the
+/// echo path reuses the Sound Garden [EchoSession] + sound-mode scorer, and
+/// phonics-first ordering follows the active profile's cumulative grapheme
+/// set (falling back to unordered when the profile's level is unknown to the
+/// loaded scope & sequence).
+class FlashcardsRoute extends ConsumerStatefulWidget {
+  const FlashcardsRoute({super.key});
+
+  @override
+  ConsumerState<FlashcardsRoute> createState() => _FlashcardsRouteState();
+}
+
+class _FlashcardsRouteState extends ConsumerState<FlashcardsRoute> {
+  ContentSnapshot? _snapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final snapshot = await ref.read(contentSnapshotProvider.future);
+    if (!mounted) return;
+    setState(() => _snapshot = snapshot);
+  }
+
+  /// One card visit's echo attempt (WIRING: the screen owns WHAT is listened
+  /// for; the shell constructs the session/scorer pair).
+  EchoSession _buildEchoAttempt(
+    AsrEngine engine,
+    List<String> phonemeSequence,
+    String targetPhonemeId,
+  ) =>
+      EchoSession(
+        engine: engine,
+        scorer: SoundModeScorer(
+          targetPhonemeSequence: phonemeSequence,
+          targetPhonemeId: targetPhonemeId,
+        ),
+      );
+
+  Set<String>? _cumulativeGraphemes(PhonicsContent content, String levelId) {
+    try {
+      return cumulativeGraphemeSet(levels: content.levels, levelId: levelId);
+    } on ArgumentError {
+      // Empty/foreign scope & sequence: order stays as-authored.
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = _snapshot;
+    final active = ref.watch(activeProfileProvider);
+    if (snapshot == null || active == null) return const _RouteLoading();
+    final content = ref.watch(phonicsContentProvider);
+    final db = ref.watch(appDatabaseProvider);
+    return FlashcardsScreen(
+      profileId: active.profile.localId,
+      deck: FlashcardDeck.fromWordTokens(<WordToken>[
+        for (final story in snapshot.stories)
+          for (final page in story.pages)
+            for (final sentence in page.sentences) ...sentence.words,
+        for (final twister in snapshot.twisters) ...twister.words,
+      ]),
+      audioService: ref.watch(audioServiceProvider),
+      phonemeAudioRefs: ref.watch(phonemeAudioRefsProvider),
+      dao: db.flashcardsDao,
+      now: DateTime.now,
+      echoEngine: ref.watch(sharedAsrEngineProvider),
+      buildEchoAttempt: _buildEchoAttempt,
+      cumulativeGraphemes:
+          _cumulativeGraphemes(content, active.profile.currentLevelId),
+    );
+  }
 }
 
 // ===========================================================================

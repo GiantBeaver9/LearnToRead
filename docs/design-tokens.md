@@ -5,34 +5,36 @@ Source: `lib/design/tokens.dart`. Spec: PRD §8 Unit 1, §10 OQ-8. Ticket:
 `test/design/tokens_test.dart`, `test/design/layout_test.dart`,
 `test/design/rive_stage_test.dart`, `test/design/token_lint_test.dart`.
 
-## Placeholder status (OQ-8)
+## Value status (OQ-8, updated 2026-07-28)
 
-Every concrete value in `lib/design/tokens.dart` — hex colors, font-family
-names, exact spacing numbers, exact motion durations — is a **builder-chosen
-placeholder**, not a final design decision. PRD §10 OQ-8 explicitly defers
-final typeface selections and concrete token values to a product-owner
-review that "blocks the owner token-review gate, not unit builds": this unit
-builds and tests against placeholders that satisfy the structural rules
-below, and the owner replaces the values later without any code outside
-`tokens.dart` needing to change.
+The concrete values in `lib/design/tokens.dart` — hex colors, font families,
+spacing and motion numbers — now come from the **product owner's mockup**
+(`docs/design/mockup-spec.md`, the "warm paper storybook" direction),
+replacing the original builder-chosen placeholders. This swap is exactly what
+PRD §10 OQ-8 anticipated: no code outside `tokens.dart` (plus the pubspec
+font declarations) changed. Two mockup values were adjusted per the mockup's
+own §9 rulings: read green darkened from `#4E8B5C` to `#477F54` to keep the
+WCAG AA floor (see below), and current-word ink became `#D79A3C` amber (§9.1
+ruling, superseding the PRD's ink+marker line).
 
-`DesignTokens.tokensAreOwnerSignedOff` is the machine-readable marker of this
-status. It is `false` until the product owner records sign-off of the style
-guide + tokens in the repo (ticket accept #9); `test/design/tokens_test.dart`
-pins it `false`. Do not flip it to `true` as part of a build — only the
-product owner's sign-off changes it.
+`DesignTokens.tokensAreOwnerSignedOff` is the machine-readable sign-off
+marker. It stays `false` until the product owner has seen the restyle **on
+device** and records sign-off of the style guide + tokens in the repo (ticket
+accept #9); `test/design/tokens_test.dart` pins it `false`. Do not flip it to
+`true` as part of a build — only the product owner's sign-off changes it.
 
 ## What the owner reviews at sign-off
 
 Per PRD §8 Unit 1 acceptance and OQ-8, the product-owner review gate covers:
 
-- **Exact hex values** for `wordUnreadInk`, `wordReadGreen`, `wordVocabBlue`,
-  `readingBackground`, `surfaceBackground` — the storybook-illustrated warm
-  palette direction is pinned, the exact tones are not.
-- **Final typefaces** bound to `readingFontFamily` (early-reader face:
-  unambiguous a/g, generous x-height) and `displayFontFamily` (friendly
-  display face) — currently placeholder family names (`LTRReadingFace`,
-  `LTRDisplayFace`) with no bundled licensed font file.
+- **On-device look of the mockup palette** — `wordUnreadInk` (`#33302B`),
+  `wordCurrentInk` (`#D79A3C` amber), `wordReadGreen` (`#477F54`, darkened
+  from the mockup's `#4E8B5C` for AA contrast), `wordVocabBlue` (`#5A79B8`),
+  `readingBackground` (`#FDFAF3`), `screenBackground`/`surfaceBackground`
+  (`#F3EADA`), plus the additive panel/label/confetti tokens from mockup §1.
+- **Final typefaces on device** — `readingFontFamily` is now Literata,
+  `displayFontFamily` Nunito, `monoFontFamily` IBM Plex Mono, bundled from
+  `assets/fonts/` and declared in `pubspec.yaml`.
 - **Color-vision simulation screenshots** (protanopia, deuteranopia) — a
   `[DEVICE]`/owner task; this build only ships a headless proxy (see below)
   that is not a substitute.
@@ -43,29 +45,42 @@ Per PRD §8 Unit 1 acceptance and OQ-8, the product-owner review gate covers:
 - Flipping `tokensAreOwnerSignedOff` to `true` once the above is recorded.
 
 What is **not** open for owner review, because it is pinned in the PRD and
-enforced by tests: the token *interface* (field names/types), the word-state
-identity rules (helped == read-correct, current-ink == unread-ink), the
-28/36pt sentence and 20/24pt paragraph minimum sizes, and the four-layout-class
-/ single-token-file structure.
+enforced by tests: the token *interface* (field names/types), the
+helped == read-correct identity rule, the 28/36pt sentence and 20/24pt
+paragraph minimum sizes, and the four-layout-class / single-token-file
+structure. (The former current-ink == unread-ink rule was **amended
+2026-07-28** by the owner's mockup ruling, `docs/design/mockup-spec.md`
+§9.1: the current word now reads `#D79A3C` amber, pinned distinct from
+unread ink in `test/design/tokens_test.dart`.)
 
 ## Token interface
 
 `DesignTokens` (`lib/design/tokens.dart`) is an `abstract final class` of
 `static const` fields, grouped as:
 
-- **Word-state colors** — `wordUnreadInk`, `wordCurrentInk` (aliased to
-  `wordUnreadInk` — only a marker changes, not the ink), `wordReadGreen`,
-  `wordHelpedGreen` (aliased to `wordReadGreen` — ratified: no visible
-  "helped" marker), `wordVocabBlue`. All fully opaque (`alpha == 1.0`).
-- **Backgrounds** — `readingBackground`, `screenBackground`,
-  `surfaceBackground`.
+- **Word-state colors** — `wordUnreadInk`, `wordCurrentInk` (`#D79A3C`
+  "saying now" amber — amended 2026-07-28 per mockup §9.1, no longer aliased
+  to unread ink), `wordReadGreen`, `wordHelpedGreen` (aliased to
+  `wordReadGreen` — ratified: no visible "helped" marker), `wordVocabBlue`.
+  All fully opaque (`alpha == 1.0`).
+- **Backgrounds & card chrome** — `readingBackground`, `screenBackground`,
+  `surfaceBackground`, plus additive mockup tokens `cardBorder`,
+  `cardGradientEnd`, `dashedDivider`.
+- **Panel/label/indicator colors** (additive, mockup §1/§4/§5) —
+  `listeningRed`/`listeningRedAlt`; `hintPanelBackground`/`hintPanelBorder`/
+  `hintLabel`; `syllableChipIdleBackground`/`syllableChipIdleText`;
+  `successPanelBackground`/`successPanelBorder`/`successDeepGreen`/
+  `successLabel`; `vocabPopupBackground`/`vocabPopupBorder`/
+  `vocabPopupHeading`; `mutedLabel`/`mutedBody`/`legendText`;
+  `confettiColors` (the mockup's five-color confetti set).
 - **Reading-text minimum sizes** — `sentenceTextSizePhone` (28.0),
   `sentenceTextSizeTablet` (36.0), `paragraphTextSizePhone` (20.0),
   `paragraphTextSizeTablet` (24.0). These four exact values are pinned by
   the PRD, not placeholders.
-- **Font-family indirection** — `readingFontFamily`, `displayFontFamily`:
-  non-empty, distinct string names bound to a bundled placeholder so the
-  owner's real font files are a one-line swap.
+- **Font-family indirection** — `readingFontFamily` (`Literata`),
+  `displayFontFamily` (`Nunito`), `monoFontFamily` (`IBMPlexMono`):
+  non-empty, distinct family names now bound to the owner-chosen faces
+  bundled in `assets/fonts/` and declared in `pubspec.yaml`.
 - **Spacing scale** — `spacingXs` .. `spacingXl`, strictly increasing and
   positive.
 - **Motion durations** — `greenSweepDuration` (~250ms, pinned by PRD §8
@@ -96,7 +111,11 @@ history. Two `FakeStoryStage` instances never share state.
 
 `wordReadGreen` is checked against `readingBackground` with the real WCAG
 2.x contrast-ratio formula (relative luminance from linearized sRGB
-channels) and must be `>= 4.5:1` (AA for normal text).
+channels) and must be `>= 4.5:1` (AA for normal text). The mockup's raw
+`#4E8B5C` measures ~3.90:1 on `#FDFAF3`, so per mockup §9.2 the token is the
+lightest same-hue/saturation darkening that passes: `#477F54` at ~4.55:1
+(`#3C7A4B`, the mockup's stat green, remains a known-good deeper fallback at
+~4.94:1 and is shipped as `successDeepGreen`).
 
 Real protanopia/deuteranopia simulation screenshots are a `[DEVICE]`/owner
 task and are not produced by this build. As a headless proxy,

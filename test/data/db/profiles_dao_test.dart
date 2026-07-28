@@ -8,7 +8,8 @@
 // the red state that pins the shape below):
 //   class AppDatabase extends _$AppDatabase {
 //     AppDatabase(QueryExecutor executor);
-//     int get schemaVersion; // pinned to 1
+//     int get schemaVersion; // pinned to 2 (AMENDED 2026-07-28: Unit 16
+//         flashcards (PRD §8) — schema v2 adds FlashcardProgress)
 //     ProfilesDao get profilesDao;
 //     StoryProgressDao get storyProgressDao;
 //     WordHelpDao get wordHelpDao;
@@ -73,8 +74,11 @@ void main() {
   });
 
   group('AppDatabase (positive: schema sanity)', () {
-    test('schemaVersion is pinned to 1', () {
-      expect(db.schemaVersion, 1);
+    // AMENDED 2026-07-28: Unit 16 flashcards (PRD §8) — schema v2 adds
+    // FlashcardProgress (see test/data/db/schema_migration_test.dart for
+    // the v1->v2 migration coverage).
+    test('schemaVersion is pinned to 2', () {
+      expect(db.schemaVersion, 2);
     });
   });
 

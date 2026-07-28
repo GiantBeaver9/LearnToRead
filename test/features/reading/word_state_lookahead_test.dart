@@ -178,8 +178,12 @@ void main() {
   });
 
   group('POSITIVE: multi-page stories report page-complete boundaries (accept #6, 2-page fixture)', () {
-    test('completing the first of two pages sets pageCompleted, resets current to page 2, and preserves page 1',
-        () {
+    // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): completing
+    // a non-final page no longer auto-advances -- the machine HOLDS
+    // (isPageComplete) and only turnPage() (the child's page-curl gesture)
+    // moves onto the next page.
+    test('completing the first of two pages sets pageCompleted and HOLDS; turnPage() '
+        'moves to page 2 and preserves page 1', () {
       final machine = _machine([
         ['see', 'spot'], // page 0: 2 words
         ['spot', 'runs', 'fast'], // page 1: 3 words
@@ -193,8 +197,12 @@ void main() {
 
       expect(pageBoundaryResult.pageCompleted, isTrue);
       expect(pageBoundaryResult.storyCompleted, isFalse);
-      expect(pageBoundaryResult.snapshot.currentPageIndex, 1);
-      expect(pageBoundaryResult.snapshot.currentIndex, 0);
+      // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5) -- the
+      // page does NOT advance at resolution time.
+      expect(pageBoundaryResult.snapshot.currentPageIndex, 0);
+      expect(pageBoundaryResult.snapshot.isPageComplete, isTrue);
+      expect(pageBoundaryResult.snapshot.currentIndex, -1,
+          reason: 'no current word while holding at a completed page');
 
       // Page 0's words are preserved, done, and do not regress.
       expect(pageBoundaryResult.snapshot.pages[0], [
@@ -202,13 +210,20 @@ void main() {
         WordState(index: 1, lifecycle: WordLifecycle.done, resolution: WordResolution.accepted),
       ]);
 
+      // The child turns the page.
+      machine.turnPage();
+      final turned = machine.snapshot;
+      expect(turned.currentPageIndex, 1);
+      expect(turned.currentIndex, 0);
+      expect(turned.isPageComplete, isFalse);
+
       // Page 1 starts fresh: first word current, rest unread.
-      expect(pageBoundaryResult.snapshot.pages[1], [
+      expect(turned.pages[1], [
         WordState(index: 0, lifecycle: WordLifecycle.current),
         WordState(index: 1, lifecycle: WordLifecycle.unread),
         WordState(index: 2, lifecycle: WordLifecycle.unread),
       ]);
-      expect(pageBoundaryResult.snapshot.currentPageWords, pageBoundaryResult.snapshot.pages[1]);
+      expect(turned.currentPageWords, turned.pages[1]);
     });
 
     test('completing the FINAL page signals storyCompleted, not pageCompleted (no page-turn needed)', () {
@@ -217,7 +232,10 @@ void main() {
         ['spot', 'runs', 'fast'],
       ]);
       machine.apply(const WordAccepted(index: 0));
-      machine.apply(const WordAccepted(index: 1)); // page 0 -> page 1
+      machine.apply(const WordAccepted(index: 1)); // page 0 complete -> hold
+      // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): the
+      // turn gesture, not the resolution, moves onto page 1.
+      machine.turnPage();
 
       machine.apply(const WordAccepted(index: 0));
       machine.apply(const WordAccepted(index: 1));
@@ -250,10 +268,17 @@ void main() {
       // Finish page 0 normally.
       final boundary = machine.apply(const WordAccepted(index: 2));
       expect(boundary.pageCompleted, isTrue);
-      expect(boundary.snapshot.currentPageIndex, 1);
-      expect(boundary.snapshot.currentIndex, 0);
-      expect(boundary.snapshot.pages[1][0].lifecycle, WordLifecycle.current);
-      expect(boundary.snapshot.pages[1][1].lifecycle, WordLifecycle.unread);
+      // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): the
+      // machine holds at the completed page; the back-fill never spilled
+      // into page 1, whose words only start once the page is turned.
+      expect(boundary.snapshot.currentPageIndex, 0);
+      expect(boundary.snapshot.isPageComplete, isTrue);
+      expect(boundary.snapshot.pages[1][0].lifecycle, WordLifecycle.unread);
+      machine.turnPage();
+      expect(machine.snapshot.currentPageIndex, 1);
+      expect(machine.snapshot.currentIndex, 0);
+      expect(machine.snapshot.pages[1][0].lifecycle, WordLifecycle.current);
+      expect(machine.snapshot.pages[1][1].lifecycle, WordLifecycle.unread);
     });
 
     test('a full 2-page story driven end-to-end via a scripted FakeReadingTracker completes correctly', () async {
@@ -272,7 +297,12 @@ void main() {
 
       final results = <WordStateResult>[];
       await for (final event in tracker.eventsStream) {
-        results.add(machine.apply(event));
+        final result = machine.apply(event);
+        results.add(result);
+        // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): the
+        // machine holds at the page boundary; the harness plays the child's
+        // turn gesture so the scripted page-1 events land on page 1.
+        if (result.pageCompleted) machine.turnPage();
       }
 
       expect(results, hasLength(4));

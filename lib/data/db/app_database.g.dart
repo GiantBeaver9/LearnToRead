@@ -1760,6 +1760,326 @@ class CollectionEntriesCompanion extends UpdateCompanion<CollectionEntryRow> {
   }
 }
 
+class $FlashcardProgressRowsTable extends FlashcardProgressRows
+    with TableInfo<$FlashcardProgressRowsTable, FlashcardProgressRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FlashcardProgressRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cardKeyMeta = const VerificationMeta(
+    'cardKey',
+  );
+  @override
+  late final GeneratedColumn<String> cardKey = GeneratedColumn<String>(
+    'card_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _boxMeta = const VerificationMeta('box');
+  @override
+  late final GeneratedColumn<int> box = GeneratedColumn<int>(
+    'box',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
+  @override
+  late final GeneratedColumn<DateTime> dueAt = GeneratedColumn<DateTime>(
+    'due_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [profileId, cardKey, box, dueAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'flashcard_progress_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FlashcardProgressRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('card_key')) {
+      context.handle(
+        _cardKeyMeta,
+        cardKey.isAcceptableOrUnknown(data['card_key']!, _cardKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cardKeyMeta);
+    }
+    if (data.containsKey('box')) {
+      context.handle(
+        _boxMeta,
+        box.isAcceptableOrUnknown(data['box']!, _boxMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_boxMeta);
+    }
+    if (data.containsKey('due_at')) {
+      context.handle(
+        _dueAtMeta,
+        dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId, cardKey};
+  @override
+  FlashcardProgressRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FlashcardProgressRow(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      cardKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_key'],
+      )!,
+      box: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}box'],
+      )!,
+      dueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FlashcardProgressRowsTable createAlias(String alias) {
+    return $FlashcardProgressRowsTable(attachedDatabase, alias);
+  }
+}
+
+class FlashcardProgressRow extends DataClass
+    implements Insertable<FlashcardProgressRow> {
+  final String profileId;
+
+  /// The A-14-style word hash (16 lowercase hex chars -- `hashWord` of the
+  /// lowercased word text). Word text itself is never stored here.
+  final String cardKey;
+
+  /// Leitner box, 1..kFlashcardMaxBox (see lib/domain/tuning.dart).
+  final int box;
+
+  /// When the card next becomes due (whole-second precision).
+  final DateTime dueAt;
+  const FlashcardProgressRow({
+    required this.profileId,
+    required this.cardKey,
+    required this.box,
+    required this.dueAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['card_key'] = Variable<String>(cardKey);
+    map['box'] = Variable<int>(box);
+    map['due_at'] = Variable<DateTime>(dueAt);
+    return map;
+  }
+
+  FlashcardProgressRowsCompanion toCompanion(bool nullToAbsent) {
+    return FlashcardProgressRowsCompanion(
+      profileId: Value(profileId),
+      cardKey: Value(cardKey),
+      box: Value(box),
+      dueAt: Value(dueAt),
+    );
+  }
+
+  factory FlashcardProgressRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FlashcardProgressRow(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      cardKey: serializer.fromJson<String>(json['cardKey']),
+      box: serializer.fromJson<int>(json['box']),
+      dueAt: serializer.fromJson<DateTime>(json['dueAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'cardKey': serializer.toJson<String>(cardKey),
+      'box': serializer.toJson<int>(box),
+      'dueAt': serializer.toJson<DateTime>(dueAt),
+    };
+  }
+
+  FlashcardProgressRow copyWith({
+    String? profileId,
+    String? cardKey,
+    int? box,
+    DateTime? dueAt,
+  }) => FlashcardProgressRow(
+    profileId: profileId ?? this.profileId,
+    cardKey: cardKey ?? this.cardKey,
+    box: box ?? this.box,
+    dueAt: dueAt ?? this.dueAt,
+  );
+  FlashcardProgressRow copyWithCompanion(FlashcardProgressRowsCompanion data) {
+    return FlashcardProgressRow(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      cardKey: data.cardKey.present ? data.cardKey.value : this.cardKey,
+      box: data.box.present ? data.box.value : this.box,
+      dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FlashcardProgressRow(')
+          ..write('profileId: $profileId, ')
+          ..write('cardKey: $cardKey, ')
+          ..write('box: $box, ')
+          ..write('dueAt: $dueAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(profileId, cardKey, box, dueAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FlashcardProgressRow &&
+          other.profileId == this.profileId &&
+          other.cardKey == this.cardKey &&
+          other.box == this.box &&
+          other.dueAt == this.dueAt);
+}
+
+class FlashcardProgressRowsCompanion
+    extends UpdateCompanion<FlashcardProgressRow> {
+  final Value<String> profileId;
+  final Value<String> cardKey;
+  final Value<int> box;
+  final Value<DateTime> dueAt;
+  final Value<int> rowid;
+  const FlashcardProgressRowsCompanion({
+    this.profileId = const Value.absent(),
+    this.cardKey = const Value.absent(),
+    this.box = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FlashcardProgressRowsCompanion.insert({
+    required String profileId,
+    required String cardKey,
+    required int box,
+    required DateTime dueAt,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       cardKey = Value(cardKey),
+       box = Value(box),
+       dueAt = Value(dueAt);
+  static Insertable<FlashcardProgressRow> custom({
+    Expression<String>? profileId,
+    Expression<String>? cardKey,
+    Expression<int>? box,
+    Expression<DateTime>? dueAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (cardKey != null) 'card_key': cardKey,
+      if (box != null) 'box': box,
+      if (dueAt != null) 'due_at': dueAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FlashcardProgressRowsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? cardKey,
+    Value<int>? box,
+    Value<DateTime>? dueAt,
+    Value<int>? rowid,
+  }) {
+    return FlashcardProgressRowsCompanion(
+      profileId: profileId ?? this.profileId,
+      cardKey: cardKey ?? this.cardKey,
+      box: box ?? this.box,
+      dueAt: dueAt ?? this.dueAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (cardKey.present) {
+      map['card_key'] = Variable<String>(cardKey.value);
+    }
+    if (box.present) {
+      map['box'] = Variable<int>(box.value);
+    }
+    if (dueAt.present) {
+      map['due_at'] = Variable<DateTime>(dueAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FlashcardProgressRowsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('cardKey: $cardKey, ')
+          ..write('box: $box, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1773,6 +2093,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TwisterProgressEntriesTable(this);
   late final $CollectionEntriesTable collectionEntries =
       $CollectionEntriesTable(this);
+  late final $FlashcardProgressRowsTable flashcardProgressRows =
+      $FlashcardProgressRowsTable(this);
   late final ProfilesDao profilesDao = ProfilesDao(this as AppDatabase);
   late final StoryProgressDao storyProgressDao = StoryProgressDao(
     this as AppDatabase,
@@ -1782,6 +2104,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final CollectionDao collectionDao = CollectionDao(this as AppDatabase);
+  late final FlashcardsDao flashcardsDao = FlashcardsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1792,6 +2115,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     wordHelpRecords,
     twisterProgressEntries,
     collectionEntries,
+    flashcardProgressRows,
   ];
 }
 
@@ -2807,6 +3131,206 @@ typedef $$CollectionEntriesTableProcessedTableManager =
       CollectionEntryRow,
       PrefetchHooks Function()
     >;
+typedef $$FlashcardProgressRowsTableCreateCompanionBuilder =
+    FlashcardProgressRowsCompanion Function({
+      required String profileId,
+      required String cardKey,
+      required int box,
+      required DateTime dueAt,
+      Value<int> rowid,
+    });
+typedef $$FlashcardProgressRowsTableUpdateCompanionBuilder =
+    FlashcardProgressRowsCompanion Function({
+      Value<String> profileId,
+      Value<String> cardKey,
+      Value<int> box,
+      Value<DateTime> dueAt,
+      Value<int> rowid,
+    });
+
+class $$FlashcardProgressRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $FlashcardProgressRowsTable> {
+  $$FlashcardProgressRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cardKey => $composableBuilder(
+    column: $table.cardKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get box => $composableBuilder(
+    column: $table.box,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FlashcardProgressRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FlashcardProgressRowsTable> {
+  $$FlashcardProgressRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cardKey => $composableBuilder(
+    column: $table.cardKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get box => $composableBuilder(
+    column: $table.box,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FlashcardProgressRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FlashcardProgressRowsTable> {
+  $$FlashcardProgressRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get cardKey =>
+      $composableBuilder(column: $table.cardKey, builder: (column) => column);
+
+  GeneratedColumn<int> get box =>
+      $composableBuilder(column: $table.box, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueAt =>
+      $composableBuilder(column: $table.dueAt, builder: (column) => column);
+}
+
+class $$FlashcardProgressRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FlashcardProgressRowsTable,
+          FlashcardProgressRow,
+          $$FlashcardProgressRowsTableFilterComposer,
+          $$FlashcardProgressRowsTableOrderingComposer,
+          $$FlashcardProgressRowsTableAnnotationComposer,
+          $$FlashcardProgressRowsTableCreateCompanionBuilder,
+          $$FlashcardProgressRowsTableUpdateCompanionBuilder,
+          (
+            FlashcardProgressRow,
+            BaseReferences<
+              _$AppDatabase,
+              $FlashcardProgressRowsTable,
+              FlashcardProgressRow
+            >,
+          ),
+          FlashcardProgressRow,
+          PrefetchHooks Function()
+        > {
+  $$FlashcardProgressRowsTableTableManager(
+    _$AppDatabase db,
+    $FlashcardProgressRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FlashcardProgressRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$FlashcardProgressRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$FlashcardProgressRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> cardKey = const Value.absent(),
+                Value<int> box = const Value.absent(),
+                Value<DateTime> dueAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardProgressRowsCompanion(
+                profileId: profileId,
+                cardKey: cardKey,
+                box: box,
+                dueAt: dueAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String cardKey,
+                required int box,
+                required DateTime dueAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FlashcardProgressRowsCompanion.insert(
+                profileId: profileId,
+                cardKey: cardKey,
+                box: box,
+                dueAt: dueAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FlashcardProgressRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FlashcardProgressRowsTable,
+      FlashcardProgressRow,
+      $$FlashcardProgressRowsTableFilterComposer,
+      $$FlashcardProgressRowsTableOrderingComposer,
+      $$FlashcardProgressRowsTableAnnotationComposer,
+      $$FlashcardProgressRowsTableCreateCompanionBuilder,
+      $$FlashcardProgressRowsTableUpdateCompanionBuilder,
+      (
+        FlashcardProgressRow,
+        BaseReferences<
+          _$AppDatabase,
+          $FlashcardProgressRowsTable,
+          FlashcardProgressRow
+        >,
+      ),
+      FlashcardProgressRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2824,4 +3348,6 @@ class $AppDatabaseManager {
       );
   $$CollectionEntriesTableTableManager get collectionEntries =>
       $$CollectionEntriesTableTableManager(_db, _db.collectionEntries);
+  $$FlashcardProgressRowsTableTableManager get flashcardProgressRows =>
+      $$FlashcardProgressRowsTableTableManager(_db, _db.flashcardProgressRows);
 }

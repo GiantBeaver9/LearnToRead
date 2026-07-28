@@ -1,0 +1,1743 @@
+{
+  "id": "pack.starter",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "stories": [
+    {
+      "id": "story.demo.cat",
+      "levelId": "level.demo.1",
+      "title": "The Cat in the Tin",
+      "pages": [
+        {
+          "sentences": [
+            {
+              "words": [
+                {
+                  "text": "The",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "cat",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "c",
+                      "phonemeId": "K"
+                    },
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/cat.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "sat",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    },
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/sat.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "in",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/in.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "a",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/a.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "tin",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/tin.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": "narration/cat_p1_s1.wav"
+            }
+          ]
+        }
+      ],
+      "riveAnimationRef": "rive/story_cat.riv",
+      "celebrationAudioRef": "celebrations/cheer_01.wav",
+      "collectibleRef": "collectible.demo.cat",
+      "skillsExercised": [
+        {
+          "id": "skill.demo.satpin",
+          "name": "s a t p i n c",
+          "sequenceOrder": 1,
+          "introducesGraphemes": [
+            "s",
+            "a",
+            "t",
+            "p",
+            "i",
+            "n",
+            "c"
+          ]
+        }
+      ],
+      "packId": "pack.starter",
+      "contentVersion": "1"
+    },
+    {
+      "id": "story.demo.ship",
+      "levelId": "level.demo.2",
+      "title": "The Red Ship",
+      "pages": [
+        {
+          "sentences": [
+            {
+              "words": [
+                {
+                  "text": "The",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "ship",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "sh",
+                      "phonemeId": "SH"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "p",
+                      "phonemeId": "P"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/ship.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "is",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/is.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "red",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "r",
+                      "phonemeId": "R"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "EH"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/red.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": "narration/ship_p1_s1.wav"
+            },
+            {
+              "words": [
+                {
+                  "text": "It",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/it.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "can",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "c",
+                      "phonemeId": "K"
+                    },
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/can.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "go",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "o",
+                      "phonemeId": "OW"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/go.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "fast",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "f",
+                      "phonemeId": "F"
+                    },
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/fast.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": "narration/ship_p1_s2.wav"
+            }
+          ]
+        }
+      ],
+      "riveAnimationRef": "rive/story_ship.riv",
+      "celebrationAudioRef": "celebrations/cheer_02.wav",
+      "collectibleRef": "collectible.demo.ship",
+      "skillsExercised": [
+        {
+          "id": "skill.demo.set2",
+          "name": "m d g o e h r u b f l",
+          "sequenceOrder": 2,
+          "introducesGraphemes": [
+            "m",
+            "d",
+            "g",
+            "o",
+            "e",
+            "h",
+            "r",
+            "u",
+            "b",
+            "f",
+            "l"
+          ]
+        },
+        {
+          "id": "skill.demo.digraphs",
+          "name": "sh ck ll ss",
+          "sequenceOrder": 3,
+          "introducesGraphemes": [
+            "sh",
+            "ck",
+            "ll",
+            "ss"
+          ]
+        }
+      ],
+      "packId": "pack.starter",
+      "contentVersion": "1"
+    },
+    {
+      "id": "story.demo.garden",
+      "levelId": "level.demo.3",
+      "title": "Ben's Bug Garden",
+      "pages": [
+        {
+          "sentences": [
+            {
+              "words": [
+                {
+                  "text": "Ben",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "EH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/ben.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "has",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "h",
+                      "phonemeId": "HH"
+                    },
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/has.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "a",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/a.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "garden",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "ar",
+                      "phonemeId": "ARE"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/garden.wav",
+                  "vocabCardId": "vocab.demo.garden"
+                }
+              ],
+              "narrationAudioRef": null
+            },
+            {
+              "words": [
+                {
+                  "text": "He",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "h",
+                      "phonemeId": "HH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "IY"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/he.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "digs",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/digs.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "in",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/in.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "the",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "mud",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "m",
+                      "phonemeId": "M"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/mud.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            },
+            {
+              "words": [
+                {
+                  "text": "The",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "sun",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/sun.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "is",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/is.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "up",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "p",
+                      "phonemeId": "P"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/up.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "and",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/and.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "the",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "day",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    },
+                    {
+                      "graphemes": "ay",
+                      "phonemeId": "EY"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/day.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "is",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/is.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "hot",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "h",
+                      "phonemeId": "HH"
+                    },
+                    {
+                      "graphemes": "o",
+                      "phonemeId": "AA"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/hot.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            },
+            {
+              "words": [
+                {
+                  "text": "A",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/a.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "big",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/big.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "bug",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/bug.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "sits",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/sits.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "on",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "o",
+                      "phonemeId": "AA"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/on.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "a",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/a.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "leaf",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "l",
+                      "phonemeId": "L"
+                    },
+                    {
+                      "graphemes": "ea",
+                      "phonemeId": "IY"
+                    },
+                    {
+                      "graphemes": "f",
+                      "phonemeId": "F"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/leaf.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            }
+          ]
+        },
+        {
+          "sentences": [
+            {
+              "words": [
+                {
+                  "text": "The",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "th",
+                      "phonemeId": "DH"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/the.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "bug",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/bug.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "hums",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "h",
+                      "phonemeId": "HH"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "m",
+                      "phonemeId": "M"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/hums.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "and",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AE"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/and.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "flits",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "f",
+                      "phonemeId": "F"
+                    },
+                    {
+                      "graphemes": "l",
+                      "phonemeId": "L"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "S"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/flits.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "to",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "t",
+                      "phonemeId": "T"
+                    },
+                    {
+                      "graphemes": "o",
+                      "phonemeId": "UW"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/to.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "a",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "a",
+                      "phonemeId": "AX"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/a.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "red",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "r",
+                      "phonemeId": "R"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "EH"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/red.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "bud",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/bud.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            },
+            {
+              "words": [
+                {
+                  "text": "Ben",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "EH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/ben.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "grins",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "r",
+                      "phonemeId": "R"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/grins.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            },
+            {
+              "words": [
+                {
+                  "text": "His",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "h",
+                      "phonemeId": "HH"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/his.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "garden",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "ar",
+                      "phonemeId": "ARE"
+                    },
+                    {
+                      "graphemes": "d",
+                      "phonemeId": "D"
+                    },
+                    {
+                      "graphemes": "e",
+                      "phonemeId": "AX"
+                    },
+                    {
+                      "graphemes": "n",
+                      "phonemeId": "N"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/garden.wav",
+                  "vocabCardId": "vocab.demo.garden"
+                },
+                {
+                  "text": "is",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/is.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "full",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "f",
+                      "phonemeId": "F"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "UH"
+                    },
+                    {
+                      "graphemes": "ll",
+                      "phonemeId": "L"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/full.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "of",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "o",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "f",
+                      "phonemeId": "V"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/of.wav",
+                  "vocabCardId": null
+                },
+                {
+                  "text": "buzzing",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "zz",
+                      "phonemeId": "Z"
+                    },
+                    {
+                      "graphemes": "i",
+                      "phonemeId": "IH"
+                    },
+                    {
+                      "graphemes": "ng",
+                      "phonemeId": "NG"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/buzzing.wav",
+                  "vocabCardId": "vocab.demo.buzzing"
+                },
+                {
+                  "text": "bugs",
+                  "graphemePhonemeMap": [
+                    {
+                      "graphemes": "b",
+                      "phonemeId": "B"
+                    },
+                    {
+                      "graphemes": "u",
+                      "phonemeId": "AH"
+                    },
+                    {
+                      "graphemes": "g",
+                      "phonemeId": "G"
+                    },
+                    {
+                      "graphemes": "s",
+                      "phonemeId": "Z"
+                    }
+                  ],
+                  "pronunciationAudioRef": "words/bugs.wav",
+                  "vocabCardId": null
+                }
+              ],
+              "narrationAudioRef": null
+            }
+          ]
+        }
+      ],
+      "riveAnimationRef": "rive/story_garden.riv",
+      "celebrationAudioRef": "celebrations/cheer_03.wav",
+      "collectibleRef": "collectible.demo.garden",
+      "skillsExercised": [
+        {
+          "id": "skill.demo.set3",
+          "name": "w y z j v k",
+          "sequenceOrder": 4,
+          "introducesGraphemes": [
+            "w",
+            "y",
+            "z",
+            "j",
+            "v",
+            "k"
+          ]
+        },
+        {
+          "id": "skill.demo.vowel-teams",
+          "name": "ee ea ay ai oa ar or th ng zz",
+          "sequenceOrder": 5,
+          "introducesGraphemes": [
+            "ee",
+            "ea",
+            "ay",
+            "ai",
+            "oa",
+            "ar",
+            "or",
+            "th",
+            "ng",
+            "zz",
+            "re"
+          ]
+        }
+      ],
+      "packId": "pack.starter",
+      "contentVersion": "1"
+    }
+  ],
+  "twisters": [
+    {
+      "id": "twister.demo.soup",
+      "levelId": "level.demo.1",
+      "words": [
+        {
+          "text": "Sad",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "a",
+              "phonemeId": "AE"
+            },
+            {
+              "graphemes": "d",
+              "phonemeId": "D"
+            }
+          ],
+          "pronunciationAudioRef": "words/sad.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "Sam",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "a",
+              "phonemeId": "AE"
+            },
+            {
+              "graphemes": "m",
+              "phonemeId": "M"
+            }
+          ],
+          "pronunciationAudioRef": "words/sam.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "sips",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "i",
+              "phonemeId": "IH"
+            },
+            {
+              "graphemes": "p",
+              "phonemeId": "P"
+            },
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            }
+          ],
+          "pronunciationAudioRef": "words/sips.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "sea",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "ea",
+              "phonemeId": "IY"
+            }
+          ],
+          "pronunciationAudioRef": "words/sea.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "soup",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "ou",
+              "phonemeId": "UW"
+            },
+            {
+              "graphemes": "p",
+              "phonemeId": "P"
+            }
+          ],
+          "pronunciationAudioRef": "words/soup.wav",
+          "vocabCardId": null
+        }
+      ],
+      "targetPhonemeId": "S",
+      "narrationAudioRef": "narration/twister_soup.wav",
+      "packId": "pack.starter"
+    },
+    {
+      "id": "twister.demo.shells",
+      "levelId": "level.demo.2",
+      "words": [
+        {
+          "text": "She",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "sh",
+              "phonemeId": "SH"
+            },
+            {
+              "graphemes": "e",
+              "phonemeId": "IY"
+            }
+          ],
+          "pronunciationAudioRef": "words/she.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "sells",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "e",
+              "phonemeId": "EH"
+            },
+            {
+              "graphemes": "ll",
+              "phonemeId": "L"
+            },
+            {
+              "graphemes": "s",
+              "phonemeId": "Z"
+            }
+          ],
+          "pronunciationAudioRef": "words/sells.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "sea",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "ea",
+              "phonemeId": "IY"
+            }
+          ],
+          "pronunciationAudioRef": "words/sea.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "shells",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "sh",
+              "phonemeId": "SH"
+            },
+            {
+              "graphemes": "e",
+              "phonemeId": "EH"
+            },
+            {
+              "graphemes": "ll",
+              "phonemeId": "L"
+            },
+            {
+              "graphemes": "s",
+              "phonemeId": "Z"
+            }
+          ],
+          "pronunciationAudioRef": "words/shells.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "by",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "b",
+              "phonemeId": "B"
+            },
+            {
+              "graphemes": "y",
+              "phonemeId": "AY"
+            }
+          ],
+          "pronunciationAudioRef": "words/by.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "the",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "th",
+              "phonemeId": "DH"
+            },
+            {
+              "graphemes": "e",
+              "phonemeId": "AX"
+            }
+          ],
+          "pronunciationAudioRef": "words/the.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "sea",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "s",
+              "phonemeId": "S"
+            },
+            {
+              "graphemes": "ea",
+              "phonemeId": "IY"
+            }
+          ],
+          "pronunciationAudioRef": "words/sea.wav",
+          "vocabCardId": null
+        },
+        {
+          "text": "shore",
+          "graphemePhonemeMap": [
+            {
+              "graphemes": "sh",
+              "phonemeId": "SH"
+            },
+            {
+              "graphemes": "o",
+              "phonemeId": "AO"
+            },
+            {
+              "graphemes": "re",
+              "phonemeId": "R"
+            }
+          ],
+          "pronunciationAudioRef": "words/shore.wav",
+          "vocabCardId": null
+        }
+      ],
+      "targetPhonemeId": "SH",
+      "narrationAudioRef": "narration/twister_shells.wav",
+      "packId": "pack.starter"
+    }
+  ],
+  "vocabCards": [
+    {
+      "id": "vocab.demo.garden",
+      "word": "garden",
+      "definitionText": "A garden is a place outside where plants and flowers grow.",
+      "definitionAudioRef": "vocab/garden_definition.wav",
+      "illustrationRef": null
+    },
+    {
+      "id": "vocab.demo.buzzing",
+      "word": "buzzing",
+      "definitionText": "Buzzing is the soft humming sound a bug makes with its wings.",
+      "definitionAudioRef": "vocab/buzzing_definition.wav",
+      "illustrationRef": null
+    }
+  ],
+  "collectibles": [
+    {
+      "id": "collectible.demo.cat",
+      "storyId": "story.demo.cat",
+      "riveRef": "rive/collect_cat.riv",
+      "sceneSlot": "0:0"
+    },
+    {
+      "id": "collectible.demo.ship",
+      "storyId": "story.demo.ship",
+      "riveRef": "rive/collect_ship.riv",
+      "sceneSlot": "0:1"
+    },
+    {
+      "id": "collectible.demo.garden",
+      "storyId": "story.demo.garden",
+      "riveRef": "rive/collect_garden.riv",
+      "sceneSlot": "1:0"
+    }
+  ],
+  "graphemeSounds": [
+    {
+      "id": "gs.demo.sh",
+      "grapheme": "sh",
+      "phonemeIds": [
+        "SH"
+      ],
+      "introducedAtLevelId": "level.demo.2",
+      "exampleWords": [
+        {
+          "wordText": "ship",
+          "pronunciationAudioRef": "words/ship.wav",
+          "minLevelId": "level.demo.2"
+        },
+        {
+          "wordText": "shells",
+          "pronunciationAudioRef": "words/shells.wav",
+          "minLevelId": "level.demo.2"
+        }
+      ]
+    },
+    {
+      "id": "gs.demo.ee",
+      "grapheme": "ee",
+      "phonemeIds": [
+        "IY"
+      ],
+      "introducedAtLevelId": "level.demo.3",
+      "exampleWords": [
+        {
+          "wordText": "see",
+          "pronunciationAudioRef": "words/see.wav",
+          "minLevelId": "level.demo.3"
+        },
+        {
+          "wordText": "tree",
+          "pronunciationAudioRef": "words/tree.wav",
+          "minLevelId": "level.demo.3"
+        }
+      ]
+    },
+    {
+      "id": "gs.demo.th",
+      "grapheme": "th",
+      "phonemeIds": [
+        "TH",
+        "DH"
+      ],
+      "introducedAtLevelId": "level.demo.3",
+      "exampleWords": [
+        {
+          "wordText": "thin",
+          "pronunciationAudioRef": "words/thin.wav",
+          "minLevelId": "level.demo.3"
+        },
+        {
+          "wordText": "the",
+          "pronunciationAudioRef": "words/the.wav",
+          "minLevelId": "level.demo.3"
+        }
+      ]
+    },
+    {
+      "id": "gs.demo.ar",
+      "grapheme": "ar",
+      "phonemeIds": [
+        "ARE"
+      ],
+      "introducedAtLevelId": "level.demo.3",
+      "exampleWords": [
+        {
+          "wordText": "garden",
+          "pronunciationAudioRef": "words/garden.wav",
+          "minLevelId": "level.demo.3"
+        },
+        {
+          "wordText": "car",
+          "pronunciationAudioRef": "words/car.wav",
+          "minLevelId": "level.demo.3"
+        }
+      ]
+    },
+    {
+      "id": "gs.demo.ay",
+      "grapheme": "ay",
+      "phonemeIds": [
+        "EY"
+      ],
+      "introducedAtLevelId": "level.demo.3",
+      "exampleWords": [
+        {
+          "wordText": "day",
+          "pronunciationAudioRef": "words/day.wav",
+          "minLevelId": "level.demo.3"
+        },
+        {
+          "wordText": "play",
+          "pronunciationAudioRef": "words/play.wav",
+          "minLevelId": "level.demo.3"
+        }
+      ]
+    }
+  ],
+  "assetRefs": [
+    "audio/nav/collection.wav",
+    "audio/nav/flashcards.wav",
+    "audio/nav/garden.wav",
+    "audio/nav/map.wav",
+    "audio/nav/parent-corner.wav",
+    "celebrations/cheer_01.wav",
+    "celebrations/cheer_02.wav",
+    "celebrations/cheer_03.wav",
+    "celebrations/cheer_04.wav",
+    "celebrations/cheer_05.wav",
+    "celebrations/cheer_06.wav",
+    "celebrations/cheer_07.wav",
+    "celebrations/cheer_08.wav",
+    "celebrations/cheer_09.wav",
+    "celebrations/cheer_10.wav",
+    "narration/cat_p1_s1.wav",
+    "narration/ship_p1_s1.wav",
+    "narration/ship_p1_s2.wav",
+    "narration/twister_shells.wav",
+    "narration/twister_soup.wav",
+    "phonemes/AA.wav",
+    "phonemes/AE.wav",
+    "phonemes/AH.wav",
+    "phonemes/AIR.wav",
+    "phonemes/AO.wav",
+    "phonemes/ARE.wav",
+    "phonemes/AW.wav",
+    "phonemes/AX.wav",
+    "phonemes/AY.wav",
+    "phonemes/B.wav",
+    "phonemes/CH.wav",
+    "phonemes/D.wav",
+    "phonemes/DH.wav",
+    "phonemes/EAR.wav",
+    "phonemes/EH.wav",
+    "phonemes/ER.wav",
+    "phonemes/EY.wav",
+    "phonemes/F.wav",
+    "phonemes/G.wav",
+    "phonemes/HH.wav",
+    "phonemes/IH.wav",
+    "phonemes/IY.wav",
+    "phonemes/JH.wav",
+    "phonemes/K.wav",
+    "phonemes/L.wav",
+    "phonemes/M.wav",
+    "phonemes/N.wav",
+    "phonemes/NG.wav",
+    "phonemes/OW.wav",
+    "phonemes/OY.wav",
+    "phonemes/P.wav",
+    "phonemes/R.wav",
+    "phonemes/S.wav",
+    "phonemes/SH.wav",
+    "phonemes/T.wav",
+    "phonemes/TH.wav",
+    "phonemes/UH.wav",
+    "phonemes/URE.wav",
+    "phonemes/UW.wav",
+    "phonemes/V.wav",
+    "phonemes/W.wav",
+    "phonemes/Y.wav",
+    "phonemes/Z.wav",
+    "phonemes/ZH.wav",
+    "prompts/near_miss.wav",
+    "prompts/your_turn.wav",
+    "rive/collect_cat.riv",
+    "rive/collect_cat.riv.inputs.json",
+    "rive/collect_garden.riv",
+    "rive/collect_garden.riv.inputs.json",
+    "rive/collect_ship.riv",
+    "rive/collect_ship.riv.inputs.json",
+    "rive/story_cat.riv",
+    "rive/story_cat.riv.inputs.json",
+    "rive/story_garden.riv",
+    "rive/story_garden.riv.inputs.json",
+    "rive/story_ship.riv",
+    "rive/story_ship.riv.inputs.json",
+    "vocab/buzzing_definition.wav",
+    "vocab/garden_definition.wav",
+    "words/a.wav",
+    "words/and.wav",
+    "words/ben.wav",
+    "words/big.wav",
+    "words/bud.wav",
+    "words/bug.wav",
+    "words/bugs.wav",
+    "words/buzzing.wav",
+    "words/by.wav",
+    "words/can.wav",
+    "words/car.wav",
+    "words/cat.wav",
+    "words/day.wav",
+    "words/digs.wav",
+    "words/fast.wav",
+    "words/flits.wav",
+    "words/full.wav",
+    "words/garden.wav",
+    "words/go.wav",
+    "words/grins.wav",
+    "words/has.wav",
+    "words/he.wav",
+    "words/his.wav",
+    "words/hot.wav",
+    "words/hums.wav",
+    "words/in.wav",
+    "words/is.wav",
+    "words/it.wav",
+    "words/leaf.wav",
+    "words/mud.wav",
+    "words/of.wav",
+    "words/on.wav",
+    "words/play.wav",
+    "words/red.wav",
+    "words/sad.wav",
+    "words/sam.wav",
+    "words/sat.wav",
+    "words/sea.wav",
+    "words/see.wav",
+    "words/sells.wav",
+    "words/she.wav",
+    "words/shells.wav",
+    "words/ship.wav",
+    "words/shore.wav",
+    "words/sips.wav",
+    "words/sits.wav",
+    "words/soup.wav",
+    "words/sun.wav",
+    "words/the.wav",
+    "words/thin.wav",
+    "words/tin.wav",
+    "words/to.wav",
+    "words/tree.wav",
+    "words/up.wav"
+  ],
+  "checksum": ""
+}

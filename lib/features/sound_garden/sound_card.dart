@@ -22,6 +22,14 @@ import 'package:learn_to_read/features/sound_garden/sound_card_controller.dart';
 /// A Sound Garden card's echo-attempt state, driven entirely by the caller
 /// (`SoundGardenScreen`) -- this widget never starts, scores, or ends an
 /// echo attempt itself.
+///
+/// Practice-loop ruling (docs/design/mockup-spec.md §10a, ratified
+/// 2026-07-28): the grapheme's ink follows this state -- amber
+/// (`DesignTokens.wordCurrentInk`, "saying now" semantics) while
+/// [listening], read-green (`DesignTokens.wordReadGreen`) while [matched],
+/// plain ink while [hidden]. `matched` is no longer terminal: the caller
+/// holds it for ~1 s and then loops back to [listening] with a fresh echo
+/// attempt.
 enum CardEchoState { hidden, listening, matched }
 
 /// One grapheme-sound card. See the file-level doc comment for the pinned
@@ -71,6 +79,15 @@ class SoundCardWidget extends StatelessWidget {
     final muted = wakeState == CardWakeState.muted;
     final matched = echoState == CardEchoState.matched;
 
+    // Practice-loop grapheme ink (docs/design/mockup-spec.md §10a): amber
+    // while listening ("saying now"), read-green during the matched hold,
+    // plain ink otherwise.
+    final graphemeInk = switch (echoState) {
+      CardEchoState.hidden => DesignTokens.wordUnreadInk,
+      CardEchoState.listening => DesignTokens.wordCurrentInk,
+      CardEchoState.matched => DesignTokens.wordReadGreen,
+    };
+
     return GestureDetector(
       key: ValueKey('sound-card-${card.id}'),
       onTap: onTap,
@@ -98,11 +115,11 @@ class SoundCardWidget extends StatelessWidget {
                   Text(
                     card.grapheme,
                     key: ValueKey('sound-card-text-${card.id}'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: DesignTokens.readingFontFamily,
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: DesignTokens.wordUnreadInk,
+                      color: graphemeInk,
                     ),
                   ),
                   if (matched)

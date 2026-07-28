@@ -34,10 +34,13 @@
 /// `sentence` is that page's word tokens, its biasing context is those same
 /// words, and every index on the pinned tracker event stream is therefore
 /// *page-relative* — exactly the indexing `WordStateMachine` already applies
-/// events with. When a page completes the tracker is stopped and a fresh one
-/// is built for the next page. [ReadingSession] owns that rebuild behind one
-/// stable [ReadingTrackerHandle], so the reading screen (which subscribes to
-/// the handle once, on open) never sees the swap.
+/// events with. When the child TURNS a completed page (the ratified
+/// page-turn hold, PRD §8 Unit 5 / mockup-spec §8) the finished page's
+/// tracker is stopped and a fresh one is built for the next page —
+/// [ReadingSession.advancePage], wired to the reading screen's turn path.
+/// [ReadingSession] owns that rebuild behind one stable
+/// [ReadingTrackerHandle], so the reading screen (which subscribes to the
+/// handle once, on open) never sees the swap.
 library;
 
 import 'dart:async';
@@ -723,12 +726,12 @@ class ReadingSession implements ReadingTrackerHandle {
       _scaffold.watchWord(index: next, word: words[next]);
       return;
     }
-    if (_pageIndex + 1 < pages.length) {
-      // The page is finished. Rebuilding the tracker cannot happen inside
-      // the old tracker's own synchronous emission, so it is deferred by a
-      // microtask.
-      scheduleMicrotask(_advancePage);
-    }
+    // The page is finished. The word state machine HOLDS here (page-turn
+    // hold, PRD §8 Unit 5 / mockup-spec §8, owner-confirmed 2026-07-28), so
+    // nothing advances at resolution time: the finished page's tracker
+    // stays open (listening is uninterrupted, and a completed tracker is
+    // quiescent — its matcher is complete, so silence/struggle timers are
+    // disarmed) until the child's turn gesture reaches [advancePage].
   }
 
   int? _resolvedIndexOf(TrackerEvent event) => switch (event) {
@@ -738,7 +741,15 @@ class ReadingSession implements ReadingTrackerHandle {
         _ => null,
       };
 
-  void _advancePage() {
+  /// Moves the listening session onto the next page: stops the finished
+  /// page's tracker and opens a fresh one scoped to the new page's words.
+  ///
+  /// Called at TURN time — the shell wires it to the reading screen's
+  /// `onPageTurned`, which fires when the child completes the page-curl
+  /// gesture (PRD §8 Unit 5 page-turn hold) — never at resolution time, so
+  /// the session and the word state machine advance together and exactly
+  /// once. No-op after [stop]/[dispose] or when there is no next page.
+  void advancePage() {
     if (_disposed || _stopped) return;
     if (_pageIndex + 1 >= pages.length) return;
     _closeTracker();

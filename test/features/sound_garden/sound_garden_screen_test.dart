@@ -437,11 +437,25 @@ void main() {
           findsOneWidget);
       expect(find.byKey(const ValueKey('sound-card-sparkle-gs.sh')), findsNothing);
 
-      await tester.pumpAndSettle();
+      // AMENDED 2026-07-28: practice-loop ruling (docs/design/mockup-spec.md
+      // §10a) — accept is no longer terminal for the card: after a 1 s green
+      // hold the card resets to a fresh listening attempt, so the original
+      // pumpAndSettle (which assumed the tree settles into a done state)
+      // would ride the infinite practice loop forever. Stepped pumps observe
+      // the matched hold instead; the terminal "sparkle stays" meaning of
+      // these asserts becomes "sparkle during the hold".
+      await tester.pump(const Duration(milliseconds: 50)); // deliver SH
+      await tester.pump();
 
       expect(find.byKey(const ValueKey('sound-card-sparkle-gs.sh')), findsOneWidget,
           reason: 'the scripted SH hypothesis matches the target sequence');
       expect(find.byKey(const ValueKey('sound-card-echo-prompt-gs.sh')), findsNothing);
+
+      // AMENDED 2026-07-28: practice-loop ruling (docs/design/mockup-spec.md
+      // §10a) — dismount and flush so the loop's green-hold timer and the
+      // fresh rep's scripted-delivery timer cannot leak past the test.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
     });
   });
 
@@ -473,7 +487,12 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('sound-card-gs.sh')));
       await _drainSequentialPlayback(tester, audioService, 1);
-      await tester.pumpAndSettle();
+      // AMENDED 2026-07-28: practice-loop ruling (docs/design/mockup-spec.md
+      // §10a) — the zero-delay match now starts the 1 s green-hold/reset
+      // loop (a fresh attempt every rep, one sound_card_echo per accepted
+      // rep), so the tree never settles after a match; a plain pump observes
+      // exactly the first rep's events instead of pumpAndSettle.
+      await tester.pump();
 
       final played = events.where((e) => e.name == AnalyticsEventName.soundCardPlayed);
       expect(played, hasLength(1));
@@ -489,6 +508,11 @@ void main() {
       expect(echoed, hasLength(1));
       expect(echoed.single.fields['matched'], isTrue);
       expect(() => validateEventPayload(echoed.single.toPayload()), returnsNormally);
+
+      // AMENDED 2026-07-28: practice-loop ruling (docs/design/mockup-spec.md
+      // §10a) — dismount so the green-hold timer the match started cannot
+      // leak past the test.
+      await tester.pumpWidget(const SizedBox());
     });
   });
 

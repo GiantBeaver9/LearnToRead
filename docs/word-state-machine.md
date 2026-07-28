@@ -20,11 +20,12 @@ Kept separate from the reading-screen widget ticket so the trickiest Unit 5 logi
 
 ### word_state_machine.dart
 
-- `class WordStateSnapshot { pages, currentPageIndex, currentIndex, isStoryComplete }` with `currentPageWords => pages[currentPageIndex]`. `pages` always holds every page (including completed ones, frozen and done) so the UI never loses earlier pages when paging forward. `currentIndex` is `-1` once `isStoryComplete` — there is no "current" word left.
-- `class WordStateResult { snapshot, pageCompleted, storyCompleted }` — the outcome of one `apply()` call. `pageCompleted` is true only when a **non-final** page just finished (screen should page-turn); `storyCompleted` is true only on the `apply()` call that finishes the **last** page (screen hands off to celebration after its own ~400 ms beat — the beat itself is reading-screen's, not this machine's). The two are mutually exclusive and each fires exactly once, on the transition; every `apply()` after story completion is inert (`false`/`false`, unchanged snapshot) rather than re-signaling.
+- `class WordStateSnapshot { pages, currentPageIndex, currentIndex, isPageComplete, isStoryComplete }` with `currentPageWords => pages[currentPageIndex]`. `pages` always holds every page (including completed ones, frozen and done) so the UI never loses earlier pages when paging forward. `currentIndex` is `-1` while `isPageComplete` holds or once `isStoryComplete` — there is no "current" word in either state. `isPageComplete` (AMENDED 2026-07-28: page-turn-hold ruling, PRD §8 Unit 5) is true while the machine holds at a completed **non-final** page waiting for `turnPage()`; never true on the final page.
+- `class WordStateResult { snapshot, pageCompleted, storyCompleted }` — the outcome of one `apply()` call. `pageCompleted` is true only when a **non-final** page just finished (the machine now HOLDS; the screen shows the page-curl dog-ear and calls `turnPage()` on the child's gesture); `storyCompleted` is true only on the `apply()` call that finishes the **last** page (screen hands off to celebration after its own ~400 ms beat — the beat itself is reading-screen's, not this machine's). The two are mutually exclusive and each fires exactly once, on the transition; every `apply()` after story completion is inert (`false`/`false`, unchanged snapshot) rather than re-signaling.
 - `class WordStateMachine({required List<List<WordToken>> pages, required Level level})` — `pages` is pre-flattened (`Page.sentences → words`, per page); flattening real `Story` content is the reading-screen ticket's job. `vocabTappable` is computed once at construction: `WordToken.vocabCardId != null && level.vocabEnabled`. The first word of the first page starts `current`; every other word starts `unread`.
   - `WordStateSnapshot get snapshot` — current state, fresh and independently unmodifiable each read.
-  - `WordStateResult apply(TrackerEvent event)` — the only way state changes.
+  - `WordStateResult apply(TrackerEvent event)` — the only way word state changes; inert while the machine is holding at a completed page.
+  - `void turnPage()` (AMENDED 2026-07-28: page-turn-hold ruling) — exits the hold and advances onto the next page (first word `current`, rest `unread`). A no-op any other time — mid-page, on the final page, after story completion, or called twice for one hold — so a stray double gesture can never skip a page.
 
 ## Event handling
 
@@ -43,8 +44,8 @@ Driven solely by `listening-contracts`' `TrackerEvent` stream (`WordAccepted`, `
 
 After a word resolves, if `currentIndex` still points inside the current page, that word becomes the new `current`. Otherwise the page is complete:
 
-- **Non-final page** → `currentPageIndex` advances, `currentIndex` resets to `0`, that new page's first word becomes `current`; result reports `pageCompleted: true`.
-- **Final page** → the story is complete; `currentIndex` (as read from the snapshot) becomes `-1`; result reports `storyCompleted: true`. A back-fill sweep that lands on the very last word of the story completes the story in that single `apply()` call, same as a direct hit.
+- **Non-final page** (AMENDED 2026-07-28: page-turn-hold ruling, PRD §8 Unit 5 / mockup-spec §8, owner-confirmed: "the machine holds at page completion; the child's turn gesture IS the reward beat") → the machine enters the `isPageComplete` hold: the page's words stay done/green, `currentPageIndex` does **not** move, every further `apply()` is inert, and the result reports `pageCompleted: true`. The child's page-curl gesture then drives `turnPage()`, which advances `currentPageIndex`, resets `currentIndex` to `0`, and makes the new page's first word `current`.
+- **Final page** → the story is complete; `currentIndex` (as read from the snapshot) becomes `-1`; result reports `storyCompleted: true` — no hold, no curl. A back-fill sweep that lands on the very last word of the story completes the story in that single `apply()` call, same as a direct hit.
 
 ## Design Rationale
 
