@@ -1,0 +1,75 @@
+{
+  "levels": [
+    {
+      "id": "level-1",
+      "ordinal": 1,
+      "format": "sentence",
+      "vocabEnabled": false,
+      "heartWords": ["the", "a"],
+      "skills": [
+        {
+          "id": "skill-cvc-short-a",
+          "name": "CVC short a",
+          "sequenceOrder": 1,
+          "introducesGraphemes": ["a"]
+        }
+      ]
+    },
+    {
+      "id": "level-2",
+      "ordinal": 2,
+      "format": "sentence",
+      "vocabEnabled": false,
+      "heartWords": ["said", "was"],
+      "skills": [
+        {
+          "id": "skill-digraph-sh",
+          "name": "Digraph sh",
+          "sequenceOrder": 2,
+          "introducesGraphemes": ["sh"]
+        }
+      ]
+    },
+    {
+      "id": "level-3",
+      "ordinal": 3,
+      "format": "multiSentence",
+      "vocabEnabled": false,
+      "heartWords": ["they"],
+      "skills": [
+        {
+          "id": "skill-blend-st",
+          "name": "Blend st",
+          "sequenceOrder": 3,
+          "introducesGraphemes": ["st"]
+        }
+      ]
+    },
+    {
+      "id": "level-4",
+      "ordinal": 4,
+      "format": "paragraph",
+      "vocabEnabled": true,
+      "heartWords": ["friend"],
+      "skills": [
+        {
+          "id": "skill-silent-e",
+          "name": "Silent e",
+          "sequenceOrder": 4,
+          "introducesGraphemes": ["a_e"]
+        }
+      ]
+    }
+  ],
+  "stories": [
+    { "id": "story-1-1", "levelId": "level-1" },
+    { "id": "story-1-2", "levelId": "level-1" },
+    { "id": "story-2-1", "levelId": "level-2" },
+    { "id": "story-2-2", "levelId": "level-2" },
+    { "id": "story-3-1", "levelId": "level-3" },
+    { "id": "story-3-2", "levelId": "level-3" },
+    { "id": "story-4-1", "levelId": "level-4" },
+    { "id": "story-4-2", "levelId": "level-4" },
+    { "id": "story-4-3", "levelId": "level-4" }
+  ]
+}
