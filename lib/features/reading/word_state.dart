@@ -58,7 +58,9 @@ class WordState {
   /// true iff the word's `WordToken.vocabCardId` is set AND the owning
   /// `Level.vocabEnabled` is true. Static for the word's lifetime -- it does
   /// NOT change with [lifecycle] (vocab words are tappable "at any time" per
-  /// PRD Unit 5), but it only affects [renderColor] while still `unread`.
+  /// PRD Unit 5). It affects [renderColor] while `unread` (vocab blue) and
+  /// once `done` (vocab-read purple, owner ruling 2026-07-28); the `current`
+  /// amber is shared by every word kind.
   final bool vocabTappable;
 
   /// True while the current word is being struggled with (set by a
@@ -67,10 +69,13 @@ class WordState {
   final bool struggling;
 
   /// The color this word renders in, pinned to [DesignTokens] -- never a
-  /// raw hex literal. Derived solely from [lifecycle] (plus [vocabTappable]
-  /// while still `unread`): a `done` word renders [DesignTokens.wordReadGreen]
-  /// regardless of which [resolution] produced it (accepted, near-miss, and
-  /// helped are visually IDENTICAL -- the literal Unit 1/5/6 ratification).
+  /// raw hex literal. Derived solely from [lifecycle] plus [vocabTappable]:
+  /// a `done` ordinary word renders [DesignTokens.wordReadGreen] and a
+  /// `done` vocab word renders [DesignTokens.wordVocabReadPurple] (owner
+  /// ruling 2026-07-28, PRD §8 Unit 1) -- in BOTH cases regardless of which
+  /// [resolution] produced it (accepted, near-miss, and helped are visually
+  /// IDENTICAL per word kind -- the literal Unit 1/5/6 ratification; the
+  /// invisible-help rule is per word kind, so helped-vocab == read-vocab).
   Color get renderColor {
     switch (lifecycle) {
       case WordLifecycle.unread:
@@ -78,7 +83,7 @@ class WordState {
       case WordLifecycle.current:
         return DesignTokens.wordCurrentInk;
       case WordLifecycle.done:
-        return DesignTokens.wordReadGreen;
+        return vocabTappable ? DesignTokens.wordVocabReadPurple : DesignTokens.wordReadGreen;
     }
   }
 

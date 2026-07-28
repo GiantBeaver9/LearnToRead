@@ -210,7 +210,9 @@ void main() {
       expect(machine.snapshot.currentPageWords[0].renderColor, DesignTokens.wordReadGreen);
     });
 
-    test('a done vocab word renders green, not blue (blue is unread-only, PRD Unit 1)', () {
+    // AMENDED 2026-07-28: vocab-read purple ruling (PRD §8 Unit 1)
+    test('a done vocab word renders vocab-read purple, not blue and not green '
+        '(blue is unread-only; vocab words never turn green)', () {
       final machine = _machine(
         [
           ['a', 'telescope'],
@@ -222,8 +224,9 @@ void main() {
       machine.apply(const WordAccepted(index: 1));
       final telescope = machine.snapshot.currentPageWords[1];
       expect(telescope.vocabTappable, isTrue, reason: 'tappability persists regardless of lifecycle');
-      expect(telescope.renderColor, DesignTokens.wordReadGreen);
+      expect(telescope.renderColor, DesignTokens.wordVocabReadPurple);
       expect(telescope.renderColor, isNot(DesignTokens.wordVocabBlue));
+      expect(telescope.renderColor, isNot(DesignTokens.wordReadGreen));
     });
   });
 

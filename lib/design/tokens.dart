@@ -71,6 +71,18 @@ abstract final class DesignTokens {
   /// owner/device task).
   static const Color wordVocabBlue = Color(0xFF5A79B8);
 
+  /// Vocabulary (read/helped) word color: the owner's vocab-read purple
+  /// (violet family `#7A5AA0`, PRD §8 Unit 1 / mockup-spec §3, owner ruling
+  /// 2026-07-28). A vocab word that resolves (read OR helped — the
+  /// invisible-help rule is per word kind) renders this instead of
+  /// [wordReadGreen]: the purple says both "you read it" and "this was a
+  /// new word", keeping the tap-for-definition affordance discoverable.
+  ///
+  /// The ruling's starting value `#7A5AA0` already measures ~5.30:1 against
+  /// [readingBackground] (WCAG AA floor is 4.5:1), so no darkening was
+  /// needed — the hex is used as ratified.
+  static const Color wordVocabReadPurple = Color(0xFF7A5AA0);
+
   // ---------------------------------------------------------------------
   // Backgrounds & card chrome.
   // ---------------------------------------------------------------------

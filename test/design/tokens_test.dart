@@ -278,6 +278,68 @@ void main() {
     );
   });
 
+  group('vocab-read purple (owner ruling 2026-07-28, PRD §8 Unit 1)', () {
+    test(
+      'POSITIVE: vocab-read purple meets WCAG AA (>= 4.5:1) against the '
+      'reading background',
+      () {
+        final ratio = _contrastRatio(
+          DesignTokens.wordVocabReadPurple,
+          DesignTokens.readingBackground,
+        );
+        expect(ratio, greaterThanOrEqualTo(4.5));
+      },
+    );
+
+    test(
+      'NEGATIVE: vocab-read purple is distinct from vocab-blue, read-green, '
+      'and unread ink (no state pair shares a color)',
+      () {
+        expect(
+          DesignTokens.wordVocabReadPurple,
+          isNot(equals(DesignTokens.wordVocabBlue)),
+        );
+        expect(
+          DesignTokens.wordVocabReadPurple,
+          isNot(equals(DesignTokens.wordReadGreen)),
+        );
+        expect(
+          DesignTokens.wordVocabReadPurple,
+          isNot(equals(DesignTokens.wordUnreadInk)),
+        );
+      },
+    );
+
+    test(
+      'EDGE: vocab-read purple is fully opaque (alpha == 1.0), like every '
+      'other word-state color',
+      () {
+        expect(DesignTokens.wordVocabReadPurple.a, equals(1.0));
+      },
+    );
+
+    test(
+      'POSITIVE: read-green vs vocab-read purple differ sufficiently on the '
+      'blue-yellow (tritan-safe) axis — same heuristic and floor as the '
+      'green/blue pair (a done ordinary word next to a done vocab word)',
+      () {
+        final axisDelta = (
+          _blueYellowAxis(DesignTokens.wordReadGreen) -
+          _blueYellowAxis(DesignTokens.wordVocabReadPurple)
+        ).abs();
+        expect(axisDelta, greaterThanOrEqualTo(0.15));
+      },
+    );
+
+    // NOTE (measured 2026-07-28, not asserted): the blue<->purple pair
+    // (unread vocab vs read vocab) measures only ~0.096 on the same
+    // blue-yellow axis — below the 0.15 floor the suite uses for
+    // green<->blue. Per the ruling handoff the floor is NOT weakened here;
+    // whether the dotted-underline + weight-600 affordance (present only
+    // while unread) plus reading position sufficiently differentiate that
+    // pair for protan/deutan viewers is an orchestrator/owner call.
+  });
+
   group('single-token-file marking for OQ-8 (accept #9, partial proxy)', () {
     // The actual product-owner sign-off (accept #9) is an owner/[DEVICE]
     // task and cannot be tested here. This only pins that the token file

@@ -11,9 +11,10 @@
 ///
 /// Pinned rendering rules, all token-driven:
 ///  - unread ink, vocab blue while unread, current amber plus a marker, and
-///    read green once done -- straight from [WordState.renderColor], so
-///    accepted, near-miss and helped words are pixel-identical (there is no
-///    helped badge, by design).
+///    once done: read green for ordinary words, vocab-read purple for vocab
+///    words (owner ruling 2026-07-28) -- straight from
+///    [WordState.renderColor], so accepted, near-miss and helped words are
+///    pixel-identical per word kind (there is no helped badge, by design).
 ///  - the green transition is an animated per-word sweep over
 ///    [DesignTokens.greenSweepDuration], never an instant recolor, and it
 ///    makes no sound: audio is reserved for help and celebration so the
