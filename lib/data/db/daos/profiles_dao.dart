@@ -107,7 +107,8 @@ class ProfilesDao extends DatabaseAccessor<AppDatabase>
 
   /// Deletes the profile with [localId] and every row belonging to it in
   /// every other table this unit owns (StoryProgress, WordHelpRecord,
-  /// TwisterProgress, CollectionState) -- irreversibly, per PRD §8 Unit 10.
+  /// TwisterProgress, CollectionState, and — since schema v2 —
+  /// FlashcardProgress) -- irreversibly, per PRD §8 Unit 10.
   /// No-op (does not throw) if [localId] does not exist.
   Future<void> deleteProfile(String localId) async {
     await transaction(() async {
@@ -122,6 +123,11 @@ class ProfilesDao extends DatabaseAccessor<AppDatabase>
       )..where((t) => t.profileId.equals(localId))).go();
       await (delete(
         collectionEntries,
+      )..where((t) => t.profileId.equals(localId))).go();
+      // Unit 16 (schema v2): flashcard progress is per-profile learning
+      // data and erases with the profile like every other table above.
+      await (attachedDatabase.delete(
+        attachedDatabase.flashcardProgressRows,
       )..where((t) => t.profileId.equals(localId))).go();
       await (delete(profiles)..where((t) => t.localId.equals(localId))).go();
     });

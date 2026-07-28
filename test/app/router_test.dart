@@ -376,10 +376,12 @@ void main() {
       expect(names.toSet(), hasLength(names.length));
     });
 
+    // AMENDED 2026-07-28: Unit 16 flashcards ruling (PRD §8) — the ratified
+    // flashcards deck is the eighth pinned route.
     test(
-      'POSITIVE: the shell registers exactly the seven pinned routes -- the '
-      'four child-facing screens (map/reading/collection/garden), the twister '
-      'booster, the picker, and the gated parent corner',
+      'POSITIVE: the shell registers exactly the eight pinned routes -- the '
+      'five child-facing screens (map/reading/collection/garden/flashcards), '
+      'the twister booster, the picker, and the gated parent corner',
       () {
         final configured = h.router.configuration.routes
             .whereType<GoRoute>()
@@ -392,6 +394,7 @@ void main() {
           kRoutePathCollection,
           kRoutePathSoundGarden,
           kRoutePathTwister,
+          kRoutePathFlashcards,
           kRoutePathParentCorner,
         });
       },
@@ -534,14 +537,18 @@ void main() {
 
   // -------------------------------------------------------------------------
   group('icon + voice-prompt navigation, no reading required (accept 5)', () {
+    // AMENDED 2026-07-28: Unit 16 flashcards ruling (PRD §8) — the ratified
+    // fourth child destination joins the nav alongside map/collection/garden.
     test(
-      'POSITIVE: the child nav destinations are exactly map, collection and '
-      'sound garden -- Reading is entered from a map node, never a nav tab',
+      'POSITIVE: the child nav destinations are exactly map, collection, '
+      'sound garden and flashcards -- Reading is entered from a map node, '
+      'never a nav tab',
       () {
         expect(kChildNavDestinationRouteNames, <String>[
           kRouteNameMap,
           kRouteNameCollection,
           kRouteNameSoundGarden,
+          kRouteNameFlashcards,
         ]);
       },
     );
