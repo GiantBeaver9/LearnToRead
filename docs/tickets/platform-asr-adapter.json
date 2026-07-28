@@ -1,0 +1,29 @@
+{
+  "unit": "platform-asr-adapter",
+  "title": "Platform on-device ASR engine adapter (iOS SFSpeechRecognizer / Android SpeechRecognizer via channels)",
+  "prd_refs": ["§8 Unit 4 (engine)", "§9 A-10", "§8 Unit 0", "§7 R1"],
+  "deps": ["listening-contracts", "spike-asr-app"],
+  "files": [
+    "lib/features/listening/engine/platform_asr_engine.dart",
+    "lib/features/listening/engine/asr_channel_codec.dart",
+    "ios/Runner/AppDelegate.swift",
+    "ios/Runner/AsrSpeechHandler.swift",
+    "android/app/src/main/kotlin/com/learntoread/learn_to_read/MainActivity.kt",
+    "android/app/src/main/kotlin/com/learntoread/learn_to_read/AsrSpeechHandler.kt"
+  ],
+  "test_files": [
+    "test/features/listening/engine/platform_asr_engine_test.dart",
+    "test/features/listening/engine/asr_channel_codec_test.dart"
+  ],
+  "accept": [
+    "PlatformAsrEngine implements the listening-contracts AsrEngine interface over a method/event channel: start(biasing context) forwards the expected words to the native side (iOS: SFSpeechRecognizer contextualStrings; Android: SpeechRecognizer biasing), stop tears down the native session; verified with mocked platform channels (TestDefaultBinaryMessenger) asserting outgoing payloads and decoding scripted incoming hypothesis payloads.",
+    "Channel codec maps native hypothesis payloads (partial/final word hypotheses, confidence, optional phone-level detail where the platform exposes it) into the contract Hypothesis type; malformed payloads are dropped with a reported error, never crash the stream (negative tests).",
+    "Engine failure surfaces through the contract's failure signal so the tracker's tap fallback engages (mocked channel error test).",
+    "No audio buffers cross the channel to Dart and nothing is written to storage — the channel carries hypothesis metadata only (codec test asserts payload shape has no audio field).",
+    "[DEVICE] Native Swift/Kotlin recognition sessions, mic permission handling, and real hypothesis quality are owner-verified on physical devices; cannot compile or run in this container.",
+    "[BLOCKED-ON-OWNER] This ticket may only be built after the Unit 0 spike verdict exists in-repo and says keep-on-device (or specifies the alternative); the ticket's implementation cites the verdict per Unit 0 acceptance."
+  ],
+  "pinned_design": "A-10 pinned: default ASR engine behind the hybrid matching layer = platform on-device recognition with contextual biasing (iOS SFSpeechRecognizer contextualStrings; Android SpeechRecognizer biasing), swappable behind Unit 4's engine interface if hypotheses prove too coarse. Unit 4 pinned: the adapter surfaces phone-level detail where the engine provides it; engine choice is invisible above the event-stream interface; no-retention processing mandatory. Unit 0 pinned: Unit 4's engine choice cites the spike verdict — the verdict gates this adapter (keep on-device / swap engine / hybrid).",
+  "tier": "standard",
+  "notes": "EXTERNAL BLOCKER: depends on the owner-delivered Unit 0 spike verdict (owner runs spike-asr-app on device with real children). Native side (Swift/Kotlin) is untestable in this container — written per platform API docs, marked for owner device testing; Dart side fully tested with mocked channels. This ticket owns AppDelegate.swift and MainActivity.kt (host-file registration) — no other ticket edits them; the spike's handlers register via documented snippets applied locally by the owner (see spike-asr-app notes). If the verdict says 'swap engine', this ticket is re-scoped by the orchestrator + owner before build."
+}

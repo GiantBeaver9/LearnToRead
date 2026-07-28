@@ -1,0 +1,26 @@
+{
+  "unit": "word-state-machine",
+  "title": "Per-word reading state machine (pure): tracker events in, word states out (Unit 5 logic half)",
+  "prd_refs": ["§8 Unit 5", "§8 Unit 4 (event stream)", "§8 Unit 6 (helped)"],
+  "deps": ["domain-models", "listening-contracts"],
+  "files": [
+    "lib/features/reading/word_state_machine.dart",
+    "lib/features/reading/word_state.dart"
+  ],
+  "test_files": [
+    "test/features/reading/word_state_machine_test.dart",
+    "test/features/reading/word_state_lookahead_test.dart"
+  ],
+  "accept": [
+    "Word states exactly per the pinned machine: unread → current → (accepted | helped) → done(green); the machine is driven SOLELY by the Unit 4 tracker event stream (listening-contracts types) — it contains no recognition logic, no timers, no audio.",
+    "Fixture event streams produce the exact expected word-state sequence for a sentence, including lookahead back-fill: wordAccepted(n+1) arriving while word n is current back-fills n to done and advances current to n+2 ordering as emitted by the tracker (transcribed Unit 5 acceptance).",
+    "wordAcceptedNearMiss(index) transitions identically to wordAccepted for visual state (green) while exposing the near-miss distinction to observers (for analytics word_read result and the near-miss prompt path).",
+    "wordHelped(index, tier) transitions the word to helped → done(green); helped words are indistinguishable from accepted words in the rendered-state projection (a test asserts the render-state enum for helped == accepted) while the help metadata remains available to WordHelpRecord writers.",
+    "Current-word marker: exactly one word is 'current' at any time until the last word is done; when the LAST word turns green the machine emits a story-complete signal (consumed by the reading screen for the ~400 ms handoff — the timing itself is not this ticket's).",
+    "Multi-page stories: the machine operates per-sentence/page sequence and reports page-complete boundaries so the screen can page-turn (fixture with 2 pages).",
+    "Negative: events for out-of-range or already-done indices are ignored without state corruption (tests)."
+  ],
+  "pinned_design": "Unit 5 pinned: word state machine per WordToken: unread → current → (accepted | helped) → done(green); driven solely by Unit 4's event stream — the screen contains no recognition logic. Helped words render identically to accepted words (Unit 1/6 ratified: no visible marker) while WordHelpRecord rows differ. Lookahead back-fill behavior is defined by Unit 4's match policy; this machine consumes the tracker's already-ordered events. Story completion: when the last word of the story turns green, listening stops and control hands to the celebration sequence after a ~400 ms beat (the beat is reading-screen's; this machine just signals completion).",
+  "tier": "standard",
+  "notes": "Pure Dart, fully headless, no Flutter dependency beyond foundation. Kept separate from the widget ticket so the trickiest Unit 5 logic is leaf-first and reusable by twister-flow (twisters reuse green-word tracking). Exposes a Riverpod-friendly immutable state snapshot."
+}

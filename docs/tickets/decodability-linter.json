@@ -1,0 +1,26 @@
+{
+  "unit": "decodability-linter",
+  "title": "Decodability linter (build-time): cumulative grapheme set vs story words + heart-word whitelist",
+  "prd_refs": ["§8 Unit 3 (linter)", "§6 Content decodability constraint", "§7 R5", "§8 Unit 14 (twister exemption)"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/pipeline/decodability_linter.dart",
+    "lib/pipeline/cumulative_grapheme_set.dart"
+  ],
+  "test_files": [
+    "test/pipeline/decodability_linter_test.dart",
+    "test/pipeline/cumulative_grapheme_set_test.dart"
+  ],
+  "accept": [
+    "Linter rejects a fixture story containing a word not decodable from the cumulative grapheme set at its level, reporting the story id, word, and the graphemes that are out of level.",
+    "The same fixture story passes once (a) the word is whitelisted as a heart word for that level, or (b) an earlier-or-equal level introduces the missing grapheme (both positive variants tested).",
+    "Cumulative grapheme set at level N = union of graphemes from all skills introduced at levels <= N (from scope-&-sequence data); decodability of a word is judged against its authored graphemePhonemeMap graphemes (test with digraph and silent-e words: 'ship', 'cake').",
+    "Heart words are per-level explicit whitelists ('that level's explicitly-tagged heart words'); a heart word whitelisted at level N is accepted at level N and above, not below (edge tests).",
+    "TongueTwisters are exempt: the linter skips twister content entirely (modeled-first content may use above-level words) — test feeds a twister with out-of-level words and expects zero findings.",
+    "A-8 length bounds checked as lint findings: sentence-level stories 3-8 words; paragraph-level stories 40-90 words across 1-3 pages (positive and violation tests).",
+    "Linter is a pure function library (story + scope-&-sequence data in, findings out) usable by both the pack-build CLI and tests — no I/O in this ticket's files."
+  ],
+  "pinned_design": "Unit 3 pinned: the decodability linter is a build-time tool, not a runtime feature; it rejects any story containing a word not decodable from the cumulative grapheme set at its level unless whitelisted as a heart word for that level. §6 pinned constraint: a story at level N may only use words decodable with skills introduced at levels <= N, plus that level's explicitly-tagged heart words (common irregular words taught as exceptions). Unit 14 pinned: twisters are exempt from decodability linting. R5 is the risk this mitigates: every word checked against the level's cumulative grapheme set; human editor approves (human approval is process, outside the linter). Decodability judgment uses WordToken.graphemePhonemeMap (each grapheme cluster must be introduced by some skill at <= level, per scope-&-sequence data).",
+  "tier": "standard",
+  "notes": "Pure Dart, fully headless. Kept separate from pack-build-cli so the trickiest pipeline logic lands leaf-first. Scope-&-sequence fixture data only (real table is OQ-5). The mapping from PhonicsSkill to the graphemes it introduces must come from the scope-&-sequence data file format defined in phonics-engine's loader — coordinate via domain-models types, not by importing phonics-engine files (deps stay minimal; if a shared 'skill introduces graphemes' field is needed, it belongs in the scope-&-sequence data schema consumed from domain-models/fixtures)."
+}

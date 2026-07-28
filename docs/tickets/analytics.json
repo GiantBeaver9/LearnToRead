@@ -1,0 +1,37 @@
+{
+  "unit": "analytics",
+  "title": "Anonymous COPPA-safe analytics: schema, queue, sessions, kill switch, signal queries (Unit 12)",
+  "prd_refs": ["§8 Unit 12", "§5 Analytics events", "§4", "§9 A-5", "§9 A-14", "§6 POC posture", "§8 Unit 15 (sound_card events)"],
+  "deps": ["domain-models"],
+  "files": [
+    "lib/features/analytics/events.dart",
+    "lib/features/analytics/event_schema.dart",
+    "lib/features/analytics/analytics_client.dart",
+    "lib/features/analytics/event_queue.dart",
+    "lib/features/analytics/session_tracker.dart",
+    "lib/features/analytics/transport.dart",
+    "lib/features/analytics/signal_queries.dart",
+    "docs/analytics/signals.md"
+  ],
+  "test_files": [
+    "test/features/analytics/event_schema_test.dart",
+    "test/features/analytics/event_queue_test.dart",
+    "test/features/analytics/session_tracker_test.dart",
+    "test/features/analytics/kill_switch_test.dart",
+    "test/features/analytics/signal_queries_test.dart",
+    "test/features/analytics/pii_guard_test.dart"
+  ],
+  "accept": [
+    "Exactly the §5 event set exists, no more: session_start, story_started, word_read (with correct|near_miss|helped result field), help_given (tier), story_completed, story_abandoned, vocab_card_opened, collectible_earned, twister_started, twister_completed, sound_card_played, sound_card_echo (matched: bool).",
+    "Payloads carry only: event name, timestamp, random per-install UUID, profile ordinal (1-4), level ordinal, story id, and event-specific fields (help tier, sound_card_echo's matched bool, word HASH — never raw word text; hash pinned by A-14: SHA-256 of the lowercased word text truncated to 16 hex chars, asserted by test vector); schema tests validate every emitted event and any PII-shaped field (name string, raw word text, device identifier, audio, transcript, location) fails schema — pii_guard_test is the CI tripwire.",
+    "Never collected: names, age beyond age band, audio, transcripts, IDFA/AAID, location; no third-party tracker SDK is imported (test asserts no such package imports under lib/features/analytics/).",
+    "Session semantics pinned: session starts at profile selection; ends when app backgrounded > 120 s (tunable constant), app closed, or profile switch — session_tracker tested with fake clock and scripted lifecycle/profile events for all three endings.",
+    "story_abandoned fires when the reading screen is exited after story_started but before story_completed — including via session end — and carries whether a help event occurred in the preceding 30 s (the §4.4 frustration marker); tested for direct-exit, session-timeout-exit, and help-within-30s true/false cases.",
+    "Offline queue: events queue when transport unavailable, flush in batches over HTTPS when available (transport behind an interface, faked in tests); airplane-mode queue/flush verified; events unsent after 30 days are DROPPED, verified with clock manipulation.",
+    "A single build flag disables all analytics: kill-switch build emits zero transport calls (recording-fake asserts no call), and the client becomes a no-op.",
+    "The four §4 signal queries are implemented in signal_queries.dart, documented in docs/analytics/signals.md, and run against fixture event data returning correct values (tests are the executable definition): D7 profile return rate; median completed stories per session; help-rate trajectory on repeated word encounters; rate of sessions ending in mid-story abandonment after a stuck-word event. No pass/fail thresholds encoded anywhere (ratified)."
+  ],
+  "pinned_design": "Unit 12 pinned: events exactly as §5 (including Unit 15's sound_card_played and sound_card_echo with matched: bool); payload fields exactly as listed (word text is hashed because the word list is content, but hashing keeps payloads inert; A-14 pins the hash: SHA-256 of lowercased word text, truncated to 16 hex chars). Transport: batched HTTPS to a self-controlled endpoint or privacy-first service configured anonymous (A-5: self-hosted endpoint is the default posture); queued offline; dropped after 30 days unsent. Session boundary and story_abandoned semantics pinned verbatim (see accept). Single build flag kill switch for review builds. The four §4 signals each have a defined query written down with the schema — part of this unit's deliverable. Signals are observational; no targets (§4 ratified: no pass/fail targets in v1).",
+  "tier": "hard",
+  "notes": "No network in the container: transport is an interface with a recording fake; the real HTTPS sender is a thin dart:io implementation exercised against a localhost fixture if feasible, else covered by the fake. Queue persistence: use its own small file-based store via path_provider-injected directory (NOT the Drift user DB — keeps file ownership disjoint; injection makes tests temp-dir based). Word-hash algorithm is pinned (A-14, former OD-5b resolved); the endpoint/hosting choice is OQ-6 — blocks pilot distribution, not build: tests run against the transport fake/local fixture. Event EMISSION from screens belongs to the screen tickets via AnalyticsClient; session_tracker wiring to app lifecycle + navigation happens in app-shell."
+}

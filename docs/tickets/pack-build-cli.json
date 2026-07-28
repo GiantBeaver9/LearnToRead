@@ -1,0 +1,41 @@
+{
+  "unit": "pack-build-cli",
+  "title": "Content pipeline CLI: manifest validation, pack build, checksums, loudness + Rive-input + twister validation (Dart)",
+  "prd_refs": ["§8 Unit 3", "§8 Unit 13 (loudness check)", "§8 Unit 8 (Rive input validation)", "§8 Unit 14 (twister pack validation)", "§8 Unit 15 (grapheme inventory / example words)", "§5 GraphemeSound", "§9 A-9", "§9 A-11", "§9 A-15", "§9 A-16", "§5 StoryPack"],
+  "deps": ["domain-models", "decodability-linter"],
+  "files": [
+    "tool/pack_build.dart",
+    "lib/pipeline/pack_builder.dart",
+    "lib/pipeline/manifest_validator.dart",
+    "lib/pipeline/loudness_check.dart",
+    "lib/pipeline/rive_input_validator.dart",
+    "lib/pipeline/asset_presence_check.dart",
+    "docs/pipeline/README.md",
+    "docs/pipeline/cost-sheet-template.md"
+  ],
+  "test_files": [
+    "test/pipeline/pack_builder_test.dart",
+    "test/pipeline/manifest_validator_test.dart",
+    "test/pipeline/loudness_check_test.dart",
+    "test/pipeline/rive_input_validator_test.dart",
+    "test/pipeline/asset_presence_test.dart",
+    "test/pipeline/twister_validation_test.dart"
+  ],
+  "accept": [
+    "`dart run tool/pack_build.dart <content-dir> <out>` builds a versioned, checksummed pack bundle (JSON manifest per §5 + referenced Rive/audio assets) from an authored content directory; the bundle is loadable by content-delivery's loader (cross-ticket integration test lives in content-delivery).",
+    "Round-trip: manifest schema validates all fixture stories; a story failing schema validation fails the pack build with a per-field error naming story id and field.",
+    "Pack build runs the decodability linter and fails on findings (out-of-level word rejected; passes when heart-word whitelisted) — wiring test using decodability-linter fixtures.",
+    "A-11 enforcement: pack validation requires narrationAudioRef on every sentence wherever Level.narrationEnabled is true; a sentence-format story missing narration audio fails build (test).",
+    "Asset presence: audio assets must exist for every WordToken pronunciationAudioRef and every VocabCard definitionAudioRef in every story (source-agnostic — any audio file satisfies the ref); missing asset fails build naming the ref (Unit 13 acceptance; test with generated placeholder WAVs).",
+    "Loudness check: every audio asset must measure -16 LUFS integrated within tolerance; the check implements integrated loudness per ITU-R BS.1770 over WAV input; test fixtures are programmatically generated WAVs (a sine normalized to pass, one too quiet/loud to fail).",
+    "Rive input validation per A-16 (pinned): each .riv is accompanied by a declared-inputs sidecar JSON, authoritative for validation — a story whose sidecar lacks the required state-machine inputs (idle, celebrate, collect), or which is missing its sidecar, fails pack validation, not runtime; runtime introspection may supplement where available (tests over sidecar fixtures: valid, missing-input, missing-sidecar).",
+    "Twister validation (Unit 14): a twister without narrationAudioRef or without targetPhonemeId fails build; the decodability linter is skipped for twisters (tests).",
+    "Pack composition rules encodable: starter pack ~8 stories covering all three age-band starting levels per A-9 — the builder accepts a composition spec and a validator warns if a declared starter pack lacks stories at any of the three starting levels (test).",
+    "Pack integrity per A-15 (pinned): bundle carries a SHA-256 checksum (crypto package) computed over the bundle contents, listed in the catalog; tampering a byte fails verification (test). §5's 'signed checksum' is satisfied by this in v1 — cryptographic signing is post-POC hardening (recorded, not built).",
+    "GraphemeSound content validation (Unit 15): the starter-content build validates the grapheme inventory — every GraphemeSound's phonemeIds exist in the 44-phoneme set, introducedAtLevelId references a real level, and each exampleWord has wordText, pronunciationAudioRef (asset present) and a valid minLevelId; packs may EXTEND exampleWords of existing graphemes and the builder validates extensions the same way; violations fail build with per-field errors (tests: bad phonemeId, dangling level ref, missing example-word audio, valid extension pack).",
+    "docs/pipeline/cost-sheet-template.md exists for the owner's per-story cost sheet (time + spend) — the filled sheet after the first 5 stories is an owner process deliverable, not this ticket's."
+  ],
+  "pinned_design": "Unit 3 pinned: authoring flow per story = AI-draft against decodability → human edit/approval (every published word human-approved) → automatic tagging (graphemePhonemeMap, vocab selection + card authoring) → audio ingestion from owner-supplied recordings (source-agnostic refs; TTS may substitute post-v1) → Rive animation + collectible per style guide → pack build; owner-supplied assets (sentence narrations, twister text + audio) enter at steps 3-4 and flow through the same validation and loudness pipeline. Pack format: versioned bundle (JSON manifest per §5 + Rive + audio), checksummed; starter pack ~8 stories per A-9 in the binary; rest via CDN (Unit 11). Launch content: ~30 stories (~20 sentence/multiSentence, ~10 paragraph), each with animation, collectible, celebration audio; paragraph stories 2-4 vocab cards each (validator warns when a paragraph story is outside 2-4). Pipeline is CLI tooling in this repo — PRD grants Dart-or-Python builder's choice; CHOSEN: DART (recorded here) so one toolchain covers app + tooling and validators share the domain-model code. Unit 13 pinned: all audio normalized to -16 LUFS integrated, checked in pack build. Unit 8 pinned: Rive artboards must expose idle/celebrate/collect inputs, enforced at pack build via A-16 declared-inputs sidecar (authoritative; runtime introspection supplementary). Unit 14 pinned: pack build requires twister narration file and targetPhonemeId; twisters exempt from decodability. Unit 15/§5 pinned: full GraphemeSound inventory ships in the binary starter content; example words extend via packs — both flow through pack validation. A-15 pinned: integrity = SHA-256 checksum listed in catalog; signing is post-POC.",
+  "tier": "hard",
+  "notes": "Language choice ratified in this ticket: Dart CLI (PRD-granted builder's choice). No real audio/Rive assets exist in the container: audio fixtures are programmatically generated PCM WAVs; loudness math (BS.1770 K-weighting + gating) is implementable in pure Dart but is real DSP work — hence tier hard. Rive validation is sidecar-based per A-16 (former OD-7 resolved) — fully headless-testable with JSON fixtures; supplementary runtime introspection is best-effort only. Integrity is SHA-256-in-catalog per A-15 (former OD-6b resolved). Real launch content (including the real grapheme inventory + example words) depends on OQ-4 (art commissions) and OQ-5 (scope-&-sequence + Sound Garden inventory) — owner items; fixtures until then. rive_input_validator.dart implements the sidecar validation (file name retained)."
+}
