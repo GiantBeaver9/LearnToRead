@@ -1604,6 +1604,10 @@
     }
   ],
   "assetRefs": [
+    "audio/nav/collection.wav",
+    "audio/nav/garden.wav",
+    "audio/nav/map.wav",
+    "audio/nav/parent-corner.wav",
     "celebrations/cheer_01.wav",
     "celebrations/cheer_02.wav",
     "celebrations/cheer_03.wav",
@@ -1663,6 +1667,7 @@
     "phonemes/Y.wav",
     "phonemes/Z.wav",
     "phonemes/ZH.wav",
+    "prompts/near_miss.wav",
     "prompts/your_turn.wav",
     "rive/collect_cat.riv",
     "rive/collect_cat.riv.inputs.json",

@@ -477,6 +477,16 @@ List<String> _collectAssetRefs(StoryPack pack) {
     refs.add('celebrations/cheer_${i.toString().padLeft(2, '0')}.wav');
   }
   refs.add('prompts/your_turn.wav');
+  // The warm near-miss line (Unit 6) and the pre-reader nav voice prompts
+  // (kNavVoicePromptRefs in lib/app/router.dart — fixed refs, so the files
+  // must exist at exactly these pack-relative paths).
+  refs.add('prompts/near_miss.wav');
+  refs.addAll(const [
+    'audio/nav/map.wav',
+    'audio/nav/collection.wav',
+    'audio/nav/garden.wav',
+    'audio/nav/parent-corner.wav',
+  ]);
   return refs.toList()..sort();
 }
 
@@ -521,6 +531,7 @@ const int _sampleRate = 44100;
   if (ref.startsWith('narration/')) return (330, 1.2);
   if (ref.startsWith('celebrations/')) return (550, 0.8);
   if (ref.startsWith('prompts/')) return (500, 0.6);
+  if (ref.startsWith('audio/nav/')) return (520, 0.7);
   if (ref.startsWith('vocab/')) return (392, 1.0);
   return (480, 0.5);
 }
