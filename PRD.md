@@ -308,6 +308,13 @@ critical path.
   - Vocabulary word (unread): **blue** (`#5A79B8` family, weight 600,
     dotted underline), visually distinct from green at a glance for
     color-typical and protan/deutan viewers (verify with simulation).
+  - Vocabulary word (read/helped): **purple** (violet family ~`#7A5AA0`,
+    darkened minimally to hold WCAG AA ≥4.5:1 on the card) — read cue
+    without erasing the word's "new word" identity (owner ruling
+    2026-07-28: "the BLUE instead of turning to GREEN can go PURPLE, so
+    still visible, but still a cue that it was read"). Ordinary words
+    still turn green; helped-vocab renders identically to read-vocab
+    (the invisible-help rule is per-word-kind, unchanged).
   - Helped word: visually identical to any other read-correct green word
     (ratified: no visible marker — the child's finished sentence is purely
     triumphant). Help is tracked invisibly in WordHelpRecord for the

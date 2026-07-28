@@ -59,6 +59,10 @@ deliberately not a plastic candy-colored kids app.
   - read/helped → green `#4E8B5C`
   - vocab (unread) → blue `#5A79B8`, weight 600, dotted underline
     (thickness 2, offset 0.18em), tap opens popup
+  - vocab (read/helped) → **purple** (violet ~`#7A5AA0` family, AA-floored;
+    owner ruling 2026-07-28) — vocab words never turn green; the purple
+    says both "you read it" and "this was a new word", and the tap-for-
+    definition affordance stays discoverable after reading
   - stuck/hint word → `pulseWord` animation: translateY(−2px) scale(1.04)
     at 50%, 1.3s ease-in-out infinite
 - Legend row under the text (dashed top border `#E4D9C3`): three dots —
@@ -144,6 +148,10 @@ Full-screen non-interactive overlay, z-top, plays on story completion:
 - On completion it must call the existing page-advance path (the same one
   the current page-turn control invokes) — the visual replaces the control,
   the logic does not change.
+- **Owner-confirmed 2026-07-28** (after the auto-advance conflict surfaced):
+  "That's a correction that we want, reinforcing the page turning since
+  that's a neural feedback piece to hook, that's the reward." The machine
+  holds at page completion; the child's turn gesture IS the reward beat.
 
 ## 9. Conflicts with ratified PRD text — owner rulings via this mockup
 
