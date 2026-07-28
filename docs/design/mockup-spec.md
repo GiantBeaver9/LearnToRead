@@ -147,6 +147,10 @@ Full-screen non-interactive overlay, z-top, plays on story completion:
 
 ## 9. Conflicts with ratified PRD text — owner rulings via this mockup
 
+> Both rulings below were explicitly confirmed by the product owner in
+> chat, 2026-07-28: "I like the saying now better personally after seeing
+> it, it is a good visual indicator. 2 is fine."
+
 1. **Current word is amber, not ink-with-marker.** PRD §6 said "current
    word: subtle underline/glow marker, ink color". The mockup's explicit
    legend ("saying now" = amber) supersedes it. Token interface keeps the
