@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Microphone: required by the Unit 0 spike and by the eventual
+         platform ASR adapter. MainActivity requests it at runtime on
+         first launch. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="learn_to_read"
         android:name="${applicationName}"
@@ -40,6 +44,13 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Package-visibility declaration for the on-device speech
+             recognizer: without this, SpeechRecognizer.isRecognitionAvailable
+             returns false on Android 11+ even when a recognition service is
+             installed. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>

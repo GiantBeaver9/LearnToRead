@@ -37,13 +37,11 @@ actually recognizing a real child's voice on a real device is owner work.
 ## 1. Register the native handlers locally
 
 The spike's native handlers (`SpikeSpeechHandler.swift` /
-`SpikeSpeechHandler.kt`) are self-contained files that are **not**
-registered automatically — `ios/Runner/AppDelegate.swift` and
-`android/.../MainActivity.kt` are owned by the platform-asr-adapter ticket,
-and this ticket deliberately does not touch them (disjoint file ownership).
-Register the handlers by hand, locally, before running the spike. Do not
-commit these edits — revert them (or just don't commit) once you're done
-with the spike run, since they're only needed to exercise disposable code.
+`SpikeSpeechHandler.kt`) are self-contained files. **Android registration
+is already committed** — see below, nothing to do there. iOS still needs
+the one-line local edit: `ios/Runner/AppDelegate.swift` is owned by the
+platform-asr-adapter ticket, so register the handler by hand, locally,
+and don't commit the edit.
 
 ### iOS: `ios/Runner/AppDelegate.swift`
 
@@ -71,28 +69,15 @@ You'll also need `NSSpeechRecognitionUsageDescription` and
 short description shown to the user in the permission prompt) if they
 aren't already present — add them locally for the spike run.
 
-### Android: `android/app/src/main/kotlin/com/learntoread/learn_to_read/MainActivity.kt`
+### Android: nothing to do
 
-Add an override after the existing class declaration:
-
-```kotlin
-package com.learntoread.learn_to_read
-
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-
-class MainActivity : FlutterActivity() {
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        SpikeSpeechHandler.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)  // <-- add this
-    }
-}
-```
-
-You'll also need `RECORD_AUDIO` permission in
-`android/app/src/main/AndroidManifest.xml` (and to grant it at runtime on
-first launch) if it isn't already present — add it locally for the spike
-run.
+The Android side is **already committed** (orchestrator-sanctioned, since
+the blocked `platform-asr-adapter` unit that owns `MainActivity.kt` cannot
+start before this spike's verdict anyway): `MainActivity.kt` registers the
+spike handler and requests `RECORD_AUDIO` at first launch, and
+`AndroidManifest.xml` carries the permission plus the Android 11+
+package-visibility `<queries>` entry for the recognition service. On
+Android, skip straight to step 2.
 
 ## 2. Run the spike
 
