@@ -20,6 +20,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart' show VocabCard;
 import 'package:learn_to_read/features/audio/audio_service.dart';
@@ -30,9 +31,15 @@ import 'package:learn_to_read/features/audio/audio_service.dart';
 /// scaffold and not celebration/ambient audio.
 const AudioChannel kVocabCardAudioChannel = AudioChannel.narration;
 
-/// Fixed illustration slot size (a small supporting image, never the star of
-/// the card — the word and definition are).
-const double kVocabCardIllustrationSize = 96.0;
+/// Illustration slot size (mockup §4: a 150x110 supporting-image slot,
+/// never the star of the card — the word and definition are).
+const double kVocabCardIllustrationWidth = 150.0;
+
+/// See [kVocabCardIllustrationWidth].
+const double kVocabCardIllustrationHeight = 110.0;
+
+/// Diameter of the round close affordance (mockup §4: 40x40).
+const double kVocabCardCloseButtonSize = 40.0;
 
 /// A playful popover card showing one vocabulary word's authored,
 /// kid-friendly definition (PRD §8 Unit 7).
@@ -127,95 +134,151 @@ class _VocabCardPopoverState extends State<VocabCardPopover> {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(DesignTokens.spacingMd),
-              // Absorbs any tap that lands on the card's own surface (away
-              // from the three interactive affordances below) so it can
-              // never fall through to the barrier behind it.
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {},
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: DecoratedBox(
-                    key: const ValueKey<String>('vocab-card-popover'),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.surfaceBackground,
-                      borderRadius: BorderRadius.circular(
-                        DesignTokens.spacingMd,
+              // Mockup §4: the popup enters with a 320 ms fadeUp.
+              child: FadeUp(
+                duration: const Duration(milliseconds: 320),
+                // Absorbs any tap that lands on the card's own surface (away
+                // from the three interactive affordances below) so it can
+                // never fall through to the barrier behind it.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {},
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    // Layered surface: the outer box keeps the pinned
+                    // parchment surface paint (frozen contract:
+                    // test/features/vocab/vocab_card_test.dart asserts some
+                    // box paints exactly DesignTokens.surfaceBackground);
+                    // the inner box applies the mockup §4 vocab-popup
+                    // blue-tinted background and border over it.
+                    child: DecoratedBox(
+                      key: const ValueKey<String>('vocab-card-popover'),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surfaceBackground,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(DesignTokens.spacingLg),
-                      // Scrolls internally rather than ever overflowing: a
-                      // long, paragraph-level definition on a short
-                      // landscape phone can exceed the safe area's height,
-                      // and this is the graceful fallback.
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: IconButton(
-                                key: const ValueKey<String>(
-                                  'vocab-card-close-button',
-                                ),
-                                onPressed: _dismiss,
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: DesignTokens.wordUnreadInk,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              key: const ValueKey<String>(
-                                'vocab-card-word-tap',
-                              ),
-                              onTap: _playPronunciation,
-                              child: Text(
-                                widget.card.word,
-                                key: const ValueKey<String>('vocab-card-word'),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontFamily: DesignTokens.readingFontFamily,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: DesignTokens.wordVocabBlue,
-                                ),
-                              ),
-                            ),
-                            if (widget.card.illustrationRef !=
-                                null) ...<Widget>[
-                              const SizedBox(height: DesignTokens.spacingMd),
-                              _VocabCardIllustration(
-                                ref: widget.card.illustrationRef!,
-                              ),
-                            ],
-                            const SizedBox(height: DesignTokens.spacingMd),
-                            Text(
-                              widget.card.definitionText,
-                              key: const ValueKey<String>(
-                                'vocab-card-definition',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: DesignTokens.readingFontFamily,
-                                fontSize: 20,
-                                color: DesignTokens.wordUnreadInk,
-                              ),
-                            ),
-                            const SizedBox(height: DesignTokens.spacingMd),
-                            IconButton(
-                              key: const ValueKey<String>(
-                                'vocab-card-replay-button',
-                              ),
-                              onPressed: _playDefinition,
-                              icon: const Icon(
-                                Icons.replay,
-                                color: DesignTokens.wordUnreadInk,
-                              ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: DesignTokens.vocabPopupBackground,
+                          border: Border.all(
+                            color: DesignTokens.vocabPopupBorder,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: DesignTokens.wordUnreadInk
+                                  .withValues(alpha: 0.35),
+                              offset: const Offset(0, 14),
+                              blurRadius: 36,
+                              spreadRadius: -24,
                             ),
                           ],
+                        ),
+                        padding: const EdgeInsets.all(DesignTokens.spacingLg),
+                        // Scrolls internally rather than ever overflowing: a
+                        // long, paragraph-level definition on a short
+                        // landscape phone can exceed the safe area's height,
+                        // and this is the graceful fallback.
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              Align(
+                                alignment: Alignment.topRight,
+                                // Mockup §4: round 40x40 close affordance in
+                                // the popup's own blue family.
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color.lerp(
+                                      DesignTokens.vocabPopupBackground,
+                                      DesignTokens.vocabPopupBorder,
+                                      0.55,
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    key: const ValueKey<String>(
+                                      'vocab-card-close-button',
+                                    ),
+                                    onPressed: _dismiss,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints.tightFor(
+                                      width: kVocabCardCloseButtonSize,
+                                      height: kVocabCardCloseButtonSize,
+                                    ),
+                                    iconSize: 22,
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: DesignTokens.vocabPopupHeading,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                key: const ValueKey<String>(
+                                  'vocab-card-word-tap',
+                                ),
+                                onTap: _playPronunciation,
+                                child: Text(
+                                  widget.card.word,
+                                  key: const ValueKey<String>('vocab-card-word'),
+                                  textAlign: TextAlign.center,
+                                  // Serif word, mockup §4 (26-34, weight
+                                  // 600). Color stays the pinned
+                                  // wordVocabBlue -- the frozen suite ties
+                                  // the popup back to the blue word that
+                                  // opened it.
+                                  style: const TextStyle(
+                                    fontFamily: DesignTokens.readingFontFamily,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w600,
+                                    color: DesignTokens.wordVocabBlue,
+                                  ),
+                                ),
+                              ),
+                              if (widget.card.illustrationRef !=
+                                  null) ...<Widget>[
+                                const SizedBox(height: DesignTokens.spacingMd),
+                                _VocabCardIllustration(
+                                  ref: widget.card.illustrationRef!,
+                                ),
+                              ],
+                              const SizedBox(height: DesignTokens.spacingMd),
+                              // Meaning text, mockup §4: 16.5px / 1.45,
+                              // capped at a comfortable measure. Color stays
+                              // the pinned wordUnreadInk.
+                              ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 380),
+                                child: Text(
+                                  widget.card.definitionText,
+                                  key: const ValueKey<String>(
+                                    'vocab-card-definition',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontFamily: DesignTokens.readingFontFamily,
+                                    fontSize: 16.5,
+                                    height: 1.45,
+                                    color: DesignTokens.wordUnreadInk,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: DesignTokens.spacingMd),
+                              IconButton(
+                                key: const ValueKey<String>(
+                                  'vocab-card-replay-button',
+                                ),
+                                onPressed: _playDefinition,
+                                icon: const Icon(
+                                  Icons.replay,
+                                  color: DesignTokens.vocabPopupHeading,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -248,11 +311,12 @@ class _VocabCardIllustration extends StatelessWidget {
       key: const ValueKey<String>('vocab-card-illustration'),
       decoration: BoxDecoration(
         color: DesignTokens.readingBackground,
-        borderRadius: BorderRadius.circular(DesignTokens.spacingSm),
+        border: Border.all(color: DesignTokens.vocabPopupBorder),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: const SizedBox(
-        width: kVocabCardIllustrationSize,
-        height: kVocabCardIllustrationSize,
+        width: kVocabCardIllustrationWidth,
+        height: kVocabCardIllustrationHeight,
       ),
     );
   }

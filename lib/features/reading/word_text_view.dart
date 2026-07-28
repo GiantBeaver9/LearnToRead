@@ -1,15 +1,16 @@
 /// Story text rendering for the reading screen (PRD §8 Unit 5, word states
-/// from PRD §8 Unit 1).
+/// from PRD §8 Unit 1; restyled to the owner's "Sound It Out" mockup,
+/// docs/design/mockup-spec.md §3-§4).
 ///
 /// [WordTextView] is the only place story words become pixels. It renders
 /// one page of already-computed [WordState]s: it holds no state machine, no
 /// recognition logic, and no opinion about what a word means -- it is a
-/// pure projection of `WordState.renderColor` plus the two affordances the
-/// design system pins on top of it (the current-word marker and the
-/// discreet tap targets).
+/// pure projection of `WordState.renderColor` plus the affordances the
+/// design system pins on top of it (the current-word marker, the discreet
+/// tap targets, the vocab dotted underline, and the stuck-word pulse).
 ///
 /// Pinned rendering rules, all token-driven:
-///  - unread ink, vocab blue while unread, current ink plus a marker, and
+///  - unread ink, vocab blue while unread, current amber plus a marker, and
 ///    read green once done -- straight from [WordState.renderColor], so
 ///    accepted, near-miss and helped words are pixel-identical (there is no
 ///    helped badge, by design).
@@ -17,8 +18,15 @@
 ///    [DesignTokens.greenSweepDuration], never an instant recolor, and it
 ///    makes no sound: audio is reserved for help and celebration so the
 ///    child own voice stays the primary audio.
-///  - during Tier-1 sound-out the current word renders one span per
-///    `WordToken.graphemePhonemeMap` entry, so a digraph lights as one unit.
+///  - during Tier-1 sound-out the current word renders one chip per
+///    `WordToken.graphemePhonemeMap` entry inside the mockup's hint panel
+///    ("take it slowly" styling, spec §4), so a digraph lights as one unit.
+///    The active-chip timing is owned entirely by the Unit 6 sound-out
+///    stream -- this file only styles whatever index it is handed.
+///  - the stuck word pulses ([PulseWord], spec §3/§7) only while the screen
+///    already reports a stuck/hint signal (`WordState.struggling` or an
+///    active help tier); the pulse widget is always mounted but only ticks
+///    while active, so settle-based tests never meet a live loop.
 ///  - the current word is always tappable (the Unit 4 fallback input) and a
 ///    vocab word is tappable at any point in its lifecycle; where both
 ///    apply, the vocab card wins.
@@ -29,6 +37,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart' show WordToken;
 import 'package:learn_to_read/domain/models/user_models.dart' show HelpLevel;
@@ -38,13 +47,19 @@ import 'package:learn_to_read/features/reading/word_state.dart';
 /// Thickness of the current-word marker rule.
 const double kCurrentWordMarkerThickness = 3.0;
 
-/// Opacity of the current-word marker: a subtle underline/glow in ink, not
-/// a second color token.
+/// Opacity of the current-word marker: a subtle underline/glow under the
+/// amber "saying now" word, not a second color token.
 const double kCurrentWordMarkerOpacity = 0.55;
 
-/// Opacity applied to the non-highlighted grapheme clusters of a word being
-/// sounded out, so the cluster currently playing reads as the active one.
-const double kUnhighlightedGraphemeOpacity = 0.45;
+/// Reading-text line height (mockup §2 band 1.5-1.7; the sentence end).
+const double kReadingTextLineHeight = 1.5;
+
+/// Reading-text letter spacing as a fraction of the font size
+/// (mockup §2: -0.005em).
+const double kReadingTextLetterSpacingEm = -0.005;
+
+/// Dotted-underline thickness on an unread vocab word (mockup §3).
+const double kVocabUnderlineThickness = 2.0;
 
 /// Renders one page of story text.
 class WordTextView extends StatelessWidget {
@@ -88,6 +103,7 @@ class WordTextView extends StatelessWidget {
     final count = words.length < wordStates.length ? words.length : wordStates.length;
     return Wrap(
       alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       spacing: DesignTokens.spacingMd,
       runSpacing: DesignTokens.spacingMd,
       children: <Widget>[
@@ -101,17 +117,30 @@ class WordTextView extends StatelessWidget {
     final token = words[index];
     final isCurrent = state.lifecycle == WordLifecycle.current;
     final tapKind = _tapKindFor(state);
+    final soundingOut = _isSoundingOut(isCurrent, token);
+    // The mockup's stuck-word pulse (spec §3): active only while the screen
+    // already reports a stuck/hint signal for the current word. During the
+    // Tier-1 chip panel the word body IS the hint panel, so the pulse rests.
+    final pulsing = isCurrent &&
+        !soundingOut &&
+        (state.struggling || helpState.currentHelpTier != HelpLevel.none);
 
     // Marker and tap layer are positioned siblings laid over the word, not
     // wrappers around it: that keeps the animated text element identical
     // across a lifecycle change, so the green sweep actually animates
     // instead of being rebuilt from scratch as an instant recolor. Both are
-    // positioned, so the word body alone decides this stack size.
+    // positioned, so the word body alone decides this stack size. The
+    // [PulseWord] wrapper is likewise ALWAYS mounted (its `active` flag
+    // toggles) so the word's element identity survives entering/leaving the
+    // stuck state.
     return Stack(
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.only(bottom: _markerLane),
-          child: _buildWordBody(index, token, state, isCurrent),
+          child: PulseWord(
+            active: pulsing,
+            child: _buildWordBody(index, token, state, soundingOut),
+          ),
         ),
         if (isCurrent)
           Positioned(
@@ -150,17 +179,18 @@ class WordTextView extends StatelessWidget {
     return null;
   }
 
-  Widget _buildWordBody(int index, WordToken token, WordState state, bool isCurrent) {
-    final soundingOut = isCurrent &&
-        helpState.currentHelpTier == HelpLevel.soundOut &&
-        helpState.highlightedGraphemeIndex >= 0 &&
-        token.graphemePhonemeMap.isNotEmpty;
+  bool _isSoundingOut(bool isCurrent, WordToken token) =>
+      isCurrent &&
+      helpState.currentHelpTier == HelpLevel.soundOut &&
+      helpState.highlightedGraphemeIndex >= 0 &&
+      token.graphemePhonemeMap.isNotEmpty;
+
+  Widget _buildWordBody(int index, WordToken token, WordState state, bool soundingOut) {
     if (soundingOut) {
-      return _GraphemeSpans(
+      return _SoundOutHintPanel(
         wordIndex: index,
         token: token,
         highlightedGraphemeIndex: helpState.highlightedGraphemeIndex,
-        color: state.renderColor,
         textSize: textSize,
       );
     }
@@ -169,6 +199,11 @@ class WordTextView extends StatelessWidget {
       text: token.text,
       color: state.renderColor,
       textSize: textSize,
+      // Mockup §3: a not-yet-read vocab word is weight 600 with a dotted
+      // underline inviting the tap; once current/read it renders like any
+      // other word (color still flows from renderColor).
+      isVocabUnread:
+          state.vocabTappable && state.lifecycle == WordLifecycle.unread,
     );
   }
 
@@ -192,12 +227,14 @@ class _SweepingWordText extends StatelessWidget {
     required this.text,
     required this.color,
     required this.textSize,
+    required this.isVocabUnread,
   });
 
   final int index;
   final String text;
   final Color color;
   final double textSize;
+  final bool isVocabUnread;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +250,13 @@ class _SweepingWordText extends StatelessWidget {
           style: TextStyle(
             fontFamily: DesignTokens.readingFontFamily,
             fontSize: textSize,
-            height: 1.2,
+            height: kReadingTextLineHeight,
+            letterSpacing: textSize * kReadingTextLetterSpacingEm,
+            fontWeight: isVocabUnread ? FontWeight.w600 : FontWeight.w400,
+            decoration: isVocabUnread ? TextDecoration.underline : TextDecoration.none,
+            decorationStyle: isVocabUnread ? TextDecorationStyle.dotted : null,
+            decorationColor: isVocabUnread ? DesignTokens.wordVocabBlue : null,
+            decorationThickness: isVocabUnread ? kVocabUnderlineThickness : null,
             color: sweptColor ?? color,
           ),
         );
@@ -222,47 +265,101 @@ class _SweepingWordText extends StatelessWidget {
   }
 }
 
-/// The current word rendered one grapheme cluster per span during Tier-1
-/// sound-out, with the cluster whose phoneme is playing brought forward.
+/// The Tier-1 "take it slowly" hint panel (mockup §4): the current word
+/// rendered one grapheme-cluster chip per `graphemePhonemeMap` entry, the
+/// chip whose phoneme is playing lit amber, inside the warm hint panel with
+/// its small-caps label. Enters with the spec's 380 ms fadeUp.
 ///
 /// Clusters come from the authored `graphemePhonemeMap`, so a digraph is
-/// one span and is never split letter by letter.
-class _GraphemeSpans extends StatelessWidget {
-  const _GraphemeSpans({
+/// one chip and is never split letter by letter. Which chip is active is
+/// decided entirely upstream (PhonemeSequencer -> SoundOutSequence ->
+/// HelpState); this widget never re-times anything.
+class _SoundOutHintPanel extends StatelessWidget {
+  const _SoundOutHintPanel({
     required this.wordIndex,
     required this.token,
     required this.highlightedGraphemeIndex,
-    required this.color,
     required this.textSize,
   });
 
   final int wordIndex;
   final WordToken token;
   final int highlightedGraphemeIndex;
-  final Color color;
   final double textSize;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        for (var g = 0; g < token.graphemePhonemeMap.length; g++)
-          Text(
-            token.graphemePhonemeMap[g].graphemes,
-            key: ValueKey<String>('grapheme-$wordIndex-$g'),
-            style: TextStyle(
-              fontFamily: DesignTokens.readingFontFamily,
-              fontSize: textSize,
-              height: 1.2,
-              fontWeight: g == highlightedGraphemeIndex ? FontWeight.bold : FontWeight.normal,
-              color: g == highlightedGraphemeIndex
-                  ? color
-                  : color.withValues(alpha: kUnhighlightedGraphemeOpacity),
+    return FadeUp(
+      duration: const Duration(milliseconds: 380),
+      child: Container(
+        key: ValueKey<String>('sound-out-hint-panel-$wordIndex'),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DesignTokens.spacingMd,
+          vertical: DesignTokens.spacingSm,
+        ),
+        decoration: BoxDecoration(
+          color: DesignTokens.hintPanelBackground,
+          border: Border.all(color: DesignTokens.hintPanelBorder, width: 1.5),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              "LET'S TAKE IT SLOWLY",
+              style: TextStyle(
+                fontFamily: DesignTokens.displayFontFamily,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 12 * 0.14,
+                color: DesignTokens.hintLabel,
+              ),
             ),
-          ),
-      ],
+            const SizedBox(height: DesignTokens.spacingSm),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                for (var g = 0; g < token.graphemePhonemeMap.length; g++) ...<Widget>[
+                  if (g > 0) const SizedBox(width: DesignTokens.spacingXs),
+                  _buildChip(g),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(int g) {
+    final active = g == highlightedGraphemeIndex;
+    return AnimatedContainer(
+      duration: DesignTokens.greenSweepDuration,
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignTokens.spacingSm + DesignTokens.spacingXs,
+        vertical: DesignTokens.spacingXs,
+      ),
+      decoration: BoxDecoration(
+        color: active
+            ? DesignTokens.wordCurrentInk
+            : DesignTokens.syllableChipIdleBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        token.graphemePhonemeMap[g].graphemes,
+        key: ValueKey<String>('grapheme-$wordIndex-$g'),
+        style: TextStyle(
+          fontFamily: DesignTokens.readingFontFamily,
+          fontSize: textSize,
+          height: 1.2,
+          fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          color: active
+              ? DesignTokens.wordUnreadInk
+              : DesignTokens.syllableChipIdleText,
+        ),
+      ),
     );
   }
 }

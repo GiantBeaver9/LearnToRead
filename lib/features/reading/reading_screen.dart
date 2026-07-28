@@ -240,7 +240,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignTokens.readingBackground,
+      // Mockup §1: the page body is warm parchment; the reading card sits on
+      // it as cream paper (see [_ReadingCard]).
+      backgroundColor: DesignTokens.screenBackground,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: _controller,
@@ -301,13 +303,23 @@ class _ReadingScreenState extends State<ReadingScreen> {
           horizontal: DesignTokens.spacingLg,
           vertical: DesignTokens.spacingMd,
         ),
-        child: WordTextView(
-          words: _controller.pages[pageIndex],
-          wordStates: snapshot.pages[pageIndex],
-          helpState: widget.helpState,
-          textSize: _readingTextSize(context),
-          onCurrentWordTap: _onCurrentWordTap,
-          onVocabWordTap: _onVocabWordTap,
+        child: _ReadingCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              WordTextView(
+                words: _controller.pages[pageIndex],
+                wordStates: snapshot.pages[pageIndex],
+                helpState: widget.helpState,
+                textSize: _readingTextSize(context),
+                onCurrentWordTap: _onCurrentWordTap,
+                onVocabWordTap: _onVocabWordTap,
+              ),
+              const SizedBox(height: DesignTokens.spacingLg),
+              const _WordStateLegend(),
+            ],
+          ),
         ),
       ),
     );
@@ -325,6 +337,140 @@ class _ReadingScreenState extends State<ReadingScreen> {
     widget.onReadingExited?.call();
     super.dispose();
   }
+}
+
+/// The mockup's reading card (docs/design/mockup-spec.md §3): a cream paper
+/// card -- gradient [DesignTokens.readingBackground] ->
+/// [DesignTokens.cardGradientEnd], 1px [DesignTokens.cardBorder], radius 20
+/// -- floating on the parchment page with the spec's soft drop shadow
+/// (`0 18px 40px -28px`, ink at 45%). The spec's 1px inset top highlight is
+/// approximated by the gradient starting at the card's lightest paper tone
+/// (no raw color literals may exist here, and Flutter has no inset shadow).
+class _ReadingCard extends StatelessWidget {
+  const _ReadingCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey<String>('reading-card'),
+      padding: const EdgeInsets.all(DesignTokens.spacingLg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            DesignTokens.readingBackground,
+            DesignTokens.cardGradientEnd,
+          ],
+        ),
+        border: Border.all(color: DesignTokens.cardBorder),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: DesignTokens.wordUnreadInk.withValues(alpha: 0.45),
+            offset: const Offset(0, 18),
+            blurRadius: 40,
+            spreadRadius: -28,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+/// The legend row under the reading text (mockup §3): a dashed divider, then
+/// three dots explaining the word states -- green "read it", amber "saying
+/// now", blue "new word — tap it". Purely additive decoration; it renders no
+/// tappable surface and collides with no pinned key.
+class _WordStateLegend extends StatelessWidget {
+  const _WordStateLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey<String>('reading-legend'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const CustomPaint(
+          painter: _DashedDividerPainter(),
+          child: SizedBox(height: 1, width: double.infinity),
+        ),
+        const SizedBox(height: DesignTokens.spacingSm + DesignTokens.spacingXs),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: DesignTokens.spacingMd,
+          runSpacing: DesignTokens.spacingXs,
+          children: const <Widget>[
+            _LegendItem(color: DesignTokens.wordReadGreen, label: 'read it'),
+            _LegendItem(color: DesignTokens.wordCurrentInk, label: 'saying now'),
+            _LegendItem(color: DesignTokens.wordVocabBlue, label: 'new word — tap it'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One legend entry: a state-colored dot plus its label
+/// (12px, weight 700, [DesignTokens.legendText], mockup §3).
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: const SizedBox(width: 10, height: 10),
+        ),
+        const SizedBox(width: DesignTokens.spacingXs + 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: DesignTokens.displayFontFamily,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: DesignTokens.legendText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Paints the mockup's dashed rule above the legend
+/// ([DesignTokens.dashedDivider], mockup §3).
+class _DashedDividerPainter extends CustomPainter {
+  const _DashedDividerPainter();
+
+  static const double _dashLength = 6.0;
+  static const double _gapLength = 5.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = DesignTokens.dashedDivider
+      ..strokeWidth = 1.0;
+    var x = 0.0;
+    final y = size.height / 2;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, y), Offset(x + _dashLength, y), paint);
+      x += _dashLength + _gapLength;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedDividerPainter oldDelegate) => false;
 }
 
 /// The animation-stage half of the reading layout.

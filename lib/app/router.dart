@@ -33,6 +33,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:learn_to_read/app/providers.dart';
+import 'package:learn_to_read/design/confetti.dart';
+import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
@@ -887,7 +889,13 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
           ),
         ),
         if (_celebrating)
-          CelebrationView(onSkip: () => _celebration?.skip()),
+          CelebrationView(
+            onSkip: () => _celebration?.skip(),
+            // Deterministic confetti per story: the seed is derived from the
+            // story id the route already holds (stable across replays), per
+            // the mockup-spec §6 restyle. No new data is plumbed.
+            confettiSeed: _story?.id.hashCode ?? 0,
+          ),
       ],
     );
   }
@@ -913,54 +921,136 @@ void _record(AnalyticsClient analytics, AnalyticsEvent event) =>
 // The celebration view
 // ===========================================================================
 
-/// The thin, token-styled view the merged [CelebrationController] runs behind.
+/// The thin, token-styled view the merged [CelebrationController] runs
+/// behind, restyled to the owner mockup's done state (docs/design/
+/// mockup-spec.md §5-§6).
 ///
 /// The controller owns every beat of the sequence (stage triggers, audio,
 /// persistence, the hold phase, the collectible flight); this view owns
-/// exactly two things: it is on screen for the duration, and it carries the
-/// skip affordance. It deliberately renders no text — skipping is one tap on
-/// an icon, and nothing here asks a five-year-old to read.
+/// exactly three things: it is on screen for the duration, it carries the
+/// skip affordance, and it plays the pure-code confetti celebration. It
+/// deliberately renders no text — skipping is one tap on an icon, and
+/// nothing here asks a five-year-old to read; the mockup's stats numbers
+/// and hurray copy need words-read/streak data no one plumbs to this view,
+/// so the success panel is a quiet token-styled emblem instead (see the
+/// restyle report).
 ///
 /// It sits *over* the reading screen rather than replacing it, because the
 /// celebration transforms the story stage that is already on screen (PRD §8
-/// Unit 8).
+/// Unit 8) — which is why the whole overlay (not a new stage) gets the
+/// spec's `sceneReveal` entrance, and the success panel fades up over it.
+///
+/// All three animations here are finite (sceneReveal 620 ms, fadeUp 420 ms,
+/// confetti a bounded one-shot), so settle-based tests can never hang on
+/// this view.
 class CelebrationView extends StatelessWidget {
-  const CelebrationView({super.key, required this.onSkip});
+  const CelebrationView({super.key, required this.onSkip, this.confettiSeed = 0});
 
   /// Wired to `CelebrationController.skip()`, which is a harmless no-op
   /// until the skip-unlock delay has elapsed.
   final VoidCallback onSkip;
 
+  /// Seed for the deterministic confetti overlay; the reading route passes
+  /// the story id's hashCode so a story always replays its own celebration.
+  final int confettiSeed;
+
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       key: const ValueKey<String>('celebration-view'),
-      child: Align(
-        alignment: Alignment.topRight,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(DesignTokens.spacingMd),
-            child: GestureDetector(
-              key: const ValueKey<String>('celebration-skip-button'),
-              behavior: HitTestBehavior.opaque,
-              onTap: onSkip,
-              child: const DecoratedBox(
-                decoration: BoxDecoration(
-                  color: DesignTokens.surfaceBackground,
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(DesignTokens.spacingSm),
-                  child: Icon(
-                    Icons.skip_next_rounded,
-                    size: 28,
-                    color: DesignTokens.wordUnreadInk,
+      child: Stack(
+        children: <Widget>[
+          // Spec §6: full-screen, non-interactive confetti. Intensity is
+          // min(3, stories-in-a-row); no streak data reaches this view, so
+          // it plays at the single-story intensity.
+          Positioned.fill(
+            child: ConfettiOverlay(intensity: 1, seed: confettiSeed),
+          ),
+          SceneReveal(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                child: FadeUp(
+                  duration: const Duration(milliseconds: 420),
+                  child: Container(
+                    margin: const EdgeInsets.all(DesignTokens.spacingLg),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DesignTokens.spacingLg,
+                      vertical: DesignTokens.spacingMd,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignTokens.successPanelBackground,
+                      border: Border.all(
+                        color: DesignTokens.successPanelBorder,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                        SizedBox(width: DesignTokens.spacingSm),
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                        SizedBox(width: DesignTokens.spacingSm),
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 28,
+                          color: DesignTokens.successDeepGreen,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+          Align(
+            alignment: Alignment.topRight,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(DesignTokens.spacingMd),
+                child: GestureDetector(
+                  key: const ValueKey<String>('celebration-skip-button'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onSkip,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: DesignTokens.readingBackground,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: DesignTokens.cardBorder),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: DesignTokens.wordUnreadInk
+                              .withValues(alpha: 0.18),
+                          offset: const Offset(0, 6),
+                          blurRadius: 14,
+                          spreadRadius: -8,
+                        ),
+                      ],
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(DesignTokens.spacingSm),
+                      child: Icon(
+                        Icons.skip_next_rounded,
+                        size: 28,
+                        color: DesignTokens.wordUnreadInk,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
