@@ -428,7 +428,13 @@ critical path.
   SFSpeechRecognizer with `contextualStrings`, Android SpeechRecognizer
   with biasing), validated by the Unit 0 spike. A cloud engine may
   substitute behind the same interface if on-device hypotheses prove too
-  coarse — the hybrid matching layer does not change.
+  coarse — the hybrid matching layer does not change. Post-spike engine
+  candidates should prefer **phonetically-informed encoders**
+  (KidSpeak-style multi-head Whisper — dual orthographic+phonetic decoder
+  training with contrastive alignment — cuts phonetic error rate ~15% and
+  materially improves child transcription vs stock Whisper); the engine
+  seam's phone-level hypothesis surface anticipates exactly this class of
+  engine.
 - The engine adapter surfaces phone-level detail where the engine provides
   it; the matcher runs in **word mode** (stories — close-enough word
   acceptance) or **sound mode** (tongue twisters, Unit 14 — phoneme-sequence
@@ -908,15 +914,26 @@ proposed with flagged choice points, ratified during spec walkthrough)
   `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
   Unit 4's engine interface if its hypotheses prove too coarse.
 - **A-11:** Listen-first narration plays without per-word karaoke
-  highlighting in v1 (word-sync timing data is a post-POC enhancement);
-  pack build requires `narrationAudioRef` for every sentence-format story.
+  highlighting in v1 (word-sync timing data is a post-POC enhancement;
+  when built, timing extraction should use a FASA-style forced aligner —
+  KidSpeak's Flexible and Automatic Speech Aligner tolerates imperfect
+  transcripts and beats human annotation by ~13.6× on children's-speech
+  alignment — run at pack-build time over the owner's narration
+  recordings); pack build requires `narrationAudioRef` for every
+  sentence-format story.
 - **A-12:** `struggleDetected` default semantics: (a) two consecutive
   finalized hypothesis bursts containing speech that fails to match the
   current word, or (b) sustained silence ≥ T1. Tunable in the tuning file.
 - **A-13:** Sound-mode (twister/Sound Garden) default thresholds: accept
   when ≥ 60% of the target phoneme sequence is matched with per-phoneme
   distance ≤ 1, target-phoneme instances weighted double. Tunable in the
-  tuning file.
+  tuning file. **Per-phoneme metric (clarified with A-18):** distance is 0
+  for an identical phoneme, 0.5 for an A-18-confusable pair, and 2
+  otherwise — the ≤ 1 gate therefore admits exactly identity and
+  confusable productions. A clearly wrong sound ("Z" for "SH") earns no
+  position credit and no sparkle; a child-typical confusion still passes.
+  This keeps sound mode true to the ratified intent (the app listens for
+  the SOUNDS) without failing children on confusable productions.
 - **A-14:** Analytics word hash: SHA-256 of the lowercased word text,
   truncated to 16 hex chars.
 - **A-15:** Pack integrity v1: SHA-256 checksum listed in the catalog
@@ -928,6 +945,21 @@ proposed with flagged choice points, ratified during spec walkthrough)
 - **A-17:** Audio playback plugin: `just_audio` (+ `audio_session`), added
   centrally to pubspec by the orchestrator; low-latency phoneme sequencing
   per Unit 13 measured against it on device.
+- **A-18 (KidSpeak-informed, ratified):** Recognition errors must never
+  fail a child — the product passes children on reading ability, not on
+  ASR accuracy. Standard ASR is documented to hallucinate fluent-but-wrong
+  text on children's speech (KidSpeak, arXiv:2512.05994: Whisper renders a
+  4-year-old's "looking at the frog" as "recognize the fog… grab this
+  egg?"). Therefore the phoneme-distance metric uses a
+  **confusability-weighted cost table** (tunable, in the tuning file):
+  substitutions along documented child-speech and child-ASR confusion axes
+  cost 0.5 instead of 1 — gliding (R/L → W), stopping (TH → D/T, DH → D),
+  th-fronting (TH → F, DH → V), velar fronting (K → T, G → D), voicing
+  pairs (P/B, T/D, K/G, F/V, S/Z), and labial/fricative acoustic
+  confusions (W ↔ F, e.g. "while" heard as "file"). Acceptance widens
+  exactly along the axes children and child-ASR actually confuse and
+  nowhere else; all other costs and thresholds are unchanged. Story
+  completion remains the only summative outcome and is always reachable.
 
 ## 10. Open questions (block their units, not the whole build)
 
