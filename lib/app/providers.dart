@@ -575,30 +575,6 @@ Set<String> unlockedTwisterLevelIds(PhonicsContent content, Profile profile) {
 // One reading session: the paragraph-scoped tracker + the help scaffold
 // ===========================================================================
 
-/// Records only *helped* resolutions.
-///
-/// **Deviation, documented in docs/app-shell.md.** `HelpRecorder`'s own
-/// contract records every resolution — including unaided ones — because that
-/// is the §4.3 help-rate denominator. The frozen shell suite instead pins
-/// "a clean read writes no `WordHelpRecord` row at all"
-/// (`shell_integration_test.dart`, the full-loop test's `helpRows == 0`), so
-/// the shell narrows the recorder at the composition seam rather than
-/// forking Unit 6. Restoring the denominator is a one-line change here.
-class HelpedOnlyHelpRecorder implements HelpRecorderApi {
-  const HelpedOnlyHelpRecorder(this._delegate);
-
-  final HelpRecorderApi _delegate;
-
-  @override
-  Future<void> recordResolution({
-    required WordToken word,
-    required HelpLevel tier,
-  }) async {
-    if (tier == HelpLevel.none) return;
-    await _delegate.recordResolution(word: word, tier: tier);
-  }
-}
-
 /// One story read, composed: the paragraph-scoped [ReadingTracker]s, the
 /// Unit 6 [StuckWordController] over them, and the one stable
 /// [ReadingTrackerHandle] the reading screen subscribes to.

@@ -621,11 +621,9 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
       micConsent: micEnabled,
       audioService: ref.read(audioServiceProvider),
       phonemeAudioRefs: ref.read(phonemeAudioRefsProvider),
-      helpRecorder: HelpedOnlyHelpRecorder(
-        HelpRecorder(
+      helpRecorder: HelpRecorder(
           wordHelpDao: db.wordHelpDao,
           profileId: profile.localId,
-        ),
       ),
       yourTurnPromptAudioRef: ref.read(yourTurnPromptAudioRefProvider),
       nearMissPromptAudioRef: ref.read(nearMissPromptAudioRefProvider),

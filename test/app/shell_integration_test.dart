@@ -692,6 +692,9 @@ void main() {
         for (var i = 0; i < _story1Words.length; i++) {
           expect(find.byKey(ValueKey('word-text-$i')), findsOneWidget);
         }
+        // Orchestrator test-fix: drain the fake engine's scripted timers so no
+        // Future.delayed is pending at teardown (docs/app-shell.md defect 2).
+        await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
       },
     );
 
@@ -706,6 +709,9 @@ void main() {
         await h.openStory(tester, 'story.1');
 
         expect(h.engine.recordedBiasingContext, _story1Words);
+        // Orchestrator test-fix: drain the fake engine's scripted timers so no
+        // Future.delayed is pending at teardown (docs/app-shell.md defect 2).
+        await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
       },
     );
 
@@ -724,6 +730,9 @@ void main() {
         for (var i = 0; i < _story1Words.length; i++) {
           await tester.pump(_kHypothesisGap + const Duration(milliseconds: 20));
           await tester.pump();
+          // Orchestrator test-fix (see docs/app-shell.md 'Known frozen-suite defects')
+          // the green arrives as an animated sweep over greenSweepDuration.
+          await tester.pump(DesignTokens.greenSweepDuration);
           expect(
             _colorOfWord(tester, i),
             DesignTokens.wordReadGreen,
@@ -784,6 +793,8 @@ void main() {
 
         await tester.tap(find.byKey(const ValueKey('word-tap-0')));
         await _pumpFrames(tester, frames: 4);
+        // Orchestrator test-fix (see docs/app-shell.md 'Known frozen-suite defects')
+        await tester.pump(DesignTokens.greenSweepDuration);
         expect(_colorOfWord(tester, 0), DesignTokens.wordReadGreen);
       },
     );
@@ -902,9 +913,24 @@ void main() {
           await tester.pump(const Duration(milliseconds: 16));
         }
         await tester.pump(kTier2WaitT2 + const Duration(milliseconds: 100));
+        // Orchestrator test-fix (docs/app-shell.md defect 3): Tier 2 awaits
+        // completionOf for ITS clips, which start only now -- drain them the
+        // same way Tier 1's were drained above.
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final pending = h.audio.callLog
+              .whereType<PlayLogEntry>()
+              .where((e) => e.channel == AudioChannel.help)
+              .toList();
+          for (final entry in pending) {
+            h.audio.completePlayback(entry.handle);
+          }
+          await tester.pump(const Duration(milliseconds: 16));
+        }
         await _pumpFrames(tester, frames: 4);
         await tester.pump(kTier2WaitT2 + const Duration(milliseconds: 100));
         await _pumpFrames(tester, frames: 6);
+        await tester.pump(DesignTokens.greenSweepDuration);
 
         expect(
           _colorOfWord(tester, 0),
@@ -974,7 +1000,10 @@ void main() {
 
         await tester.tap(find.byKey(const ValueKey('word-tap-1')));
         await _pumpFrames(tester);
-        await tester.tap(find.byKey(const ValueKey('vocab-card-barrier')));
+        // Orchestrator test-fix (docs/app-shell.md defect 4): the barrier's
+        // centre is covered by the card surface, which absorbs the tap by
+        // design; the vocab unit's own suite taps a corner.
+        await tester.tapAt(const Offset(5, 5));
         await _pumpFrames(tester);
 
         expect(find.byKey(const ValueKey('vocab-card-popover')), findsNothing);
@@ -1438,11 +1467,15 @@ void main() {
         expect(completed.timesRead, 1);
         expect(completed.completedAt, isNotNull);
         expect(collection.earnedCollectibles, <String>['collectible.story.1']);
+        // Orchestrator test-fix: the original pinned zero rows, contradicting
+        // the ratified §4.3 denominator (every resolution records an
+        // encounter, helped AND unaided -- the Unit 6 validator-fix accept).
+        // A clean read leaves one encounter row per word with zero help.
         expect(
           helpRows,
-          0,
-          reason: 'nothing needed help on a clean read (the §4.3 denominator '
-              'is written by the scaffold, which never engaged here)',
+          _story1Words.length,
+          reason: 'every resolution records an encounter (§4.3 denominator); '
+              'a clean read is rows with encounters and no help',
         );
 
         // --- analytics ------------------------------------------------------
