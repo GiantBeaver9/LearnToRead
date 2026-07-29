@@ -94,8 +94,15 @@ foreach ($d in @("words","narration","celebrations","prompts","vocab","rive","ph
 Copy-Item content\demo\scope_sequence.json build\sideload\scope_sequence.json
 adb shell rm -rf /data/local/tmp/learntoread
 adb push build\sideload /data/local/tmp/learntoread | Out-Null
-adb shell run-as com.learntoread.learn_to_read sh -c "rm -rf files/starter_pack && mkdir -p files && cp -r /data/local/tmp/learntoread/starter_pack files/starter_pack && cp /data/local/tmp/learntoread/scope_sequence.json files/scope_sequence.json"
+# One adb call per step — PowerShell quoting mangles `sh -c "a && b"` chains.
+adb shell run-as com.learntoread.learn_to_read rm -rf files/starter_pack
+adb shell run-as com.learntoread.learn_to_read mkdir -p files
+adb shell run-as com.learntoread.learn_to_read cp -r /data/local/tmp/learntoread/starter_pack files/starter_pack
+adb shell run-as com.learntoread.learn_to_read cp /data/local/tmp/learntoread/scope_sequence.json files/scope_sequence.json
 adb shell rm -rf /data/local/tmp/learntoread
+$staged = adb shell run-as com.learntoread.learn_to_read ls files/starter_pack 2>$null
+if ("$staged" -match "manifest.json") { Say "content verified on device" }
+else { Write-Host "WARNING: sideload verification failed - the app will boot with an empty library" }
 
 Say "launching (fully stop + relaunch later picks content up too)"
 flutter run
