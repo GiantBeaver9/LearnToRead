@@ -32,6 +32,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/design/layout.dart';
 import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
@@ -534,6 +535,19 @@ class _StoryStageRegion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Additive branch: when the app is booted with the code-drawn stage
+    // (lib/design/builtin_story_stage.dart), render its live scene here; any
+    // other implementation (the headless FakeStoryStage default, a future
+    // RiveStoryStage view) keeps the original token-styled placeholder.
+    if (stage case final BuiltInStoryStage builtInStage) {
+      return Padding(
+        padding: const EdgeInsets.all(DesignTokens.spacingMd),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(DesignTokens.spacingMd),
+          child: BuiltInStoryStageView(stage: builtInStage),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.all(DesignTokens.spacingMd),
       child: DecoratedBox(

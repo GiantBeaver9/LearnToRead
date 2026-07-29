@@ -36,6 +36,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:learn_to_read/app/app.dart';
 import 'package:learn_to_read/app/providers.dart';
+import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/data/content/pack_installer.dart';
 import 'package:learn_to_read/data/content/pack_loader.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
@@ -118,6 +119,19 @@ Future<List<Override>> buildBootOverrides() async {
       nearMissPromptAudioRefProvider.overrideWithValue('prompts/near_miss.wav'),
     if (celebrationLines.isNotEmpty)
       celebrationVoiceLineRefsProvider.overrideWithValue(celebrationLines),
+    // Visible story animation (owner: "getting basic animation running"):
+    // on device every stage is the code-drawn BuiltInStoryStage, so the
+    // idle/celebrate/collect beats actually show something alive. Scene
+    // seeds increment per construction — time-free and deterministic within
+    // a boot, so concurrently-live stages (reading route, each collection
+    // tile) each get their own arrangement. The provider's headless default
+    // stays FakeStoryStage (tests depend on it); per-story seeding would
+    // need the story id plumbed into the factory — a future wiring change,
+    // not forced here.
+    storyStageFactoryProvider.overrideWith((ref) {
+      var nextSceneSeed = 0;
+      return () => BuiltInStoryStage(sceneSeed: nextSceneSeed++);
+    }),
   ];
 }
 

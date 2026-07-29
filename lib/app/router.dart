@@ -33,6 +33,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:learn_to_read/app/providers.dart';
+import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/design/confetti.dart';
 import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
@@ -921,6 +922,11 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
             // story id the route already holds (stable across replays), per
             // the mockup-spec §6 restyle. No new data is plumbed.
             confettiSeed: _story?.id.hashCode ?? 0,
+            // The stage the celebration controller is triggering; when it is
+            // the code-drawn BuiltInStoryStage the view renders its scene
+            // full-bleed behind the confetti (a no-op for any other
+            // implementation, including the headless FakeStoryStage).
+            stage: _stage,
           ),
       ],
     );
@@ -970,7 +976,12 @@ void _record(AnalyticsClient analytics, AnalyticsEvent event) =>
 /// confetti a bounded one-shot), so settle-based tests can never hang on
 /// this view.
 class CelebrationView extends StatelessWidget {
-  const CelebrationView({super.key, required this.onSkip, this.confettiSeed = 0});
+  const CelebrationView({
+    super.key,
+    required this.onSkip,
+    this.confettiSeed = 0,
+    this.stage,
+  });
 
   /// Wired to `CelebrationController.skip()`, which is a harmless no-op
   /// until the skip-unlock delay has elapsed.
@@ -980,12 +991,26 @@ class CelebrationView extends StatelessWidget {
   /// the story id's hashCode so a story always replays its own celebration.
   final int confettiSeed;
 
+  /// The stage the running celebration is triggering. Only consulted when it
+  /// is a [BuiltInStoryStage]: its code-drawn scene then plays full-bleed
+  /// behind the confetti (with the spec §5 sceneReveal entrance). For any
+  /// other implementation — including the headless FakeStoryStage default —
+  /// this view's tree is unchanged.
+  final StoryStage? stage;
+
   @override
   Widget build(BuildContext context) {
+    final StoryStage? stage = this.stage;
     return Positioned.fill(
       key: const ValueKey<String>('celebration-view'),
       child: Stack(
         children: <Widget>[
+          if (stage is BuiltInStoryStage)
+            Positioned.fill(
+              child: SceneReveal(
+                child: BuiltInStoryStageView(stage: stage),
+              ),
+            ),
           // Spec §6: full-screen, non-interactive confetti. Intensity is
           // min(3, stories-in-a-row); no streak data reaches this view, so
           // it plays at the single-story intensity.
