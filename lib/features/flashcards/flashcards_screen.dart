@@ -428,6 +428,33 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     );
   }
 
+  /// A back-side grapheme chip was tapped (owner direction 2026-07-29:
+  /// tappable chips): play exactly THAT cluster's phoneme clip — a single
+  /// clip, never the whole sequence. A silent letter (empty phonemeId) or
+  /// a clip absent from the shipped map plays nothing.
+  ///
+  /// The tap then continues into the card's flip toggle, exactly the
+  /// observable behavior a chip tap has always had (a chip tap reaches the
+  /// flip detector — pinned by the speech-first suite), so flipping home
+  /// off the back keeps working from a chip.
+  void _onChipTap(FlashcardCard card, int graphemeIndex) {
+    final map = card.graphemePhonemeMap;
+    if (graphemeIndex >= 0 && graphemeIndex < map.length) {
+      final phonemeId = map[graphemeIndex].phonemeId;
+      final ref = phonemeId.isEmpty ? null : widget.phonemeAudioRefs[phonemeId];
+      if (ref != null) {
+        unawaited(() async {
+          try {
+            await widget.audioService.play(ref, channel: AudioChannel.help);
+          } catch (_) {
+            // A missing clip is a content/pack bug; the screen stays calm.
+          }
+        }());
+      }
+    }
+    _onCardTap();
+  }
+
   /// The `(box, dueAt)` write [card] earns for [grade] — the one
   /// dao/scheduler path both the manual grade buttons and the speech
   /// accept go through.
@@ -527,6 +554,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                   child: _BackFace(
                     card: card,
                     onPronunciationTap: _onPronunciationTap,
+                    onChipTap: _onChipTap,
                   ),
                 ),
               ),
@@ -858,12 +886,22 @@ class _CardSwayState extends State<_CardSway>
 
 /// Back: one grapheme chip per `graphemePhonemeMap` entry (syllable-chip
 /// styling, §4) with its phoneme id below in mono type, plus the whole-word
-/// pronunciation play button.
+/// pronunciation play button. Each chip is tappable (owner direction
+/// 2026-07-29): the tap plays that cluster's own phoneme clip and then
+/// flips the card, preserving the pinned chip-tap-reaches-the-flip
+/// behavior.
 class _BackFace extends StatelessWidget {
-  const _BackFace({required this.card, required this.onPronunciationTap});
+  const _BackFace({
+    required this.card,
+    required this.onPronunciationTap,
+    required this.onChipTap,
+  });
 
   final FlashcardCard card;
   final void Function(FlashcardCard card) onPronunciationTap;
+
+  /// Fired with the tapped chip's `graphemePhonemeMap` index.
+  final void Function(FlashcardCard card, int graphemeIndex) onChipTap;
 
   @override
   Widget build(BuildContext context) {
@@ -882,24 +920,32 @@ class _BackFace extends StatelessWidget {
                 key: ValueKey('flashcard-chip-${card.cardKey}-$i'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: DesignTokens.syllableChipIdleBackground,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      map[i].graphemes,
-                      key: ValueKey(
-                        'flashcard-chip-graphemes-${card.cardKey}-$i',
+                  // Tappable chip (owner direction 2026-07-29): plays this
+                  // cluster's phoneme, then the handler flips the card —
+                  // the same flip a chip tap has always caused.
+                  GestureDetector(
+                    key: ValueKey('flashcard-chip-tap-${card.cardKey}-$i'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onChipTap(card, i),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 4,
                       ),
-                      style: const TextStyle(
-                        fontFamily: DesignTokens.readingFontFamily,
-                        fontSize: 26,
-                        color: DesignTokens.syllableChipIdleText,
+                      decoration: BoxDecoration(
+                        color: DesignTokens.syllableChipIdleBackground,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        map[i].graphemes,
+                        key: ValueKey(
+                          'flashcard-chip-graphemes-${card.cardKey}-$i',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: DesignTokens.readingFontFamily,
+                          fontSize: 26,
+                          color: DesignTokens.syllableChipIdleText,
+                        ),
                       ),
                     ),
                   ),

@@ -912,6 +912,9 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
               onPageTurned: session.advancePage,
               onReadingExited: _onReadingExited,
               helpState: helpState,
+              // On-demand sound-out (owner direction 2026-07-29): the same
+              // shipped phoneme-clip map the help ladder and Sound Garden use.
+              phonemeAudioRefs: ref.watch(phonemeAudioRefsProvider),
             ),
           ),
         ),
