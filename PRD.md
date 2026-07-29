@@ -542,6 +542,14 @@ critical path.
 - The reading screen never displays "wrong", red coloring, error sounds, or
   any negative feedback. The only responses to imperfect reading are
   patience and help (Unit 6).
+- **Sound-out everything (RATIFIED 2026-07-29, owner-directed):** phonics
+  decoding help is available on demand for ANY word, any state, not only
+  when stuck: **long-press a word** → its grapheme-by-grapheme sound-out
+  plays with the same grapheme highlighting the Tier-1 ladder uses
+  (listening pauses for the clip and always resumes, narration-replay
+  posture); **individual grapheme chips are tappable** for that single
+  sound — in the sound-out panel and on flashcard backs. Tap semantics
+  (whole-word pronunciation / tap-advance fallback) are unchanged.
 
 **Acceptance**
 - Widget tests: fixture event streams produce the exact expected word-state
@@ -639,10 +647,16 @@ critical path.
   the plant), synchronized with the celebration audio: a happy musical
   sting + one recorded celebration voice line (from a fixed recorded set,
   rotated randomly so it doesn't repeat verbatim every story).
-- **Narrated read-back (ratified):** where the story has narration audio
-  (all sentence-format levels), the fluent narration replays over the start
-  of the animation — stitching the just-decoded words into meaning at the
-  moment of payoff. Skipped at levels without narration.
+- **Narrated read-back (ratified; RECALIBRATED 2026-07-29, owner):** where
+  the story has narration audio, the fluent narration of **every sentence
+  of the story, in order**, plays over the celebrate animation — stitching
+  the just-decoded words into meaning at the moment of payoff. The
+  celebration payoff itself (voice line + sting + collectible flight)
+  **waits for the read-back to finish** and lands at the end of the
+  narrated animation ("recalibrate the celebration to the end of the
+  animation"). Stories without narration keep the immediate payoff. The
+  ≤10 s total and the skippable-by-tap-after-2 s rules are unchanged and
+  bound the read-back too (a tap skips straight to the payoff).
 - **Replay behavior (ratified):** re-reading a completed story ends with
   the full animation + celebration audio; the collectible is granted only
   on first completion.
@@ -1079,10 +1093,11 @@ without building a backend.
   cloud-minutes per profile per day cap.
 - **A-8:** Story length bounds: sentence levels 3–8 words; paragraph levels
   40–90 words across 1–3 pages.
-- **A-9:** The ~8-story starter pack includes bundled stories at all three
-  age-band starting levels (level 1, the first multiSentence level, and the
-  first paragraph level), distributed across them, so any new profile has
-  offline content at its own starting level on first run.
+- **A-9 (amended 2026-07-29, owner-directed):** The starter pack targets
+  **~20 stories weighted to the young range** (sentence + multiSentence
+  levels, ages 5-7) while still covering all three age-band starting levels,
+  so any new profile has offline content at its own starting level on first
+  run. TTS voicing (OQ-3) makes per-story audio free to scale.
 - **A-10:** Default ASR engine behind the hybrid matching layer: platform
   on-device recognition with contextual biasing (iOS SFSpeechRecognizer
   `contextualStrings`; Android SpeechRecognizer biasing). Swappable behind
@@ -1161,12 +1176,24 @@ without building a backend.
 - **OQ-2 — RESOLVED (product owner):** deferred — v1 is a POC with private
   distribution, so verifiable parental consent and store compliance are
   post-POC ship-gates, recorded in §6 and R3/R8, not v1 work.
-- **OQ-3 — RESOLVED (product owner):** no TTS in v1 — all voice audio is
-  human-recorded by the product owner's single narrator; the pipeline's
-  source-agnostic audio refs leave TTS available as a post-v1
-  alternative/scale path.
-- **OQ-4 (blocks Unit 3 art commissions):** Illustrator/animator sourcing
-  and budget per story; style guide contract deliverable defined in Unit 1.
+- **OQ-3 — RE-RESOLVED (product owner, 2026-07-29):** presentation-timeline
+  change activated the TTS path: all demo voice audio is generated locally
+  with Piper (libritts-high) via `tool/tts_generate.py` +
+  `tool/normalize_wav.dart`. **Two-voice policy (owner-ratified):** speaker
+  21 primary, speaker 47 secondary — phonics-blending audio (44 phonemes,
+  word pronunciations) is primary-only (one voice inside a blended word);
+  narrations alternate per story/twister, celebration lines alternate per
+  line, vocab definitions ride the secondary voice as the "new word"
+  character; prompts/nav stay primary. Human recordings remain the drop-in
+  upgrade path (the generator never overwrites a file lacking its `.tts`
+  marker).
+- **OQ-4 (blocks Unit 3 art commissions; INTERIM RESOLVED 2026-07-29):**
+  Illustrator/animator sourcing and budget per story; style guide contract
+  deliverable defined in Unit 1. **Interim (owner: "getting basic animation
+  running"):** a code-drawn `BuiltInStoryStage` (Sound-It-Out-themed
+  animated scenes — idle/celebrate/collect, seeded per story) renders on
+  device until commissioned Rive art lands; the `StoryStage` seam is
+  unchanged, so real art replaces it without touching app code.
 - **OQ-5 (content):** Final scope & sequence table (which skills at which
   level, heart-word lists, grapheme inventory + example words for the Sound
   Garden) — authored in Unit 3, reviewed by product owner before story

@@ -32,6 +32,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/design/layout.dart';
 import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
@@ -41,6 +42,7 @@ import 'package:learn_to_read/domain/models/content_models.dart'
 import 'package:learn_to_read/domain/models/user_models.dart' show HelpLevel;
 import 'package:learn_to_read/features/analytics/analytics_client.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
+import 'package:learn_to_read/features/help/on_demand_sound_out.dart';
 import 'package:learn_to_read/features/listening/contracts/help_state.dart';
 import 'package:learn_to_read/features/reading/listening_indicator.dart';
 import 'package:learn_to_read/features/reading/narration_controller.dart';
@@ -87,6 +89,7 @@ class ReadingScreen extends StatefulWidget {
     this.onPageTurned,
     this.onReadingExited,
     this.helpState = kNoHelp,
+    this.phonemeAudioRefs = const <String, AudioRef>{},
   });
 
   /// The story being read.
@@ -140,6 +143,12 @@ class ReadingScreen extends StatefulWidget {
   /// The current help tier and grapheme highlight (Unit 6).
   final HelpState helpState;
 
+  /// Phoneme id -> shipped clip ref, for the on-demand sound-out (owner
+  /// direction 2026-07-29: long-press any word, tap any chip). The same
+  /// map the Unit 6 sequencer and Sound Garden use. Defaults empty, in
+  /// which case long-press and chip taps stay quiet no-ops.
+  final Map<String, AudioRef> phonemeAudioRefs;
+
   @override
   State<ReadingScreen> createState() => _ReadingScreenState();
 }
@@ -147,6 +156,12 @@ class ReadingScreen extends StatefulWidget {
 class _ReadingScreenState extends State<ReadingScreen> {
   late final ReadingController _controller;
   late final NarrationController _narration;
+  late final OnDemandSoundOut _onDemandSoundOut;
+  StreamSubscription<OnDemandGrapheme?>? _onDemandSub;
+
+  /// The grapheme an on-demand sound-out is lighting right now (null when
+  /// none is running); handed straight to [WordTextView.onDemandHighlight].
+  OnDemandGrapheme? _onDemandHighlight;
 
   @override
   void initState() {
@@ -167,6 +182,18 @@ class _ReadingScreenState extends State<ReadingScreen> {
       pauseListening: _pauseListening,
       resumeListening: _resumeListening,
     );
+    // On-demand sound-out (owner direction 2026-07-29): the same
+    // pause/resume bracket as the narration replay, so recognition never
+    // hears the phoneme clips.
+    _onDemandSoundOut = OnDemandSoundOut(
+      audioService: widget.audioService,
+      phonemeAudioRefs: widget.phonemeAudioRefs,
+      pauseListening: _pauseListening,
+      resumeListening: _resumeListening,
+    );
+    _onDemandSub = _onDemandSoundOut.highlights.listen((tick) {
+      if (mounted) setState(() => _onDemandHighlight = tick);
+    });
     _startReading();
   }
 
@@ -235,6 +262,25 @@ class _ReadingScreenState extends State<ReadingScreen> {
   }
 
   void _onCurrentWordTap(int index) => _controller.tapCurrentWord();
+
+  /// ANY word was long-pressed (unread, current, green, or purple): run its
+  /// on-demand sound-out. A second long-press stops the first — the
+  /// controller never overlaps passes — and the pause/resume bracket spans
+  /// the whole run.
+  void _onWordLongPress(int index) {
+    final tokens = _controller.currentPageTokens;
+    if (index < 0 || index >= tokens.length) return;
+    unawaited(_onDemandSoundOut.play(wordIndex: index, word: tokens[index]));
+  }
+
+  /// One chip of a rendered sound-out panel was tapped: play exactly that
+  /// grapheme cluster's phoneme (a single clip, no sequence). A silent
+  /// letter is a gentle no-op inside the controller.
+  void _onGraphemeTap(int wordIndex, int graphemeIndex) {
+    final tokens = _controller.currentPageTokens;
+    if (wordIndex < 0 || wordIndex >= tokens.length) return;
+    unawaited(_onDemandSoundOut.playGrapheme(tokens[wordIndex], graphemeIndex));
+  }
 
   double _readingTextSize(BuildContext context) {
     final layoutClass = LayoutResolver.resolve(context);
@@ -306,8 +352,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   /// The child's page-curl completed: turn the held page. `turnPage()` is a
   /// no-op unless the machine is actually holding, so a stray second gesture
-  /// can never advance twice.
-  void _onPageTurned() => _controller.turnPage();
+  /// can never advance twice. Any on-demand sound-out is stopped first so a
+  /// stale highlight can never name a word on the page being left.
+  void _onPageTurned() {
+    _onDemandSoundOut.cancel();
+    _controller.turnPage();
+  }
 
   Widget _buildPage(BuildContext context, int pageIndex) {
     final snapshot = _controller.snapshot;
@@ -325,6 +375,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
           textSize: _readingTextSize(context),
           onCurrentWordTap: _onCurrentWordTap,
           onVocabWordTap: _onVocabWordTap,
+          onWordLongPress: _onWordLongPress,
+          onGraphemeTap: _onGraphemeTap,
+          // Only the live page renders the on-demand highlight, so a page
+          // index can never light a word on another page.
+          onDemandHighlight:
+              pageIndex == snapshot.currentPageIndex ? _onDemandHighlight : null,
         ),
         const SizedBox(height: DesignTokens.spacingLg),
         const _WordStateLegend(),
@@ -373,6 +429,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   @override
   void dispose() {
+    unawaited(_onDemandSub?.cancel());
+    _onDemandSoundOut.dispose();
     // Leaving mid-story closes the microphone session: the tracker itself
     // belongs to the app shell, which starts and stops it, but no session
     // may outlive the screen that opened it.
@@ -534,6 +592,19 @@ class _StoryStageRegion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Additive branch: when the app is booted with the code-drawn stage
+    // (lib/design/builtin_story_stage.dart), render its live scene here; any
+    // other implementation (the headless FakeStoryStage default, a future
+    // RiveStoryStage view) keeps the original token-styled placeholder.
+    if (stage case final BuiltInStoryStage builtInStage) {
+      return Padding(
+        padding: const EdgeInsets.all(DesignTokens.spacingMd),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(DesignTokens.spacingMd),
+          child: BuiltInStoryStageView(stage: builtInStage),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.all(DesignTokens.spacingMd),
       child: DecoratedBox(

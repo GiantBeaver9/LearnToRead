@@ -23,7 +23,8 @@
       ],
       "heartWords": [
         "the",
-        "The"
+        "The",
+        "I"
       ]
     },
     {
@@ -116,7 +117,75 @@
       "levelId": "level.demo.1"
     },
     {
+      "id": "story.demo.pat",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.nap",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.ant",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.pan",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.tap",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.sip",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.catnap",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.spin",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.taptap",
+      "levelId": "level.demo.1"
+    },
+    {
+      "id": "story.demo.sis",
+      "levelId": "level.demo.1"
+    },
+    {
       "id": "story.demo.ship",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.duck",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.frog",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.shell",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.dog",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.hen",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.bus",
+      "levelId": "level.demo.2"
+    },
+    {
+      "id": "story.demo.crab",
       "levelId": "level.demo.2"
     },
     {

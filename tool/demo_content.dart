@@ -125,7 +125,7 @@ final List<Level> _levels = [
 ];
 
 final Map<String, List<String>> _heartWords = {
-  'level.demo.1': ['the', 'The'],
+  'level.demo.1': ['the', 'The', 'I'],
   'level.demo.2': [],
   'level.demo.3': ['to', 'To', 'of', 'Of'],
 };
@@ -142,6 +142,34 @@ WordToken _is() => w('is', [('i', 'IH'), ('s', 'Z')]);
 WordToken _red() => w('red', [('r', 'R'), ('e', 'EH'), ('d', 'D')]);
 WordToken _bug([String text = 'bug']) =>
     w(text, [('b', 'B'), ('u', 'AH'), ('g', 'G')]);
+// Heart word at level.demo.1 ("I" says AY, not the taught short i).
+WordToken _capitalI() => w('I', [('i', 'AY')]);
+WordToken _it([String text = 'it']) => w(text, [('i', 'IH'), ('t', 'T')]);
+WordToken _on() => w('on', [('o', 'AA'), ('n', 'N')]);
+WordToken _and() => w('and', [('a', 'AE'), ('n', 'N'), ('d', 'D')]);
+WordToken _big() => w('big', [('b', 'B'), ('i', 'IH'), ('g', 'G')]);
+WordToken _cat() => w('cat', [('c', 'K'), ('a', 'AE'), ('t', 'T')]);
+WordToken _can() => w('can', [('c', 'K'), ('a', 'AE'), ('n', 'N')]);
+WordToken _tin() => w('tin', [('t', 'T'), ('i', 'IH'), ('n', 'N')]);
+WordToken _tap() => w('tap', [('t', 'T'), ('a', 'AE'), ('p', 'P')]);
+WordToken _pan() => w('pan', [('p', 'P'), ('a', 'AE'), ('n', 'N')]);
+WordToken _cap() => w('cap', [('c', 'K'), ('a', 'AE'), ('p', 'P')]);
+WordToken _naps() => w('naps', [('n', 'N'), ('a', 'AE'), ('p', 'P'), ('s', 'S')]);
+WordToken _sits() => w('sits', [('s', 'S'), ('i', 'IH'), ('t', 'T'), ('s', 'S')]);
+WordToken _spin([String text = 'spin']) =>
+    w(text, [('s', 'S'), ('p', 'P'), ('i', 'IH'), ('n', 'N')]);
+WordToken _pip([String text = 'Pip']) =>
+    w(text, [('p', 'P'), ('i', 'IH'), ('p', 'P')]);
+WordToken _digs() => w('digs', [('d', 'D'), ('i', 'IH'), ('g', 'G'), ('s', 'Z')]);
+WordToken _got() => w('got', [('g', 'G'), ('o', 'AA'), ('t', 'T')]);
+WordToken _runs() => w('runs', [('r', 'R'), ('u', 'AH'), ('n', 'N'), ('s', 'Z')]);
+WordToken _shell() => w('shell', [('sh', 'SH'), ('e', 'EH'), ('ll', 'L')]);
+WordToken _mud() => w('mud', [('m', 'M'), ('u', 'AH'), ('d', 'D')]);
+WordToken _hen() => w('hen', [('h', 'HH'), ('e', 'EH'), ('n', 'N')]);
+WordToken _bus() => w('bus', [('b', 'B'), ('u', 'AH'), ('s', 'S')]);
+WordToken _gus() => w('Gus', [('g', 'G'), ('u', 'AH'), ('s', 'S')]);
+WordToken _crab() => w('crab', [('c', 'K'), ('r', 'R'), ('a', 'AE'), ('b', 'B')]);
+WordToken _frog() => w('frog', [('f', 'F'), ('r', 'R'), ('o', 'AA'), ('g', 'G')]);
 
 final Story _storyCat = Story(
   id: 'story.demo.cat',
@@ -170,6 +198,167 @@ final Story _storyCat = Story(
   skillsExercised: [_skillSatpin],
   packId: 'pack.starter',
   contentVersion: '1',
+);
+
+/// Builds a level.demo.1 story: sentence format, exactly one page with one
+/// 3-8 word sentence, narration ref derived from [slug].
+Story _sentenceStory({
+  required String slug,
+  required String title,
+  required List<WordToken> words,
+  required String cheer,
+}) =>
+    Story(
+      id: 'story.demo.$slug',
+      levelId: 'level.demo.1',
+      title: title,
+      pages: [
+        Page(
+          sentences: [s(words, narration: 'narration/${slug}_p1_s1.wav')],
+        ),
+      ],
+      riveAnimationRef: 'rive/story_$slug.riv',
+      celebrationAudioRef: 'celebrations/cheer_$cheer.wav',
+      collectibleRef: 'collectible.demo.$slug',
+      skillsExercised: [_skillSatpin],
+      packId: 'pack.starter',
+      contentVersion: '1',
+    );
+
+/// Builds a level.demo.2 story: multiSentence format, one page of 2-3 short
+/// sentences, narration refs derived from [slug] and sentence index.
+Story _multiSentenceStory({
+  required String slug,
+  required String title,
+  required List<List<WordToken>> sentences,
+  required String cheer,
+}) =>
+    Story(
+      id: 'story.demo.$slug',
+      levelId: 'level.demo.2',
+      title: title,
+      pages: [
+        Page(
+          sentences: [
+            for (var i = 0; i < sentences.length; i++)
+              s(sentences[i], narration: 'narration/${slug}_p1_s${i + 1}.wav'),
+          ],
+        ),
+      ],
+      riveAnimationRef: 'rive/story_$slug.riv',
+      celebrationAudioRef: 'celebrations/cheer_$cheer.wav',
+      collectibleRef: 'collectible.demo.$slug',
+      skillsExercised: [_skillSet2, _skillDigraphs],
+      packId: 'pack.starter',
+      contentVersion: '1',
+    );
+
+// --- Level 1 (sentence format, satpin+c) ---
+
+final Story _storyPat = _sentenceStory(
+  slug: 'pat',
+  title: 'Pat Pats a Cat',
+  cheer: '04',
+  words: [
+    w('Pat', [('p', 'P'), ('a', 'AE'), ('t', 'T')]),
+    w('pats', [('p', 'P'), ('a', 'AE'), ('t', 'T'), ('s', 'S')]),
+    _a(),
+    _cat(),
+  ],
+);
+
+final Story _storyNap = _sentenceStory(
+  slug: 'nap',
+  title: 'A Nap in a Cap',
+  cheer: '05',
+  words: [_pip(), _naps(), _in(), _a(), _cap()],
+);
+
+final Story _storyAnt = _sentenceStory(
+  slug: 'ant',
+  title: 'An Ant in a Tin',
+  cheer: '06',
+  words: [
+    w('An', [('a', 'AE'), ('n', 'N')]),
+    w('ant', [('a', 'AE'), ('n', 'N'), ('t', 'T')]),
+    _sits(),
+    _in(),
+    _a(),
+    _tin(),
+  ],
+);
+
+final Story _storyPan = _sentenceStory(
+  slug: 'pan',
+  title: 'Nat Tips a Pan',
+  cheer: '07',
+  words: [
+    w('Nat', [('n', 'N'), ('a', 'AE'), ('t', 'T')]),
+    w('tips', [('t', 'T'), ('i', 'IH'), ('p', 'P'), ('s', 'S')]),
+    _a(),
+    _tin(),
+    _pan(),
+  ],
+);
+
+final Story _storyTap = _sentenceStory(
+  slug: 'tap',
+  title: 'I Can Tap',
+  cheer: '08',
+  words: [_capitalI(), _can(), _tap(), _a(), _tin(), _can()],
+);
+
+final Story _storySip = _sentenceStory(
+  slug: 'sip',
+  title: 'Pip Sips',
+  cheer: '09',
+  words: [
+    _pip(),
+    w('sips', [('s', 'S'), ('i', 'IH'), ('p', 'P'), ('s', 'S')]),
+    w('at', [('a', 'AE'), ('t', 'T')]),
+    _the(),
+    _tap(),
+  ],
+);
+
+final Story _storyCatnap = _sentenceStory(
+  slug: 'catnap',
+  title: 'The Cat Naps',
+  cheer: '10',
+  words: [_the('The'), _cat(), _naps(), _in(), _a(), _cap()],
+);
+
+final Story _storySpin = _sentenceStory(
+  slug: 'spin',
+  title: 'The Pin Can Spin',
+  cheer: '01',
+  words: [
+    _a('A'),
+    _tin(),
+    w('pin', [('p', 'P'), ('i', 'IH'), ('n', 'N')]),
+    _can(),
+    _spin(),
+  ],
+);
+
+final Story _storyTaptap = _sentenceStory(
+  slug: 'taptap',
+  title: 'Tap, Tap, Tap',
+  cheer: '02',
+  words: [_capitalI(), _tap(), _tap(), _tap(), _a(), _pan()],
+);
+
+final Story _storySis = _sentenceStory(
+  slug: 'sis',
+  title: 'Sis Spins',
+  cheer: '03',
+  words: [
+    w('Sis', [('s', 'S'), ('i', 'IH'), ('s', 'S')]),
+    _can(),
+    _spin(),
+    _spin(),
+    _spin(),
+  ],
 );
 
 final Story _storyShip = Story(
@@ -206,6 +395,166 @@ final Story _storyShip = Story(
   skillsExercised: [_skillSet2, _skillDigraphs],
   packId: 'pack.starter',
   contentVersion: '1',
+);
+
+// --- Level 2 (multiSentence format, L1 + set2 + sh/ck/ll/ss) ---
+
+final Story _storyDuck = _multiSentenceStory(
+  slug: 'duck',
+  title: 'The Duck in the Mud',
+  cheer: '04',
+  sentences: [
+    [
+      _a('A'),
+      w('duck', [('d', 'D'), ('u', 'AH'), ('ck', 'K')]),
+      _sits(),
+      _in(),
+      _the(),
+      _mud(),
+    ],
+    [_it('It'), _digs(), _and(), _digs()],
+    [_the('The'), _mud(), _is(), w('fun', [('f', 'F'), ('u', 'AH'), ('n', 'N')])],
+  ],
+);
+
+final Story _storyFrog = _multiSentenceStory(
+  slug: 'frog',
+  title: 'The Frog on the Rock',
+  cheer: '05',
+  sentences: [
+    [
+      _a('A'),
+      _frog(),
+      w('hops', [('h', 'HH'), ('o', 'AA'), ('p', 'P'), ('s', 'S')]),
+      _on(),
+      _a(),
+      w('rock', [('r', 'R'), ('o', 'AA'), ('ck', 'K')]),
+    ],
+    [
+      _the('The'),
+      w('sun', [('s', 'S'), ('u', 'AH'), ('n', 'N')]),
+      _is(),
+      w('hot', [('h', 'HH'), ('o', 'AA'), ('t', 'T')]),
+    ],
+    [_the('The'), _frog(), _naps()],
+  ],
+);
+
+final Story _storyShell = _multiSentenceStory(
+  slug: 'shell',
+  title: 'Nell and the Shell',
+  cheer: '06',
+  sentences: [
+    [
+      w('Nell', [('n', 'N'), ('e', 'EH'), ('ll', 'L')]),
+      _got(),
+      _a(),
+      _big(),
+      _shell(),
+    ],
+    [_it('It'), _is(), _red(), _and(), w('tan', [('t', 'T'), ('a', 'AE'), ('n', 'N')])],
+    [
+      w('She', [('sh', 'SH'), ('e', 'IY')]),
+      w('hugs', [('h', 'HH'), ('u', 'AH'), ('g', 'G'), ('s', 'Z')]),
+      _it(),
+    ],
+  ],
+);
+
+final Story _storyDog = _multiSentenceStory(
+  slug: 'dog',
+  title: 'The Dog and the Sock',
+  cheer: '07',
+  sentences: [
+    [
+      _a('A'),
+      w('dog', [('d', 'D'), ('o', 'AO'), ('g', 'G')]),
+      _got(),
+      _a(),
+      w('sock', [('s', 'S'), ('o', 'AA'), ('ck', 'K')]),
+    ],
+    [w('He', [('h', 'HH'), ('e', 'IY')]), _runs(), _and(), _runs()],
+    [
+      w('Drop', [('d', 'D'), ('r', 'R'), ('o', 'AA'), ('p', 'P')]),
+      _it(),
+      w('dog', [('d', 'D'), ('o', 'AO'), ('g', 'G')]),
+    ],
+  ],
+);
+
+final Story _storyHen = _multiSentenceStory(
+  slug: 'hen',
+  title: 'The Red Hen',
+  cheer: '08',
+  sentences: [
+    [
+      _a('A'),
+      _red(),
+      _hen(),
+      _sits(),
+      _on(),
+      _a(),
+      w('nest', [('n', 'N'), ('e', 'EH'), ('s', 'S'), ('t', 'T')]),
+    ],
+    [
+      w('Hush', [('h', 'HH'), ('u', 'AH'), ('sh', 'SH')]),
+      _the(),
+      _hen(),
+      _naps(),
+    ],
+  ],
+);
+
+final Story _storyBus = _multiSentenceStory(
+  slug: 'bus',
+  title: 'Gus on the Bus',
+  cheer: '09',
+  sentences: [
+    [_gus(), _got(), _on(), _the(), _big(), _bus()],
+    [
+      _the('The'),
+      _bus(),
+      _runs(),
+      w('up', [('u', 'AH'), ('p', 'P')]),
+      _the(),
+      w('hill', [('h', 'HH'), ('i', 'IH'), ('ll', 'L')]),
+    ],
+    [
+      _gus(),
+      w('grins', [('g', 'G'), ('r', 'R'), ('i', 'IH'), ('n', 'N'), ('s', 'Z')]),
+    ],
+  ],
+);
+
+final Story _storyCrab = _multiSentenceStory(
+  slug: 'crab',
+  title: 'A Snug Crab',
+  cheer: '10',
+  sentences: [
+    [
+      _a('A'),
+      _crab(),
+      _digs(),
+      _in(),
+      _the(),
+      w('sand', [('s', 'S'), ('a', 'AE'), ('n', 'N'), ('d', 'D')]),
+    ],
+    [
+      _it('It'),
+      w('grabs', [('g', 'G'), ('r', 'R'), ('a', 'AE'), ('b', 'B'), ('s', 'Z')]),
+      _a(),
+      _big(),
+      _shell(),
+    ],
+    [
+      _the('The'),
+      _crab(),
+      _is(),
+      w('snug', [('s', 'S'), ('n', 'N'), ('u', 'AH'), ('g', 'G')]),
+      _in(),
+      _it(),
+    ],
+  ],
 );
 
 final Story _storyGarden = Story(
@@ -376,6 +725,32 @@ final List<Collectible> _collectibles = [
     riveRef: 'rive/collect_garden.riv',
     sceneSlot: '1:0',
   ),
+  // New starter-pack stories: slots continue the row:col grid.
+  for (final (slug, slot) in const [
+    ('pat', '1:1'),
+    ('nap', '0:2'),
+    ('ant', '1:2'),
+    ('pan', '2:0'),
+    ('tap', '2:1'),
+    ('sip', '2:2'),
+    ('catnap', '0:3'),
+    ('spin', '1:3'),
+    ('taptap', '2:3'),
+    ('sis', '3:0'),
+    ('duck', '3:1'),
+    ('frog', '3:2'),
+    ('shell', '3:3'),
+    ('dog', '0:4'),
+    ('hen', '1:4'),
+    ('bus', '2:4'),
+    ('crab', '3:4'),
+  ])
+    Collectible(
+      id: 'collectible.demo.$slug',
+      storyId: 'story.demo.$slug',
+      riveRef: 'rive/collect_$slug.riv',
+      sceneSlot: slot,
+    ),
 ];
 
 final List<GraphemeSound> _graphemeSounds = [
@@ -496,7 +871,31 @@ StoryPack _buildDemoPack() {
     id: 'pack.starter',
     version: '0.1.0',
     minAppVersion: '0.1.0',
-    stories: [_storyCat, _storyShip, _storyGarden],
+    // Level order: all level.demo.1 stories, then level.demo.2, then
+    // level.demo.3 -- _scopeSequenceJson derives the global story order
+    // from this list.
+    stories: [
+      _storyCat,
+      _storyPat,
+      _storyNap,
+      _storyAnt,
+      _storyPan,
+      _storyTap,
+      _storySip,
+      _storyCatnap,
+      _storySpin,
+      _storyTaptap,
+      _storySis,
+      _storyShip,
+      _storyDuck,
+      _storyFrog,
+      _storyShell,
+      _storyDog,
+      _storyHen,
+      _storyBus,
+      _storyCrab,
+      _storyGarden,
+    ],
     twisters: [_twisterSoup, _twisterShells],
     vocabCards: _vocabCards,
     collectibles: _collectibles,

@@ -35,6 +35,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # The whole demo starter pack + scope & sequence as ONE archive
+  # (~470 files; format in lib/data/content/starter_archive.dart, built by
+  # `dart run tool/bundle_content.dart`, extracted on first run by
+  # lib/data/content/starter_content_installer.dart).
+  assets:
+    - assets/starter_content.bin
+
   # Owner-chosen typefaces (docs/design/mockup-spec.md §2), bound to the
   # DesignTokens font-family tokens in lib/design/tokens.dart.
   fonts:

@@ -33,6 +33,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:learn_to_read/app/providers.dart';
+import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/design/confetti.dart';
 import 'package:learn_to_read/design/motion.dart';
 import 'package:learn_to_read/design/rive_stage.dart';
@@ -434,12 +435,65 @@ class _ProfilePickerRouteState extends ConsumerState<ProfilePickerRoute> {
   Widget build(BuildContext context) {
     final profiles = _profiles;
     if (profiles == null) return const _RouteLoading();
-    return ProfilePickerScreen(
-      profiles: profiles,
-      onProfileSelected: (profile, ordinal) {
-        ref.read(activeProfileProvider.notifier).select(profile, ordinal);
-        context.go(kRoutePathMap);
-      },
+    // The picker itself is child-facing and text-free, but the fresh-install
+    // moment belongs to the PARENT (the router doc pins the parent corner as
+    // "the only way to create the first profile") — without an on-screen
+    // entry, first run is a blank dead end. Discreet lock always; a plain
+    // invitation card only while no profile exists.
+    return Stack(
+      children: <Widget>[
+        ProfilePickerScreen(
+          profiles: profiles,
+          onProfileSelected: (profile, ordinal) {
+            ref.read(activeProfileProvider.notifier).select(profile, ordinal);
+            context.go(kRoutePathMap);
+          },
+        ),
+        if (profiles.isEmpty)
+          Center(
+            child: GestureDetector(
+              key: const ValueKey<String>('picker-first-run-invitation'),
+              onTap: () => context.go(kRoutePathParentCorner),
+              child: Container(
+                padding: const EdgeInsets.all(DesignTokens.spacingLg),
+                decoration: BoxDecoration(
+                  color: DesignTokens.readingBackground,
+                  border: Border.all(color: DesignTokens.cardBorder),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(Icons.lock_rounded,
+                        size: 40, color: DesignTokens.mutedLabel),
+                    const SizedBox(height: DesignTokens.spacingMd),
+                    Text(
+                      'Grown-ups: tap here to set up your reader',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: DesignTokens.displayFontFamily,
+                        fontSize: 18,
+                        color: DesignTokens.mutedBody,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              key: const ValueKey<String>('picker-parent-corner-button'),
+              icon: const Icon(Icons.lock_rounded,
+                  color: DesignTokens.mutedLabel),
+              iconSize: 28,
+              onPressed: () => context.go(kRoutePathParentCorner),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -911,6 +965,9 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
               onPageTurned: session.advancePage,
               onReadingExited: _onReadingExited,
               helpState: helpState,
+              // On-demand sound-out (owner direction 2026-07-29): the same
+              // shipped phoneme-clip map the help ladder and Sound Garden use.
+              phonemeAudioRefs: ref.watch(phonemeAudioRefsProvider),
             ),
           ),
         ),
@@ -921,6 +978,11 @@ class _ReadingRouteState extends ConsumerState<ReadingRoute> {
             // story id the route already holds (stable across replays), per
             // the mockup-spec §6 restyle. No new data is plumbed.
             confettiSeed: _story?.id.hashCode ?? 0,
+            // The stage the celebration controller is triggering; when it is
+            // the code-drawn BuiltInStoryStage the view renders its scene
+            // full-bleed behind the confetti (a no-op for any other
+            // implementation, including the headless FakeStoryStage).
+            stage: _stage,
           ),
       ],
     );
@@ -970,7 +1032,12 @@ void _record(AnalyticsClient analytics, AnalyticsEvent event) =>
 /// confetti a bounded one-shot), so settle-based tests can never hang on
 /// this view.
 class CelebrationView extends StatelessWidget {
-  const CelebrationView({super.key, required this.onSkip, this.confettiSeed = 0});
+  const CelebrationView({
+    super.key,
+    required this.onSkip,
+    this.confettiSeed = 0,
+    this.stage,
+  });
 
   /// Wired to `CelebrationController.skip()`, which is a harmless no-op
   /// until the skip-unlock delay has elapsed.
@@ -980,12 +1047,26 @@ class CelebrationView extends StatelessWidget {
   /// the story id's hashCode so a story always replays its own celebration.
   final int confettiSeed;
 
+  /// The stage the running celebration is triggering. Only consulted when it
+  /// is a [BuiltInStoryStage]: its code-drawn scene then plays full-bleed
+  /// behind the confetti (with the spec §5 sceneReveal entrance). For any
+  /// other implementation — including the headless FakeStoryStage default —
+  /// this view's tree is unchanged.
+  final StoryStage? stage;
+
   @override
   Widget build(BuildContext context) {
+    final StoryStage? stage = this.stage;
     return Positioned.fill(
       key: const ValueKey<String>('celebration-view'),
       child: Stack(
         children: <Widget>[
+          if (stage is BuiltInStoryStage)
+            Positioned.fill(
+              child: SceneReveal(
+                child: BuiltInStoryStageView(stage: stage),
+              ),
+            ),
           // Spec §6: full-screen, non-interactive confetti. Intensity is
           // min(3, stories-in-a-row); no streak data reaches this view, so
           // it plays at the single-story intensity.
@@ -1386,10 +1467,40 @@ class ParentCornerRoute extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ParentCornerScreen(
-      db: ref.watch(appDatabaseProvider),
-      phonicsContent: ref.watch(phonicsContentProvider),
-      cloudEngineInUse: ref.watch(cloudEngineInUseProvider),
+    // Reached via `context.go`, so there is no Navigator history to pop —
+    // without an on-screen exit, Android back closes the whole app (found
+    // on-device). "Done" returns to the picker, which reflects any profile
+    // changes made here.
+    return Stack(
+      children: <Widget>[
+        ParentCornerScreen(
+          db: ref.watch(appDatabaseProvider),
+          phonicsContent: ref.watch(phonicsContentProvider),
+          cloudEngineInUse: ref.watch(cloudEngineInUseProvider),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(DesignTokens.spacingSm),
+              child: TextButton.icon(
+                key: const ValueKey<String>('parent-corner-done-button'),
+                onPressed: () => context.go(kRoutePathProfilePicker),
+                icon: const Icon(Icons.check_rounded,
+                    color: DesignTokens.mutedBody),
+                label: Text(
+                  'Done',
+                  style: TextStyle(
+                    fontFamily: DesignTokens.displayFontFamily,
+                    color: DesignTokens.mutedBody,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,14 +1,19 @@
 /// The celebration sequence controller (PRD §8 Unit 8 "Celebration: story
 /// animation & audio"; ticket celebration-sequence).
 ///
-/// Drives the post-completion payoff: fires `celebrate` on the story's
-/// [StoryStage], plays the narrated read-back (when the story has one) and
-/// the celebration audio (a fixed sting + one rotated recorded voice line),
-/// persists the completion + collectible durably before the skip window
-/// even opens, then -- after an animation-hold phase (natural duration or
-/// an accepted skip) -- fires `collect` and hands back to the caller via
-/// [CelebrationController.run]'s `onFinished` callback once the
-/// collectible-flight token has elapsed.
+/// Drives the post-completion payoff (RECALIBRATED 2026-07-29, PRD §8
+/// Unit 8): fires `celebrate` on the story's [StoryStage], then -- when the
+/// story has narration -- plays the narrated read-back of EVERY sentence of
+/// the story, in order, sequentially (each clip starts when the previous
+/// completes) over the celebrate animation. The celebration payoff (the
+/// fixed sting + one rotated recorded voice line + the `collect` trigger)
+/// waits for the read-back to finish instead of running concurrently;
+/// stories without narration keep the immediate payoff. Completion +
+/// collectible are persisted durably before the skip window even opens,
+/// and -- after the animation-hold phase ends (read-back finished, natural
+/// duration elapsed, or an accepted skip) -- the controller fires `collect`
+/// and hands back to the caller via [CelebrationController.run]'s
+/// `onFinished` callback once the collectible-flight token has elapsed.
 ///
 /// [CelebrationController] depends on nothing but the [StoryStage]
 /// interface -- any implementation works, and the controller never branches
@@ -115,16 +120,17 @@ class CelebrationResult {
   final bool isFirstCompletion;
 }
 
-/// Drives one story's celebration sequence end to end (PRD §8 Unit 8).
+/// Drives one story's celebration sequence end to end (PRD §8 Unit 8;
+/// RECALIBRATED 2026-07-29).
 ///
 /// See the file-level doc comment for the overall contract. `run`'s
-/// synchronous prefix -- `stage.trigger(celebrate)`, the narration play (if
-/// any), the sting, and the rotated line -- all execute in the same
-/// event-loop turn as the call, before `run`'s first `await` suspends it.
-/// That is the headless proxy for "the stage never does synchronous work
-/// over a frame budget during the transition" (PRD §8 Unit 8 acceptance,
-/// [DEVICE] A-6's real 60 fps measurement is owner/device-verified
-/// separately).
+/// synchronous prefix -- `stage.trigger(celebrate)` plus either the FIRST
+/// read-back clip's play (story with narration) or the sting + rotated
+/// line (story without narration) -- executes in the same event-loop turn
+/// as the call, before `run`'s first `await` suspends it. That is the
+/// headless proxy for "the stage never does synchronous work over a frame
+/// budget during the transition" (PRD §8 Unit 8 acceptance, [DEVICE] A-6's
+/// real 60 fps measurement is owner/device-verified separately).
 class CelebrationController {
   CelebrationController({
     required StoryStage stage,
@@ -188,6 +194,21 @@ class CelebrationController {
   /// (surfaced on the eventual [CelebrationResult.skipped]).
   bool _skippedThisRun = false;
 
+  /// True once the current run's narrated read-back has played every clip
+  /// to natural completion. Consulted by [_runHoldPhase] so a read-back
+  /// that finishes before the hold phase even starts (e.g. while
+  /// persistence is still being awaited) still ends the hold immediately.
+  bool _readbackDone = false;
+
+  /// Set when the current run's hold phase has ended (naturally, via
+  /// [skip], or via the sequence-budget ceiling) so the read-back chain
+  /// stops starting new clips.
+  bool _readbackCancelled = false;
+
+  /// The read-back clip currently playing, if any -- stopped when the hold
+  /// phase ends before the read-back does (skip or ceiling).
+  PlaybackHandle? _activeNarrationHandle;
+
   /// Whether a run is currently in progress.
   bool get isRunning => _isRunning;
 
@@ -195,16 +216,20 @@ class CelebrationController {
   /// profile identified by [profileId] (used for persistence only --
   /// analytics never carries a raw profile id, only [profileOrdinal]).
   ///
-  /// Order of operations (see the class doc comment for the synchronous
-  /// prefix):
+  /// Order of operations (RECALIBRATED 2026-07-29; see the class doc
+  /// comment for the synchronous prefix):
   ///  1. `stage.trigger(celebrate)`.
-  ///  2. Narrated read-back, if [story]'s first page's first sentence
-  ///     carries a `narrationAudioRef` (the domain model's own pinned
-  ///     shape for "has narration": sentence-format stories have exactly
-  ///     one page with one sentence).
-  ///  3. The celebration sting (`story.celebrationAudioRef`).
-  ///  4. One rotated recorded voice line (`lineRotator.next()`).
-  ///  5. Story-progress + collectible persistence, and `story_completed` /
+  ///  2. Narrated read-back, if [story] has any sentence carrying a
+  ///     `narrationAudioRef`: EVERY such sentence's clip, in page/sentence
+  ///     order, played sequentially (each clip starts when the previous
+  ///     one completes, per `AudioService.completionOf`) over the
+  ///     celebrate animation. The first clip's play is issued in the same
+  ///     synchronous turn as the celebrate trigger. A clip that fails to
+  ///     play is swallowed and the chain continues -- playback failures
+  ///     never wedge the sequence.
+  ///     For a story with NO narration, the payoff audio (sting + rotated
+  ///     line, step 5) plays immediately instead -- unchanged behavior.
+  ///  3. Story-progress + collectible persistence, and `story_completed` /
   ///     `collectible_earned` analytics, fully awaited *before* the
   ///     animation-hold phase begins (and therefore before [skip] can even
   ///     be actionable) -- so the collectible can never be lost to a skip.
@@ -213,11 +238,21 @@ class CelebrationController {
   ///     (incrementing `timesRead`, preserving the original
   ///     `completedAt`) and still plays the full sequence, but grants no
   ///     second collectible and emits no second `collectible_earned`.
-  ///  6. The animation-hold phase: [_celebrationDuration] elapses
-  ///     naturally, or ends early via an accepted [skip].
-  ///  7. `stage.trigger(collect)`, then
+  ///  4. The animation-hold phase, which ends at the earliest of: the
+  ///     read-back playing its last clip to completion, an accepted
+  ///     [skip], or [_celebrationDuration] elapsing (the ≤10 s
+  ///     sequence-budget ceiling stays authoritative: the constructor
+  ///     guarantees `_celebrationDuration + collectibleFlightDuration <=
+  ///     _sequenceBudget`, so a read-back can never push the sequence past
+  ///     the budget).
+  ///  5. The payoff, for a story WITH narration (deferred until here so it
+  ///     lands at the end of the narrated animation): any still-playing
+  ///     read-back clip is stopped (a skip or the ceiling cut it short),
+  ///     then the celebration sting (`story.celebrationAudioRef`) and one
+  ///     rotated recorded voice line (`lineRotator.next()`) play.
+  ///  6. `stage.trigger(collect)`, then
   ///     `DesignTokens.collectibleFlightDuration` elapses.
-  ///  8. `onFinished` fires exactly once with the run's [CelebrationResult]
+  ///  7. `onFinished` fires exactly once with the run's [CelebrationResult]
   ///     (carrying [nextStoryId] through for the return-navigation
   ///     payload).
   Future<void> run({
@@ -228,15 +263,24 @@ class CelebrationController {
     String? nextStoryId,
   }) async {
     _isRunning = true;
+    _readbackDone = false;
+    _readbackCancelled = false;
+    _activeNarrationHandle = null;
 
     _stage.trigger(StoryStageInput.celebrate);
 
-    final narrationRef = _narrationRef(story);
-    if (narrationRef != null) {
-      unawaited(_audioService.play(narrationRef, channel: AudioChannel.narration));
+    final narrationRefs = _narrationRefs(story);
+    final hasReadback = narrationRefs.isNotEmpty;
+    if (hasReadback) {
+      // Sequential read-back of every narrated sentence; the first clip's
+      // play() is issued synchronously (before _runReadback's first await),
+      // in the same turn as the celebrate trigger. The payoff audio is
+      // deferred until the read-back finishes (or the hold ends it).
+      unawaited(_runReadback(narrationRefs));
+    } else {
+      // No narration: immediate payoff, unchanged behavior.
+      _playPayoffAudio(story);
     }
-    unawaited(_audioService.play(story.celebrationAudioRef, channel: AudioChannel.celebration));
-    unawaited(_audioService.play(_lineRotator.next(), channel: AudioChannel.celebration));
 
     final existing = await _storyProgressDao.getProgress(
       profileId: profileId,
@@ -274,6 +318,19 @@ class CelebrationController {
 
     await _runHoldPhase();
 
+    if (hasReadback) {
+      // The hold ended -- by the read-back finishing, an accepted skip, or
+      // the sequence-budget ceiling. Stop any still-playing read-back clip
+      // and land the deferred payoff.
+      _readbackCancelled = true;
+      final active = _activeNarrationHandle;
+      _activeNarrationHandle = null;
+      if (active != null) {
+        unawaited(_audioService.stop(active));
+      }
+      _playPayoffAudio(story);
+    }
+
     _stage.trigger(StoryStageInput.collect);
     await Future<void>.delayed(DesignTokens.collectibleFlightDuration);
 
@@ -302,13 +359,22 @@ class CelebrationController {
     completer.complete();
   }
 
-  /// Waits for the animation-hold phase to end: either [_celebrationDuration]
-  /// elapses naturally, or [skip] completes it early once unlocked.
+  /// Waits for the animation-hold phase to end: the narrated read-back
+  /// plays its last clip to completion, [_celebrationDuration] elapses
+  /// naturally (the sequence-budget ceiling's enforcement arm -- the
+  /// constructor guarantees it fits inside [_sequenceBudget] with the
+  /// collectible flight), or [skip] completes it early once unlocked.
   Future<void> _runHoldPhase() {
     final completer = Completer<void>();
     _holdCompleter = completer;
     _skipUnlocked = false;
     _skippedThisRun = false;
+
+    // A read-back that already finished (while persistence was being
+    // awaited) ends the hold immediately -- the payoff is already due.
+    if (_readbackDone) {
+      completer.complete();
+    }
 
     final naturalTimer = Timer(_celebrationDuration, () {
       if (!completer.isCompleted) completer.complete();
@@ -323,16 +389,59 @@ class CelebrationController {
     });
   }
 
-  /// A story "has narration" iff its first page's first sentence carries a
-  /// non-null `narrationAudioRef` (the domain model's pinned shape:
-  /// sentence-format stories have exactly one page with one sentence).
-  /// Narration presence is read straight off [story] -- this controller is
-  /// never given a `Level` and never inspects `Level.format` /
-  /// `Level.narrationEnabled` directly.
-  String? _narrationRef(Story story) {
-    if (story.pages.isEmpty) return null;
-    final firstPage = story.pages.first;
-    if (firstPage.sentences.isEmpty) return null;
-    return firstPage.sentences.first.narrationAudioRef;
+  /// Plays the celebration payoff audio: the story's sting, then one
+  /// rotated recorded voice line. Fire-and-forget on both, mirroring the
+  /// sequence's swallow-and-continue posture -- a failed payoff clip never
+  /// wedges the run.
+  void _playPayoffAudio(Story story) {
+    unawaited(_audioService.play(story.celebrationAudioRef, channel: AudioChannel.celebration));
+    unawaited(_audioService.play(_lineRotator.next(), channel: AudioChannel.celebration));
   }
+
+  /// Plays [refs] sequentially on the narration channel: each clip starts
+  /// when the previous one completes (`AudioService.completionOf`). The
+  /// first clip's play() is issued synchronously (before this method's
+  /// first suspension). A clip that fails to play is swallowed and the
+  /// chain moves straight to the next clip. When the last clip completes
+  /// naturally (the run wasn't cancelled by a skip or the ceiling first),
+  /// the hold phase is ended so the payoff can land.
+  Future<void> _runReadback(List<AudioRef> refs) async {
+    for (final ref in refs) {
+      if (_readbackCancelled) break;
+      try {
+        final handle = await _audioService.play(ref, channel: AudioChannel.narration);
+        if (_readbackCancelled) {
+          unawaited(_audioService.stop(handle));
+          break;
+        }
+        _activeNarrationHandle = handle;
+        await _audioService.completionOf(handle);
+      } catch (_) {
+        // Swallow-and-continue: a clip that fails to play (or to report
+        // completion) never wedges the celebration -- move on.
+      } finally {
+        _activeNarrationHandle = null;
+      }
+    }
+    if (!_readbackCancelled) {
+      _readbackDone = true;
+      final completer = _holdCompleter;
+      if (completer != null && !completer.isCompleted) {
+        completer.complete();
+      }
+    }
+  }
+
+  /// The story's narrated read-back playlist: every sentence's
+  /// `narrationAudioRef`, across all pages, in page/sentence order,
+  /// skipping sentences without one (RECALIBRATED 2026-07-29: previously
+  /// only the first page's first sentence). A story "has narration" iff
+  /// this list is non-empty. Narration presence is read straight off
+  /// [story] -- this controller is never given a `Level` and never
+  /// inspects `Level.format` / `Level.narrationEnabled` directly.
+  List<AudioRef> _narrationRefs(Story story) => <AudioRef>[
+        for (final page in story.pages)
+          for (final sentence in page.sentences)
+            if (sentence.narrationAudioRef != null) sentence.narrationAudioRef!,
+      ];
 }

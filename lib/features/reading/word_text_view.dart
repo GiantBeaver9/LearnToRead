@@ -78,6 +78,9 @@ class WordTextView extends StatelessWidget {
     required this.textSize,
     required this.onCurrentWordTap,
     required this.onVocabWordTap,
+    this.onWordLongPress,
+    this.onGraphemeTap,
+    this.onDemandHighlight,
   });
 
   /// The page word tokens, in reading order.
@@ -99,6 +102,26 @@ class WordTextView extends StatelessWidget {
   /// Fired with the word index when a vocab-tappable word is tapped.
   final void Function(int index) onVocabWordTap;
 
+  /// Fired with the word index when ANY word is long-pressed, in any
+  /// lifecycle state — the on-demand "sound it out" request (owner
+  /// direction 2026-07-29). Additive: when null (the default), no
+  /// long-press affordance exists and rendering is exactly the pinned
+  /// baseline. Tap semantics are untouched either way.
+  final void Function(int index)? onWordLongPress;
+
+  /// Fired with `(wordIndex, graphemeIndex)` when one chip of a rendered
+  /// sound-out panel is tapped, so the screen can play that single
+  /// grapheme cluster's phoneme. Additive: when null (the default), chips
+  /// carry no gesture of their own.
+  final void Function(int wordIndex, int graphemeIndex)? onGraphemeTap;
+
+  /// The grapheme an ON-DEMAND sound-out is highlighting right now, or
+  /// null when none is running. Mirrors the [helpState]-driven Tier-1
+  /// highlight but applies to ANY word (by page index), rendering the SAME
+  /// hint-panel treatment. Where both target the same word, the Tier-1
+  /// (helpState) highlight wins.
+  final ({int wordIndex, int graphemeIndex})? onDemandHighlight;
+
   @override
   Widget build(BuildContext context) {
     final count = words.length < wordStates.length ? words.length : wordStates.length;
@@ -118,13 +141,38 @@ class WordTextView extends StatelessWidget {
     final token = words[index];
     final isCurrent = state.lifecycle == WordLifecycle.current;
     final tapKind = _tapKindFor(state);
-    final soundingOut = _isSoundingOut(isCurrent, token);
+    final highlightedGrapheme = _highlightedGraphemeFor(index, isCurrent, token);
+    final soundingOut = highlightedGrapheme >= 0;
     // The mockup's stuck-word pulse (spec §3): active only while the screen
     // already reports a stuck/hint signal for the current word. During the
     // Tier-1 chip panel the word body IS the hint panel, so the pulse rests.
     final pulsing = isCurrent &&
         !soundingOut &&
         (state.struggling || helpState.currentHelpTier != HelpLevel.none);
+
+    // While a sound-out panel is up for a word that also owns a tap path,
+    // the tap layer becomes an ANCESTOR of the panel instead of the opaque
+    // overlay: the panel's per-chip GestureDetectors sit inside it, and the
+    // innermost detector wins the gesture arena, so a chip tap plays that
+    // chip's phoneme while a tap anywhere else on the panel still takes the
+    // word's pinned tap path (same key, same handler). Outside the panel
+    // state the overlay is byte-for-byte the pinned baseline.
+    final tapWrapsPanel = soundingOut && tapKind != null;
+    Widget core = PulseWord(
+      active: pulsing,
+      child: _buildWordBody(index, token, state, soundingOut, highlightedGrapheme),
+    );
+    if (tapWrapsPanel) {
+      core = GestureDetector(
+        key: ValueKey<String>('word-tap-$index'),
+        behavior: HitTestBehavior.opaque,
+        onTap: tapKind == _TapKind.vocabCard
+            ? () => onVocabWordTap(index)
+            : () => onCurrentWordTap(index),
+        onLongPress: _longPressHandler(index),
+        child: core,
+      );
+    }
 
     // Marker and tap layer are positioned siblings laid over the word, not
     // wrappers around it: that keeps the animated text element identical
@@ -133,14 +181,17 @@ class WordTextView extends StatelessWidget {
     // positioned, so the word body alone decides this stack size. The
     // [PulseWord] wrapper is likewise ALWAYS mounted (its `active` flag
     // toggles) so the word's element identity survives entering/leaving the
-    // stuck state.
+    // stuck state. The long-press GestureDetector below is likewise always
+    // mounted (its handler is simply null when no callback is wired), so
+    // adding on-demand sound-out changes no element identity anywhere.
     return Stack(
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.only(bottom: _markerLane),
-          child: PulseWord(
-            active: pulsing,
-            child: _buildWordBody(index, token, state, soundingOut),
+        GestureDetector(
+          behavior: HitTestBehavior.deferToChild,
+          onLongPress: _longPressHandler(index),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: _markerLane),
+            child: core,
           ),
         ),
         if (isCurrent)
@@ -157,7 +208,7 @@ class WordTextView extends StatelessWidget {
               child: const SizedBox(height: kCurrentWordMarkerThickness),
             ),
           ),
-        if (tapKind != null)
+        if (tapKind != null && !tapWrapsPanel)
           Positioned.fill(
             child: GestureDetector(
               key: ValueKey<String>('word-tap-$index'),
@@ -165,10 +216,20 @@ class WordTextView extends StatelessWidget {
               onTap: tapKind == _TapKind.vocabCard
                   ? () => onVocabWordTap(index)
                   : () => onCurrentWordTap(index),
+              onLongPress: _longPressHandler(index),
             ),
           ),
       ],
     );
+  }
+
+  /// The long-press handler for [index], or null when the affordance is not
+  /// wired — a GestureDetector with a null handler registers no recognizer,
+  /// keeping the pinned baseline recognizer set untouched.
+  VoidCallback? _longPressHandler(int index) {
+    final callback = onWordLongPress;
+    if (callback == null) return null;
+    return () => callback(index);
   }
 
   /// Vocab wins over the tap fallback wherever both apply: a blue word is
@@ -180,19 +241,43 @@ class WordTextView extends StatelessWidget {
     return null;
   }
 
-  bool _isSoundingOut(bool isCurrent, WordToken token) =>
-      isCurrent &&
-      helpState.currentHelpTier == HelpLevel.soundOut &&
-      helpState.highlightedGraphemeIndex >= 0 &&
-      token.graphemePhonemeMap.isNotEmpty;
+  /// The grapheme index the sound-out panel for word [index] should light,
+  /// or -1 when that word renders as plain text. The Tier-1 (helpState)
+  /// highlight applies to the current word exactly as pinned; the additive
+  /// on-demand highlight applies to whichever word it names, with Tier-1
+  /// winning where both target the same word.
+  int _highlightedGraphemeFor(int index, bool isCurrent, WordToken token) {
+    if (token.graphemePhonemeMap.isEmpty) return -1;
+    if (isCurrent &&
+        helpState.currentHelpTier == HelpLevel.soundOut &&
+        helpState.highlightedGraphemeIndex >= 0) {
+      return helpState.highlightedGraphemeIndex;
+    }
+    final onDemand = onDemandHighlight;
+    if (onDemand != null &&
+        onDemand.wordIndex == index &&
+        onDemand.graphemeIndex >= 0) {
+      return onDemand.graphemeIndex;
+    }
+    return -1;
+  }
 
-  Widget _buildWordBody(int index, WordToken token, WordState state, bool soundingOut) {
+  Widget _buildWordBody(
+    int index,
+    WordToken token,
+    WordState state,
+    bool soundingOut,
+    int highlightedGrapheme,
+  ) {
     if (soundingOut) {
       return _SoundOutHintPanel(
         wordIndex: index,
         token: token,
-        highlightedGraphemeIndex: helpState.highlightedGraphemeIndex,
+        highlightedGraphemeIndex: highlightedGrapheme,
         textSize: textSize,
+        onGraphemeTap: onGraphemeTap == null
+            ? null
+            : (g) => onGraphemeTap!(index, g),
       );
     }
     return _SweepingWordText(
@@ -281,12 +366,18 @@ class _SoundOutHintPanel extends StatelessWidget {
     required this.token,
     required this.highlightedGraphemeIndex,
     required this.textSize,
+    this.onGraphemeTap,
   });
 
   final int wordIndex;
   final WordToken token;
   final int highlightedGraphemeIndex;
   final double textSize;
+
+  /// Fired with the tapped chip's grapheme index (owner direction
+  /// 2026-07-29: tappable chips). When null the chips carry no gesture and
+  /// the panel is the pinned baseline.
+  final void Function(int graphemeIndex)? onGraphemeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -334,6 +425,24 @@ class _SoundOutHintPanel extends StatelessWidget {
   }
 
   Widget _buildChip(int g) {
+    final chip = _buildChipBody(g);
+    final onTap = onGraphemeTap;
+    if (onTap == null) return chip;
+    // Sits INSIDE the word's tap detector (see `tapWrapsPanel` in
+    // `_buildWord`), so as the innermost tap recognizer it wins the arena:
+    // a chip tap plays this chip's phoneme and never advances the word.
+    // Silent letters are a gentle no-op — the screen's handler checks the
+    // phonemeId — but the chip still absorbs the tap so exploring sounds
+    // can never accidentally trigger the word-level tap path.
+    return GestureDetector(
+      key: ValueKey<String>('grapheme-chip-tap-$wordIndex-$g'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap(g),
+      child: chip,
+    );
+  }
+
+  Widget _buildChipBody(int g) {
     final active = g == highlightedGraphemeIndex;
     return AnimatedContainer(
       duration: DesignTokens.greenSweepDuration,

@@ -57,14 +57,21 @@
 // are pinned by this suite so every sibling file agrees):
 //  - run()'s synchronous prefix (the same event-loop turn as the call,
 //    before any `await` inside run() suspends it) is, in order:
+//    (AMENDED 2026-07-29: celebration recalibration (PRD §8 Unit 8) -- the
+//    payoff now waits for the read-back instead of running concurrently)
 //      1. stage.trigger(StoryStageInput.celebrate)
-//      2. IF the story has narration (narrated_readback_test.dart):
-//         audioService.play(narrationRef, channel: AudioChannel.narration)
-//      3. audioService.play(story.celebrationAudioRef, channel:
-//         AudioChannel.celebration)  -- the happy sting
-//      4. audioService.play(lineRotator.next(), channel:
-//         AudioChannel.celebration)  -- the rotated recorded voice line
-//    This fixed order is asserted via FakeAudioService.callLog and is a
+//      2. IF the story has narration (narrated_readback_test.dart): the
+//         FIRST read-back clip only --
+//         audioService.play(narrationRef, channel: AudioChannel.narration);
+//         the remaining clips play sequentially (completion-gated) and the
+//         sting + rotated line (the payoff) play only after the read-back
+//         finishes (or the hold/skip/ceiling ends it).
+//         IF the story has NO narration: the payoff plays immediately --
+//         audioService.play(story.celebrationAudioRef, channel:
+//         AudioChannel.celebration) (the happy sting), then
+//         audioService.play(lineRotator.next(), channel:
+//         AudioChannel.celebration) (the rotated recorded voice line).
+//    This order is asserted via FakeAudioService.callLog and is a
 //    proxy for accept #9 ("controller performs no synchronous work over one
 //    frame budget during sequence transitions"): everything above executes
 //    before the controller's first `await`, so a caller observes it
@@ -512,7 +519,12 @@ void main() {
     '(accept 9 headless proxy; the real 60fps measurement is owner/device)',
     () {
       test(
-        'celebrate + all audio play() calls are dispatched in the same '
+        // AMENDED 2026-07-29: celebration recalibration (PRD §8 Unit 8).
+        // The payoff (sting + line) is no longer concurrent with the
+        // narration -- it waits for the read-back -- so the synchronous
+        // prefix for a narrated story is celebrate + the FIRST read-back
+        // clip only.
+        'celebrate + the first read-back clip are dispatched in the same '
         'synchronous turn as run(), with zero fake-clock time elapsed',
         () {
           fakeAsync((async) {
@@ -525,12 +537,23 @@ void main() {
                   levelOrdinal: 1,
                 ));
 
-            // Narration + sting + line = 3 play() calls, all synchronous.
-            expect(h.audio.callLog.whereType<PlayLogEntry>(), hasLength(3));
+            // AMENDED 2026-07-29: celebration recalibration (PRD §8 Unit 8).
+            // Was: narration + sting + line = 3 play() calls, all
+            // synchronous. Now only the narration read-back's first clip is
+            // synchronous; the sting + line are the payoff, deferred until
+            // the read-back finishes (or the hold ends it).
+            expect(h.audio.callLog.whereType<PlayLogEntry>(), hasLength(1));
+            expect(
+              h.audio.callLog.whereType<PlayLogEntry>().single.channel,
+              AudioChannel.narration,
+            );
             expect(h.stage.triggeredInputs, [StoryStageInput.celebrate]);
             expect(async.elapsed, Duration.zero);
 
             async.elapse(const Duration(seconds: 10));
+            // All three clips (narration + deferred sting + line) have
+            // played by the end of the sequence.
+            expect(h.audio.callLog.whereType<PlayLogEntry>(), hasLength(3));
             unawaited(h.close());
           });
         },
