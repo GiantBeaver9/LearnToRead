@@ -1467,10 +1467,40 @@ class ParentCornerRoute extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ParentCornerScreen(
-      db: ref.watch(appDatabaseProvider),
-      phonicsContent: ref.watch(phonicsContentProvider),
-      cloudEngineInUse: ref.watch(cloudEngineInUseProvider),
+    // Reached via `context.go`, so there is no Navigator history to pop —
+    // without an on-screen exit, Android back closes the whole app (found
+    // on-device). "Done" returns to the picker, which reflects any profile
+    // changes made here.
+    return Stack(
+      children: <Widget>[
+        ParentCornerScreen(
+          db: ref.watch(appDatabaseProvider),
+          phonicsContent: ref.watch(phonicsContentProvider),
+          cloudEngineInUse: ref.watch(cloudEngineInUseProvider),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(DesignTokens.spacingSm),
+              child: TextButton.icon(
+                key: const ValueKey<String>('parent-corner-done-button'),
+                onPressed: () => context.go(kRoutePathProfilePicker),
+                icon: const Icon(Icons.check_rounded,
+                    color: DesignTokens.mutedBody),
+                label: Text(
+                  'Done',
+                  style: TextStyle(
+                    fontFamily: DesignTokens.displayFontFamily,
+                    color: DesignTokens.mutedBody,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

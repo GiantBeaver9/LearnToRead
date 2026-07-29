@@ -573,6 +573,28 @@ void main() {
       await _pumpFrames(tester);
       expect(find.byType(ParentCornerScreen), findsOneWidget);
     });
+
+    // ADDED 2026-07-29: second on-device dead end — the corner is reached
+    // via context.go (no history), so without an on-screen exit the Android
+    // back button closed the whole app.
+    testWidgets(
+        'POSITIVE: Done in the parent corner returns to the profile picker',
+        (tester) async {
+      await tester.pumpWidget(h.app);
+      await _pumpFrames(tester);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('picker-parent-corner-button')),
+      );
+      await _pumpFrames(tester);
+      expect(find.byType(ParentCornerScreen), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('parent-corner-done-button')),
+      );
+      await _pumpFrames(tester);
+      expect(find.byType(ProfilePickerScreen), findsOneWidget);
+    });
   });
 
   // -------------------------------------------------------------------------
