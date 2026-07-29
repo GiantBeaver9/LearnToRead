@@ -640,10 +640,16 @@ critical path.
   the plant), synchronized with the celebration audio: a happy musical
   sting + one recorded celebration voice line (from a fixed recorded set,
   rotated randomly so it doesn't repeat verbatim every story).
-- **Narrated read-back (ratified):** where the story has narration audio
-  (all sentence-format levels), the fluent narration replays over the start
-  of the animation — stitching the just-decoded words into meaning at the
-  moment of payoff. Skipped at levels without narration.
+- **Narrated read-back (ratified; RECALIBRATED 2026-07-29, owner):** where
+  the story has narration audio, the fluent narration of **every sentence
+  of the story, in order**, plays over the celebrate animation — stitching
+  the just-decoded words into meaning at the moment of payoff. The
+  celebration payoff itself (voice line + sting + collectible flight)
+  **waits for the read-back to finish** and lands at the end of the
+  narrated animation ("recalibrate the celebration to the end of the
+  animation"). Stories without narration keep the immediate payoff. The
+  ≤10 s total and the skippable-by-tap-after-2 s rules are unchanged and
+  bound the read-back too (a tap skips straight to the payoff).
 - **Replay behavior (ratified):** re-reading a completed story ends with
   the full animation + celebration audio; the collectible is granted only
   on first completion.
