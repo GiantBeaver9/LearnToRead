@@ -2,12 +2,19 @@
 """Generate the full demo-pack voice set with Piper TTS (OQ-3 alternative path).
 
 Usage:
-  python3 tool/tts_generate.py --model <voice.onnx> [--speaker 5] [--out content/demo]
+  python3 tool/tts_generate.py --model <voice.onnx> [--primary 21] [--secondary 47] [--out content/demo]
 
-Synthesizes every clip in docs/audio/recording-checklist.md:
-  44 phonemes (espeak [[..]] notation -- isolated sounds, no carrier words),
-  54 words, 5 narrations, 10 celebration lines, 2 prompts, 5 nav prompts,
-  2 vocab definitions = 122 clips.
+Synthesizes every voice clip the demo pack references. Words, narrations,
+and vocab definitions are DERIVED from content/demo/manifest.json, so newly
+authored stories are voiced automatically; phonemes, prompts, nav, and
+celebration lines are fixed sets below.
+
+TWO-VOICE POLICY (owner-ratified 2026-07-29): everything phonics-blending
+(phonemes, word pronunciations) uses the PRIMARY voice only -- mixing voices
+inside a blended word would undermine the pedagogy. Sentence-level audio
+alternates: narrations alternate per story/twister, celebration lines
+alternate per line; vocab definitions ride the SECONDARY voice as the
+distinct "new word" character; UI prompts/nav stay primary for consistency.
 
 Output is trimmed (leading/trailing silence) but NOT loudness-normalized --
 run `dart run tool/normalize_wav.dart content/demo` afterwards, which uses
@@ -45,23 +52,6 @@ PHONEMES = {
     "AIR": "e@:", "EAR": "i@:", "URE": "U@:", "ARE": "A:r",
 }
 
-WORDS = [
-    "a", "and", "ben", "big", "bud", "bug", "bugs", "buzzing", "by", "can",
-    "car", "cat", "day", "digs", "fast", "flits", "full", "garden", "go",
-    "grins", "has", "he", "his", "hot", "hums", "in", "is", "it", "leaf",
-    "mud", "of", "on", "play", "red", "sad", "sam", "sat", "sea", "see",
-    "sells", "she", "shells", "ship", "shore", "sips", "sits", "soup",
-    "sun", "the", "thin", "tin", "to", "tree", "up",
-]
-
-NARRATIONS = {
-    "narration/cat_p1_s1.wav": "The cat sat in a tin.",
-    "narration/ship_p1_s1.wav": "The ship is red.",
-    "narration/ship_p1_s2.wav": "It can go fast.",
-    "narration/twister_shells.wav": "She sells sea shells by the sea shore.",
-    "narration/twister_soup.wav": "Sad Sam sips sea soup.",
-}
-
 CHEERS = [
     "You did it!", "Great reading!", "Wow, you read that whole page!",
     "Nice job sounding that out!", "You're getting so good at this!",
@@ -84,16 +74,51 @@ FIXED = {
 }
 
 
-def manifest():
+def _sentence_text(words):
+    return " ".join(w["text"] for w in words) + "."
+
+
+def manifest(content_dir, primary, secondary):
+    """ref -> (text, speaker_id). Words/narrations/vocab derive from the
+    authored pack manifest; the rest are fixed sets."""
     clips = {}
     for pid, esp in PHONEMES.items():
-        clips[f"phonemes/{pid}.wav"] = f"[[{esp}]]"
-    for w in WORDS:
-        clips[f"words/{w}.wav"] = f"{w}."
-    clips.update(NARRATIONS)
+        clips[f"phonemes/{pid}.wav"] = (f"[[{esp}]]", primary)
+
+    with open(os.path.join(content_dir, "manifest.json")) as f:
+        pack = json.load(f)
+
+    def add_word(token):
+        clips[token["pronunciationAudioRef"]] = (token["text"].lower() + ".", primary)
+
+    alternate = 0
+    for story in pack.get("stories", []):
+        voice = primary if alternate % 2 == 0 else secondary
+        alternate += 1
+        for page in story.get("pages", []):
+            for sentence in page.get("sentences", []):
+                for token in sentence.get("words", []):
+                    add_word(token)
+                ref = sentence.get("narrationAudioRef")
+                if ref:
+                    clips[ref] = (_sentence_text(sentence["words"]), voice)
+    for twister in pack.get("twisters", []):
+        voice = primary if alternate % 2 == 0 else secondary
+        alternate += 1
+        for token in twister.get("words", []):
+            add_word(token)
+        clips[twister["narrationAudioRef"]] = (_sentence_text(twister["words"]), voice)
+    for card in pack.get("vocabCards", []):
+        clips[card["definitionAudioRef"]] = (card["definitionText"], secondary)
+    for sound in pack.get("graphemeSounds", []):
+        for ex in sound.get("exampleWords", []):
+            clips.setdefault(ex["pronunciationAudioRef"],
+                             (ex["wordText"].lower() + ".", primary))
+
     for i, line in enumerate(CHEERS, start=1):
-        clips[f"celebrations/cheer_{i:02d}.wav"] = line
-    clips.update(FIXED)
+        clips[f"celebrations/cheer_{i:02d}.wav"] = (line, primary if i % 2 == 1 else secondary)
+    for ref, text in FIXED.items():
+        clips[ref] = (text, primary)
     return clips
 
 
@@ -123,7 +148,8 @@ def trim(frames: bytes, threshold_ratio=0.01, pad_ms=6, rate=22050) -> bytes:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--speaker", type=int, default=5)
+    ap.add_argument("--primary", type=int, default=21)
+    ap.add_argument("--secondary", type=int, default=47)
     ap.add_argument("--out", default="content/demo")
     ap.add_argument("--force", action="store_true",
                     help="overwrite files that lack a .tts marker (i.e. real recordings)")
@@ -133,12 +159,12 @@ def main():
 
     voice = PiperVoice.load(args.model)
     from piper.config import SynthesisConfig
-    syn_config = SynthesisConfig(speaker_id=args.speaker)
-    clips = manifest()
+    clips = manifest(args.out, args.primary, args.secondary)
     only = args.only.split(",") if args.only else None
 
     made, skipped, short = 0, 0, []
-    for ref, text in clips.items():
+    for ref, (text, speaker) in clips.items():
+        syn_config = SynthesisConfig(speaker_id=speaker)
         if only and not any(o in ref for o in only):
             continue
         path = os.path.join(args.out, *ref.split("/"))
@@ -165,7 +191,7 @@ def main():
             w.setframerate(rate)
             w.writeframes(frames)
         with open(marker, "w") as m:
-            json.dump({"speaker": args.speaker, "text": text}, m)
+            json.dump({"speaker": speaker, "text": text}, m)
         seconds = len(frames) / 2 / rate
         if seconds < 0.08:
             short.append((ref, round(seconds, 3)))
