@@ -1142,6 +1142,21 @@ without building a backend.
   exactly along the axes children and child-ASR actually confuse and
   nowhere else; all other costs and thresholds are unchanged. Story
   completion remains the only summative outcome and is always reachable.
+- **A-19 ("Sound It Out" visual system, ratified 2026-07-28):** The
+  product owner supplied an HTML prototype of the reading experience; its
+  distilled spec, `docs/design/mockup-spec.md`, is a **normative appendix
+  of this PRD** — a fresh build run reproduces the frontend from that
+  document plus the amended Unit 1/Unit 5 lines, with no access to the
+  original HTML needed. Load-bearing rulings folded into this PRD: warm
+  parchment palette and Literata/Nunito/IBM Plex Mono typography (fonts
+  bundled in-repo at `assets/fonts/`); current word renders amber
+  (`#D79A3C`, "saying now") superseding the earlier ink+marker line;
+  read-green holds the WCAG AA ≥4.5:1 floor by darkening minimally within
+  its hue where the mockup value falls short (owner-confirmed); page
+  advance on multi-page stories is a bottom-right book page-curl (Unit 5);
+  celebration confetti is pure code, no assets. The mockup's level-switcher
+  header, demo engine controls, and auto-read are prototype chrome, not
+  product features.
 
 ## 10. Open questions (block their units, not the whole build)
 
