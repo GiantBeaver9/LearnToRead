@@ -1,4 +1,4 @@
-# Recording checklist — demo starter pack (122 clips)
+# Recording checklist — demo starter pack (192 clips)
 
 This is the concrete, file-by-file companion to `docs/audio/recording-brief.md`
 (read that first for voice direction and the phoneme table). Every clip below
@@ -31,29 +31,63 @@ Say-it-like directions for every ID are in the brief's table
 `B D F G HH JH K L M N NG P R S SH T TH DH V W Y Z ZH CH` (consonants)
 `AA AE AH AO AW AY EH ER EY IH IY OW OY UH UW AX AIR EAR URE ARE` (vowels)
 
-## 2. Words — 54 files, `content/demo/words/<word>.wav`
+## 2. Words — 94 files, `content/demo/words/<word>.wav`
 
 Say the word once, naturally and clearly (this is the whole-word
 pronunciation played on tap — distinct from the phoneme sound-out, which the
 app assembles from §1). One file per word, lowercase filename:
 
-> a, and, ben, big, bud, bug, bugs, buzzing, by, can, car, cat, day, digs,
-> fast, flits, full, garden, go, grins, has, he, his, hot, hums, in, is, it,
-> leaf, mud, of, on, play, red, sad, sam, sat, sea, see, sells, she, shells,
-> ship, shore, sips, sits, soup, sun, the, thin, tin, to, tree, up
+> a, an, and, ant, at, ben, big, bud, bug, bugs, bus, buzzing, by, can, cap,
+> car, cat, crab, day, digs, dog, drop, duck, fast, flits, frog, full, fun,
+> garden, go, got, grabs, grins, gus, has, he, hen, hill, his, hops, hot,
+> hugs, hums, hush, i, in, is, it, leaf, mud, naps, nat, nell, nest, of, on,
+> pan, pat, pats, pin, pip, play, red, rock, runs, sad, sam, sand, sat, sea,
+> see, sells, she, shell, shells, ship, shore, sips, sis, sits, snug, sock,
+> soup, spin, sun, tan, tap, the, thin, tin, tips, to, tree, up
 
-("Ben"/"Sam" are names — record with their natural capital-letter reading;
-the file is still lowercase `ben.wav` / `sam.wav`.)
+("Ben"/"Sam"/"Pat"/"Nat"/"Pip"/"Sis"/"Nell"/"Gus" are names — record with
+their natural capital-letter reading; the file is still lowercase `ben.wav`,
+`gus.wav`, etc. `i.wav` is the word "I", said as its letter name.)
 
-## 3. Sentence narrations — 5 files, `content/demo/narration/`
+## 3. Sentence narrations — 35 files, `content/demo/narration/`
 
 Warm, unhurried read-aloud pace for an early reader following along:
 
 | file | read exactly |
 |------|--------------|
 | `cat_p1_s1.wav` | "The cat sat in a tin." |
+| `pat_p1_s1.wav` | "Pat pats a cat." |
+| `nap_p1_s1.wav` | "Pip naps in a cap." |
+| `ant_p1_s1.wav` | "An ant sits in a tin." |
+| `pan_p1_s1.wav` | "Nat tips a tin pan." |
+| `tap_p1_s1.wav` | "I can tap a tin can." |
+| `sip_p1_s1.wav` | "Pip sips at the tap." |
+| `catnap_p1_s1.wav` | "The cat naps in a cap." |
+| `spin_p1_s1.wav` | "A tin pin can spin." |
+| `taptap_p1_s1.wav` | "I tap, tap, tap a pan." |
+| `sis_p1_s1.wav` | "Sis can spin, spin, spin." |
 | `ship_p1_s1.wav` | "The ship is red." |
 | `ship_p1_s2.wav` | "It can go fast." |
+| `duck_p1_s1.wav` | "A duck sits in the mud." |
+| `duck_p1_s2.wav` | "It digs and digs." |
+| `duck_p1_s3.wav` | "The mud is fun!" |
+| `frog_p1_s1.wav` | "A frog hops on a rock." |
+| `frog_p1_s2.wav` | "The sun is hot." |
+| `frog_p1_s3.wav` | "The frog naps." |
+| `shell_p1_s1.wav` | "Nell got a big shell." |
+| `shell_p1_s2.wav` | "It is red and tan." |
+| `shell_p1_s3.wav` | "She hugs it." |
+| `dog_p1_s1.wav` | "A dog got a sock." |
+| `dog_p1_s2.wav` | "He runs and runs." |
+| `dog_p1_s3.wav` | "Drop it, dog!" |
+| `hen_p1_s1.wav` | "A red hen sits on a nest." |
+| `hen_p1_s2.wav` | "Hush, the hen naps." |
+| `bus_p1_s1.wav` | "Gus got on the big bus." |
+| `bus_p1_s2.wav` | "The bus runs up the hill." |
+| `bus_p1_s3.wav` | "Gus grins." |
+| `crab_p1_s1.wav` | "A crab digs in the sand." |
+| `crab_p1_s2.wav` | "It grabs a big shell." |
+| `crab_p1_s3.wav` | "The crab is snug in it." |
 | `twister_shells.wav` | "She sells sea shells by the sea shore." — model it clearly; the repeated **sh** sound should be easy to hear and imitate |
 | `twister_soup.wav` | "Sad Sam sips sea soup." — same, leaning on the **s** sounds |
 
@@ -102,8 +136,8 @@ are going. Short and plain:
 ## Delivery
 
 - [ ] 44 phonemes (§1) — the set most worth re-takes; listen for schwa tails
-- [ ] 54 words (§2)
-- [ ] 5 narrations (§3)
+- [ ] 94 words (§2)
+- [ ] 35 narrations (§3)
 - [ ] 10 celebration lines (§4)
 - [ ] 2 prompts (§5) + 5 nav prompts (§5b)
 - [ ] 2 vocab definitions (§6)
