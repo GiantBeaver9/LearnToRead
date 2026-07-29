@@ -73,7 +73,15 @@ void main() => unawaited(bootLearnToRead());
 /// Resolves the device-only boot values and starts the app.
 Future<void> bootLearnToRead() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final overrides = await buildBootOverrides();
+  List<Override> overrides;
+  try {
+    overrides = await buildBootOverrides();
+  } on Object {
+    // Boot must never strand the splash: if device-only resolution fails
+    // for any reason, run the app on its headless-safe provider defaults
+    // (empty content, fake audio) — alive and diagnosable beats frozen.
+    overrides = const <Override>[];
+  }
   runApp(ProviderScope(overrides: overrides, child: const LearnToReadApp()));
 }
 
@@ -185,9 +193,10 @@ Future<LoadedPack> _loadStarterPack(Directory directory) async {
   if (manifest.existsSync()) {
     try {
       return await loadPackFromDirectory(directory);
-    } on PackLoadException {
-      // A corrupt bundled pack must not stop the app from opening; the child
-      // sees an empty trail rather than a crash.
+    } on Object {
+      // A corrupt/partial bundled pack (bad sideload, tampered files, any
+      // parse or checksum failure) must not stop the app from opening; the
+      // child sees an empty trail rather than a frozen splash.
     }
   }
   return LoadedPack(pack: _emptyPack(), directory: directory);
@@ -213,7 +222,7 @@ Future<PhonicsContent> _loadPhonicsContent(Directory support) async {
   if (file.existsSync()) {
     try {
       return loadPhonicsContent(await file.readAsString());
-    } on FormatException {
+    } on Object {
       // Same posture as a corrupt pack: boot, then show nothing, rather than
       // failing to start at all.
     }
