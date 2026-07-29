@@ -101,6 +101,24 @@ emulator is for demoing.
 - **Fresh content after edits**: rerun `./tool/setup_and_run.sh` — content
   regeneration, voicing, validation, and sideload are idempotent.
 
+## 4b. Pre-meeting checklist (do this the night before)
+
+The full setup path (clone → deps → content → TTS voicing → pack build)
+is rehearsal-verified from a fresh clone; the one step that only runs on
+your machine is the first Gradle/APK build. So:
+
+- [ ] Run `./tool/setup_and_run.sh` end-to-end **the night before** — the
+      first Gradle build is the only unrehearsed step, and it's slow once.
+- [ ] Leave the emulator **running and signed into a demo profile** on
+      meeting day (cold emulator boots are the #1 live-demo killer).
+- [ ] **Screen-record one clean run-through** of the §2 walkthrough as
+      your backup — if anything hiccups live, narrate over the recording.
+- [ ] Re-run just `flutter run` on meeting day (fast after first build);
+      don't re-run the full script the day of.
+- [ ] Have `docs/presentation/sound-it-out-deck.html` open in a browser
+      tab (it's fully offline) and the repo open in another for the
+      "show me the code" moment.
+
 ## 5. What's real vs. staged (be straight in the demo)
 
 Real: the entire reading loop, phonics engine, help ladder, 20 decodable
