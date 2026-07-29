@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 # One-shot setup + run for LearnToRead.
 #
-#   tool/setup_and_run.sh [--skip-tests] [--skip-tts] [--no-run]
+#   tool/setup_and_run.sh [--skip-tests] [--rebuild-content] [--skip-tts] [--no-run]
 #
-# From a fresh clone this: checks the toolchain, fetches dependencies,
-# generates demo content, voices it with local TTS (Piper -- downloaded
-# automatically, no account/key), builds + validates the story pack, runs
-# the test suite, installs the app on the connected Android device or
-# emulator, sideloads the content, and launches.
+# From a fresh clone this: checks the toolchain, fetches dependencies, runs
+# the test suite, builds the RELEASE apk (demo content ships inside it as
+# assets/starter_content.bin — no sideloading), installs it on the connected
+# Android device or emulator, and launches.
+#
+# The demo content is committed (assets/starter_content.bin), so rebuilding
+# it is only needed while developing the pack itself: pass --rebuild-content
+# to regenerate placeholders, (re)voice with local Piper TTS, rebuild the
+# checksummed manifest, and re-bundle the archive.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-SKIP_TESTS=0; SKIP_TTS=0; NO_RUN=0
+SKIP_TESTS=0; SKIP_TTS=0; NO_RUN=0; REBUILD_CONTENT=0
 for arg in "$@"; do
   case "$arg" in
     --skip-tests) SKIP_TESTS=1 ;;
     --skip-tts) SKIP_TTS=1 ;;
     --no-run) NO_RUN=1 ;;
+    --rebuild-content) REBUILD_CONTENT=1 ;;
     *) echo "unknown option: $arg"; exit 2 ;;
   esac
 done
@@ -33,44 +38,51 @@ flutter --version | head -1
 say "fetching dependencies"
 flutter pub get
 
-# ---------------------------------------------------------------- content
-say "generating demo content (placeholders for anything missing)"
-dart run tool/demo_content.dart
+# ------------------------------------------------- content (pack dev only)
+if [ "$REBUILD_CONTENT" = 1 ]; then
+  say "generating demo content (placeholders for anything missing)"
+  dart run tool/demo_content.dart
 
-# ---------------------------------------------------------------- TTS voice
-TTS_DIR="build/tts"
-TTS_MODEL="$TTS_DIR/en-us-libritts-high.onnx"
-if [ "$SKIP_TTS" = 0 ]; then
-  say "voicing content with Piper TTS (local, free)"
-  if ! python3 -c "import piper" 2>/dev/null; then
-    python3 -m pip install --quiet piper-tts || {
-      echo "piper install failed -- continuing with existing/placeholder audio"; SKIP_TTS=1; }
-  fi
-  if [ "$SKIP_TTS" = 0 ] && [ ! -f "$TTS_MODEL" ]; then
-    mkdir -p "$TTS_DIR"
-    echo "downloading voice model (~120 MB, one time)"
-    curl -L --fail -o "$TTS_DIR/voice.tar.gz" \
-      "https://github.com/rhasspy/piper/releases/download/v0.0.2/voice-en-us-libritts-high.tar.gz" \
-      && tar xzf "$TTS_DIR/voice.tar.gz" -C "$TTS_DIR" \
-      && rm "$TTS_DIR/voice.tar.gz" \
-      || { echo "voice download failed -- continuing with existing audio"; SKIP_TTS=1; }
-  fi
+  TTS_DIR="build/tts"
+  TTS_MODEL="$TTS_DIR/en-us-libritts-high.onnx"
   if [ "$SKIP_TTS" = 0 ]; then
-    # Two-voice policy (PRD OQ-3): 21 primary phonics voice, 47 secondary.
-    # Never overwrites human recordings (files without .tts markers).
-    python3 tool/tts_generate.py --model "$TTS_MODEL" --out content/demo --force
-    dart run tool/normalize_wav.dart content/demo
+    say "voicing content with Piper TTS (local, free)"
+    if ! python3 -c "import piper" 2>/dev/null; then
+      python3 -m pip install --quiet piper-tts || {
+        echo "piper install failed -- continuing with existing/placeholder audio"; SKIP_TTS=1; }
+    fi
+    if [ "$SKIP_TTS" = 0 ] && [ ! -f "$TTS_MODEL" ]; then
+      mkdir -p "$TTS_DIR"
+      echo "downloading voice model (~120 MB, one time)"
+      curl -L --fail -o "$TTS_DIR/voice.tar.gz" \
+        "https://github.com/rhasspy/piper/releases/download/v0.0.2/voice-en-us-libritts-high.tar.gz" \
+        && tar xzf "$TTS_DIR/voice.tar.gz" -C "$TTS_DIR" \
+        && rm "$TTS_DIR/voice.tar.gz" \
+        || { echo "voice download failed -- continuing with existing audio"; SKIP_TTS=1; }
+    fi
+    if [ "$SKIP_TTS" = 0 ]; then
+      # Two-voice policy (PRD OQ-3): 21 primary phonics voice, 47 secondary.
+      # Never overwrites human recordings (files without .tts markers).
+      python3 tool/tts_generate.py --model "$TTS_MODEL" --out content/demo --force
+      dart run tool/normalize_wav.dart content/demo
+    fi
+  else
+    say "skipping TTS (--skip-tts)"
   fi
-else
-  say "skipping TTS (--skip-tts)"
-fi
 
-# ---------------------------------------------------------------- pack build
-say "building + validating the story pack"
-dart run tool/pack_build.dart content/demo build/starter_pack/manifest.json \
-  --levels=content/demo/levels.json \
-  --heart-words=content/demo/heart_words.json \
-  --starter-levels=level.demo.1,level.demo.2,level.demo.3
+  say "building + validating the story pack"
+  dart run tool/pack_build.dart content/demo build/starter_pack/manifest.json \
+    --levels=content/demo/levels.json \
+    --heart-words=content/demo/heart_words.json \
+    --starter-levels=level.demo.1,level.demo.2,level.demo.3
+
+  say "bundling content into assets/starter_content.bin"
+  dart run tool/bundle_content.dart
+else
+  say "using committed assets/starter_content.bin (--rebuild-content to regenerate)"
+  [ -f assets/starter_content.bin ] || {
+    echo "assets/starter_content.bin is missing -- run with --rebuild-content"; exit 1; }
+fi
 
 # ---------------------------------------------------------------- tests
 if [ "$SKIP_TESTS" = 0 ]; then
@@ -111,12 +123,11 @@ case "$model" in *16k*)
   exit 1 ;;
 esac
 
-say "installing debug app"
-flutter build apk --debug
-adb install -r build/app/outputs/flutter-apk/app-debug.apk
+say "building release app (first release build takes a few minutes: R8 + AOT)"
+flutter build apk --release
 
-say "sideloading content"
-tool/sideload_android.sh
+say "installing release app (content extracts itself on first launch)"
+adb install -r build/app/outputs/flutter-apk/app-release.apk
 
 say "launching"
-exec flutter run
+exec flutter run --release

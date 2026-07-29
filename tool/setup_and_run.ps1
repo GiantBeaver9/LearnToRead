@@ -1,12 +1,17 @@
 # One-shot setup + run for LearnToRead — Windows (PowerShell).
 #
 #   powershell -ExecutionPolicy Bypass -File tool\setup_and_run.ps1
-#   ... or from PowerShell:  .\tool\setup_and_run.ps1 [-SkipTests] [-NoRun]
+#   ... or from PowerShell:  .\tool\setup_and_run.ps1 [-SkipTests] [-NoRun] [-RebuildContent]
 #
-# The repo already contains the fully voiced audio set, so no TTS step is
-# needed here (the bash script's Piper step exists for regenerating audio
-# after content changes; do that on Linux/WSL or ask the pipeline owner).
-param([switch]$SkipTests, [switch]$NoRun)
+# Builds and installs the RELEASE apk. The demo content ships inside the APK
+# as assets\starter_content.bin (committed) and the app extracts it into its
+# support directory on first launch — no sideloading, no debug build needed.
+#
+# -RebuildContent regenerates the demo content, rebuilds the checksummed
+# pack manifest, and re-bundles the archive (pack development only). The
+# bash script's Piper TTS step is not mirrored here; (re)voice audio on
+# Linux/WSL or ask the pipeline owner.
+param([switch]$SkipTests, [switch]$NoRun, [switch]$RebuildContent)
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
@@ -22,15 +27,28 @@ flutter --version | Select-Object -First 1
 Say "fetching dependencies"
 flutter pub get
 
-Say "generating demo content (placeholders only for anything missing)"
-dart run tool/demo_content.dart
+if ($RebuildContent) {
+  Say "generating demo content (placeholders only for anything missing)"
+  dart run tool/demo_content.dart
+  if ($LASTEXITCODE -ne 0) { Write-Host "demo content generation failed"; exit 1 }
 
-Say "building + validating the story pack"
-dart run tool/pack_build.dart content/demo build/starter_pack/manifest.json `
-  --levels=content/demo/levels.json `
-  --heart-words=content/demo/heart_words.json `
-  --starter-levels=level.demo.1,level.demo.2,level.demo.3
-if ($LASTEXITCODE -ne 0) { Write-Host "pack build failed"; exit 1 }
+  Say "building + validating the story pack"
+  dart run tool/pack_build.dart content/demo build/starter_pack/manifest.json `
+    --levels=content/demo/levels.json `
+    --heart-words=content/demo/heart_words.json `
+    --starter-levels=level.demo.1,level.demo.2,level.demo.3
+  if ($LASTEXITCODE -ne 0) { Write-Host "pack build failed"; exit 1 }
+
+  Say "bundling content into assets\starter_content.bin"
+  dart run tool/bundle_content.dart
+  if ($LASTEXITCODE -ne 0) { Write-Host "content bundling failed"; exit 1 }
+} else {
+  Say "using committed assets\starter_content.bin (-RebuildContent to regenerate)"
+  if (-not (Test-Path "assets\starter_content.bin")) {
+    Write-Host "assets\starter_content.bin is missing - re-run with -RebuildContent"
+    exit 1
+  }
+}
 
 if (-not $SkipTests) {
   Say "running the test suite"
@@ -88,31 +106,13 @@ if ("$model" -match "16k") {
   exit 1
 }
 
-Say "building + installing debug app"
-flutter build apk --debug
+Say "building release app (first release build takes a few minutes: R8 + AOT)"
+flutter build apk --release
 if ($LASTEXITCODE -ne 0) { Write-Host "apk build failed"; exit 1 }
-adb install -r build\app\outputs\flutter-apk\app-debug.apk
+
+Say "installing release app (content extracts itself on first launch)"
+adb install -r build\app\outputs\flutter-apk\app-release.apk
 if ($LASTEXITCODE -ne 0) { Write-Host "install failed"; exit 1 }
 
-Say "sideloading content"
-if (Test-Path build\sideload) { Remove-Item -Recurse -Force build\sideload }
-New-Item -ItemType Directory -Force build\sideload\starter_pack | Out-Null
-Copy-Item build\starter_pack\manifest.json build\sideload\starter_pack\manifest.json
-foreach ($d in @("words","narration","celebrations","prompts","vocab","rive","phonemes","audio")) {
-  if (Test-Path "content\demo\$d") { Copy-Item -Recurse "content\demo\$d" "build\sideload\starter_pack\$d" }
-}
-Copy-Item content\demo\scope_sequence.json build\sideload\scope_sequence.json
-adb shell rm -rf /data/local/tmp/learntoread
-adb push build\sideload /data/local/tmp/learntoread | Out-Null
-# One adb call per step — PowerShell quoting mangles `sh -c "a && b"` chains.
-adb shell run-as com.learntoread.learn_to_read rm -rf files/starter_pack
-adb shell run-as com.learntoread.learn_to_read mkdir -p files
-adb shell run-as com.learntoread.learn_to_read cp -r /data/local/tmp/learntoread/starter_pack files/starter_pack
-adb shell run-as com.learntoread.learn_to_read cp /data/local/tmp/learntoread/scope_sequence.json files/scope_sequence.json
-adb shell rm -rf /data/local/tmp/learntoread
-$staged = adb shell run-as com.learntoread.learn_to_read ls files/starter_pack 2>$null
-if ("$staged" -match "manifest.json") { Say "content verified on device" }
-else { Write-Host "WARNING: sideload verification failed - the app will boot with an empty library" }
-
-Say "launching (fully stop + relaunch later picks content up too)"
-flutter run
+Say "launching"
+flutter run --release

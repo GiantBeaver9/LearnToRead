@@ -9,26 +9,35 @@
 /// headlessly from `test/app/` with the same widget and a different set of
 /// overrides.
 ///
-/// ## Owner content this boot still waits on
+/// ## Bundled content (A-9)
 ///
-/// Two of these values are owner/authored content that has not shipped into
-/// the binary yet, so boot degrades rather than crashing:
+/// The demo starter pack + scope & sequence ship inside the binary as ONE
+/// Flutter asset, `assets/starter_content.bin` (built by
+/// `tool/bundle_content.dart`; format in
+/// `lib/data/content/starter_archive.dart`). Before anything is loaded, boot
+/// extracts that archive into the app-support directory — first run only, or
+/// when the bundled content changed — per the coexistence rule pinned in
+/// `lib/data/content/starter_content_installer.dart` (a sideloaded
+/// `starter_pack/` always wins). Extraction, archive verification, and the
+/// pack-manifest decode all run off the UI isolate via [Isolate.run]; only
+/// the `rootBundle.load` of the asset bytes happens on the main isolate
+/// (rootBundle requires it). Both loads still degrade rather than crash:
 ///
-///  * **the bundled starter pack (A-9)** — read from
+///  * **the bundled starter pack** — read from
 ///    `<app support>/starter_pack/manifest.json` when present, otherwise an
 ///    empty pack, so the app boots to the picker with an empty trail;
 ///  * **the scope & sequence (OQ-5)** — read from
 ///    `<app support>/scope_sequence.json` when present, otherwise an empty
 ///    ladder.
-///
-/// Bundling both as real Flutter assets is the content pipeline's ticket; the
-/// seam they arrive through does not change.
 library;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -39,15 +48,16 @@ import 'package:learn_to_read/app/providers.dart';
 import 'package:learn_to_read/design/builtin_story_stage.dart';
 import 'package:learn_to_read/data/content/pack_installer.dart';
 import 'package:learn_to_read/data/content/pack_loader.dart';
+import 'package:learn_to_read/data/content/starter_content_installer.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/pack_manifest.dart';
 import 'package:learn_to_read/domain/phonics/scope_sequence_loader.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
 import 'package:learn_to_read/features/audio/just_audio_service.dart';
 
-/// Directory name of the bundled starter pack, under the app support
-/// directory.
-const String kStarterPackDirectoryName = 'starter_pack';
+/// Asset key of the bundled starter-content archive (see
+/// `tool/bundle_content.dart`).
+const String kStarterContentAssetKey = 'assets/starter_content.bin';
 
 /// Directory name downloaded CDN packs are installed into.
 const String kInstalledPacksDirectoryName = 'packs';
@@ -91,6 +101,8 @@ Future<void> bootLearnToRead() async {
 /// boot the real shell with a subset of these replaced.
 Future<List<Override>> buildBootOverrides() async {
   final support = await getApplicationSupportDirectory();
+
+  await _extractBundledStarterContent(support);
 
   final starterDirectory = _directory(support, kStarterPackDirectoryName);
   final packsDirectory = _directory(support, kInstalledPacksDirectoryName);
@@ -186,13 +198,53 @@ Map<String, AudioRef> _phonemeRefs(
 Directory _directory(Directory parent, String name) =>
     Directory(p.join(parent.path, name))..createSync(recursive: true);
 
+/// Materializes `assets/starter_content.bin` into `<support>/starter_pack`
+/// (+ `<support>/scope_sequence.json`) when needed — see
+/// `starter_content_installer.dart` for the exact first-run / update /
+/// sideload-wins rule.
+///
+/// The asset bytes are loaded here (rootBundle only works on the main
+/// isolate); checksum verification and extraction run in [Isolate.run] so
+/// the first frame is never blocked on them. Any failure — asset not
+/// bundled (tests, content-less builds), corrupt archive, IO error — is
+/// swallowed: boot then proceeds against whatever is (or is not) on disk,
+/// exactly the pre-existing degrade posture.
+Future<void> _extractBundledStarterContent(Directory support) async {
+  final Uint8List archiveBytes;
+  try {
+    archiveBytes =
+        Uint8List.sublistView(await rootBundle.load(kStarterContentAssetKey));
+  } on Object {
+    return; // No bundled archive: nothing to extract.
+  }
+  final supportPath = support.path;
+  try {
+    await Isolate.run(
+      () => syncBundledStarterContent(
+        archiveBytes: archiveBytes,
+        supportDirectory: Directory(supportPath),
+      ),
+    );
+  } on Object {
+    // Corrupt archive or IO failure: never strand the splash. The loaders
+    // below fall back to whatever is on disk (possibly the empty pack).
+  }
+}
+
 /// The pack that ships inside the binary (A-9), or an empty stand-in until
 /// it does.
+///
+/// The manifest read + jsonDecode + model build run in [Isolate.run] so the
+/// UI isolate never parses the (large) manifest before the first frame.
+/// `loadPackFromDirectory` stays the single load path.
 Future<LoadedPack> _loadStarterPack(Directory directory) async {
   final manifest = File(p.join(directory.path, kPackManifestFileName));
   if (manifest.existsSync()) {
     try {
-      return await loadPackFromDirectory(directory);
+      final directoryPath = directory.path;
+      return await Isolate.run(
+        () => loadPackFromDirectory(Directory(directoryPath)),
+      );
     } on Object {
       // A corrupt/partial bundled pack (bad sideload, tampered files, any
       // parse or checksum failure) must not stop the app from opening; the
