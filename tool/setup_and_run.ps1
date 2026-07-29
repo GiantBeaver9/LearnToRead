@@ -40,6 +40,22 @@ if (-not $SkipTests) {
 
 if ($NoRun) { Say "done (-NoRun)"; exit 0 }
 
+Say "locating the Android SDK (adb is usually not on PATH on Windows)"
+if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
+  $sdk = $env:ANDROID_HOME
+  if (-not $sdk -or -not (Test-Path $sdk)) { $sdk = $env:ANDROID_SDK_ROOT }
+  if (-not $sdk -or -not (Test-Path $sdk)) { $sdk = Join-Path $env:LOCALAPPDATA "Android\Sdk" }
+  $platformTools = Join-Path $sdk "platform-tools"
+  if (Test-Path (Join-Path $platformTools "adb.exe")) {
+    $env:Path = "$platformTools;$env:Path"
+    Write-Host "using adb from $platformTools"
+  } else {
+    Write-Host "Could not find adb.exe. Install Android Studio (or set ANDROID_HOME),"
+    Write-Host "then re-run. Expected at: $platformTools\adb.exe"
+    exit 1
+  }
+}
+
 Say "looking for a device"
 function DeviceReady {
   (adb devices 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "\bdevice$" }).Count -gt 0
