@@ -33,8 +33,10 @@
 ///    after it resumes, false once the story completes and the tracker
 ///    stops.
 ///  - Story completion: the event that resolves the last word calls
-///    `tracker.stop()` synchronously, then `onStoryComplete` fires only
-///    after `celebrationBeat` (~400 ms) elapses -- not before.
+///    `tracker.stop()` synchronously; the machine then HOLDS with the
+///    page-curl dog-ear (AMENDED 2026-07-29: curl-closes-every-page ruling
+///    (PRD §8 Unit 5)) and `onStoryComplete` fires only after the child's
+///    turn plus `celebrationBeat` (~400 ms) -- never before the turn.
 ///  - Analytics (`AnalyticsEventName.storyStarted`/`wordRead`): emitted via
 ///    the real `AnalyticsClient`/`EventQueue` pipeline with the exact §5
 ///    payload shape; `word_read`'s `result` matches the word's resolution
@@ -54,6 +56,9 @@ import 'dart:io';
 import 'package:flutter/material.dart' hide Page;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learn_to_read/design/fake_rive_stage.dart';
+// AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5): the
+// completion-beat test now turns the held final page via the dog-ear.
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/user_models.dart';
@@ -626,8 +631,13 @@ void main() {
   });
 
   group('Completion beat -> celebration handoff (fake-clock, POSITIVE)', () {
-    testWidgets('the last word resolving stops the tracker synchronously; '
-        'onStoryComplete fires only after the ~400 ms beat, not before', (tester) async {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+    // the beat now starts at the child's TURN of the held final page, not
+    // at the last word's resolution. tracker.stop() timing is unchanged
+    // (synchronous on the resolving event).
+    testWidgets('the last word resolving stops the tracker synchronously and '
+        'holds; onStoryComplete fires only after the turn plus the ~400 ms '
+        'beat, not before', (tester) async {
       final tracker = _FakeTrackerHandle();
       final words = [_word('go')];
       var completedCalls = 0;
@@ -648,6 +658,19 @@ void main() {
       expect(tracker.isListening, isFalse);
       expect(completedCalls, 0);
 
+      // The hold waits for the child indefinitely: no beat without a turn.
+      await tester.pump(const Duration(seconds: 5));
+      expect(completedCalls, 0);
+      expect(find.byType(PageCurlCorner), findsOneWidget);
+
+      // The child closes the book (tap on the dog-ear's hit region).
+      final corner = tester.getBottomRight(find.byType(PageCurlCorner)) -
+          const Offset(8, 8);
+      await tester.tapAt(corner);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 360)); // curl completes
+
+      expect(completedCalls, 0);
       await tester.pump(const Duration(milliseconds: 399));
       expect(completedCalls, 0);
 

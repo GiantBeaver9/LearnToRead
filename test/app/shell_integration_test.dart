@@ -94,6 +94,9 @@ import 'package:learn_to_read/app/router.dart';
 import 'package:learn_to_read/data/content/pack_installer.dart';
 import 'package:learn_to_read/data/content/pack_loader.dart';
 import 'package:learn_to_read/data/db/app_database.dart';
+// AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5): story
+// walks now close the final page with the real dog-ear gesture.
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/design/tokens.dart';
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/pack_manifest.dart';
@@ -479,6 +482,22 @@ class _Harness {
 
 Color? _colorOfWord(WidgetTester tester, int index) =>
     tester.widget<Text>(find.byKey(ValueKey('word-text-$index'))).style?.color;
+
+// AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5): the
+// final/only page now HOLDS at completion with the page-curl dog-ear, and
+// the child's turn is what hands control to the celebration beat. Every
+// story walk that reaches the celebration therefore closes the book with
+// the REAL dog-ear gesture (a tap on the corner's hit region), pumped with
+// bounded steps (no pumpAndSettle: the map/waveform never settle).
+Future<void> _turnFinalPage(WidgetTester tester) async {
+  await _pumpFrames(tester, frames: 2);
+  final corner =
+      tester.getBottomRight(find.byType(PageCurlCorner)) - const Offset(8, 8);
+  await tester.tapAt(corner);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400)); // curl completes
+  await tester.pump();
+}
 
 /// Drives the REAL ParentalGate to completion (hold two opposite corners for
 /// 3 s, then answer the multiplication challenge). No bypass seam exists in
@@ -1053,6 +1072,8 @@ void main() {
         await h.openStory(tester, 'story.1');
 
         await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await _pumpFrames(tester, frames: 4);
 
@@ -1080,6 +1101,8 @@ void main() {
         await h.openStory(tester, 'story.1');
 
         await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await _pumpFrames(tester, frames: 4);
 
@@ -1108,6 +1131,8 @@ void main() {
         await h.openStory(tester, 'story.1');
 
         await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await tester.pump(kCelebrationDefaultAnimationDuration);
         await tester.pump(DesignTokens.collectibleFlightDuration);
@@ -1142,6 +1167,8 @@ void main() {
         await h.openStory(tester, 'story.1');
 
         await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await tester.pump(
           kCelebrationSkipUnlockDelay + const Duration(milliseconds: 100),
@@ -1174,6 +1201,8 @@ void main() {
         Future<void> readStory1() async {
           await h.openStory(tester, 'story.1');
           await _pumpFrames(tester, frames: 6, step: _kHypothesisGap);
+          // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+          await _turnFinalPage(tester);
           await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
           await tester.pump(kCelebrationDefaultAnimationDuration);
           await tester.pump(DesignTokens.collectibleFlightDuration);
@@ -1196,6 +1225,8 @@ void main() {
           await tester.tap(find.byKey(ValueKey('word-tap-$i')));
           await _pumpFrames(tester, frames: 3);
         }
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await tester.pump(kCelebrationDefaultAnimationDuration);
         await tester.pump(DesignTokens.collectibleFlightDuration);
@@ -1445,6 +1476,9 @@ void main() {
           expect(_colorOfWord(tester, i), DesignTokens.wordReadGreen);
         }
 
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+        // the child closes the book; the reward follows the gesture.
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await tester.pump(kCelebrationDefaultAnimationDuration);
         await tester.pump(DesignTokens.collectibleFlightDuration);

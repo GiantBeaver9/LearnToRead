@@ -727,11 +727,15 @@ class ReadingSession implements ReadingTrackerHandle {
       return;
     }
     // The page is finished. The word state machine HOLDS here (page-turn
-    // hold, PRD §8 Unit 5 / mockup-spec §8, owner-confirmed 2026-07-28), so
-    // nothing advances at resolution time: the finished page's tracker
-    // stays open (listening is uninterrupted, and a completed tracker is
-    // quiescent — its matcher is complete, so silence/struggle timers are
-    // disarmed) until the child's turn gesture reaches [advancePage].
+    // hold, PRD §8 Unit 5 / mockup-spec §8, owner-confirmed 2026-07-28;
+    // amended 2026-07-29: every page holds, the final one included), so
+    // nothing advances at resolution time. On a NON-final page the finished
+    // page's tracker stays open (listening is uninterrupted, and a
+    // completed tracker is quiescent — its matcher is complete, so
+    // silence/struggle timers are disarmed) until the child's turn gesture
+    // reaches [advancePage]. On the FINAL page the reading controller calls
+    // [stop] on this very event — the mic closes at resolution time, and
+    // the dog-ear waits visually for the story-closing turn.
   }
 
   int? _resolvedIndexOf(TrackerEvent event) => switch (event) {

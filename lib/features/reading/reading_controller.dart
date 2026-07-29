@@ -10,8 +10,10 @@
 ///    against the narrow [ReadingTrackerHandle] seam,
 ///  - the §5 analytics this screen is the only unit in a position to emit
 ///    (`story_started` on open, `word_read` per newly resolved word), and
-///  - the ~400 ms beat between the last word turning green and the
-///    celebration handoff ([kCelebrationBeat] / [onStoryComplete]).
+///  - the ~400 ms beat between the child turning the final page and the
+///    celebration handoff ([kCelebrationBeat] / [onStoryComplete]; PRD §8
+///    Unit 5, amended 2026-07-29: every page holds for the curl, so the
+///    final turn -- not the last word's resolution -- starts the beat).
 ///
 /// It contains no recognition logic whatsoever (PRD §8 Unit 5 pinned
 /// design: the screen is driven solely by Unit 4 events) and no widgets:
@@ -31,9 +33,12 @@ import 'package:learn_to_read/features/listening/contracts/tracker_events.dart';
 import 'package:learn_to_read/features/reading/word_state.dart';
 import 'package:learn_to_read/features/reading/word_state_machine.dart';
 
-/// The pause between the last word of a story turning green and the
+/// The pause between the child turning the story's final page and the
 /// celebration sequence taking over (PRD §8 Unit 5: "listening stops and
-/// control hands to the celebration sequence after a ~400 ms beat").
+/// control hands to the celebration sequence after a ~400 ms beat";
+/// amended 2026-07-29: the curl closes every page, so the beat runs after
+/// the final page's TURN -- the last word resolving holds, words green,
+/// dog-ear showing, until the child closes the book).
 ///
 /// The beat belongs to the reading screen, not to [WordStateMachine], which
 /// only reports that the story finished.
@@ -79,10 +84,10 @@ class ReadingController extends ChangeNotifier {
   ///
   /// [installId], [profileOrdinal] and [levelOrdinal] are the §5 analytics
   /// base fields, passed straight through to every event this controller
-  /// emits. [onStoryComplete] fires [celebrationBeat] after the last word of
-  /// the last page resolves. [onPageTurned] fires each time [turnPage]
-  /// advances a held page. [clock] and [celebrationBeat] are injectable so
-  /// timing is scriptable.
+  /// emits. [onStoryComplete] fires [celebrationBeat] after the child TURNS
+  /// the final page (PRD §8 Unit 5, amended 2026-07-29). [onPageTurned]
+  /// fires each time [turnPage] advances a held non-final page. [clock] and
+  /// [celebrationBeat] are injectable so timing is scriptable.
   ReadingController({
     required this.story,
     required this.level,
@@ -126,16 +131,21 @@ class ReadingController extends ChangeNotifier {
   /// The profile current level ordinal.
   final int levelOrdinal;
 
-  /// Fired once, [kCelebrationBeat] after the story finishes, to hand over
-  /// to the celebration sequence (Unit 8). The app shell wires it; this
-  /// unit deliberately has no dependency on that one.
+  /// Fired once, [kCelebrationBeat] after the child turns the story's final
+  /// page (PRD §8 Unit 5, amended 2026-07-29: the turn, not the last word's
+  /// resolution, is what hands control to the celebration sequence), to
+  /// hand over to the celebration sequence (Unit 8). The app shell wires
+  /// it; this unit deliberately has no dependency on that one.
   final VoidCallback? onStoryComplete;
 
-  /// Fired once per completed page turn, immediately after [turnPage] moves
-  /// the machine onto the next page (PRD §8 Unit 5 page-turn hold). The app
-  /// shell wires it to the listening session's own page advance, so the
-  /// tracker moves to the new page's words at TURN time, not at the moment
-  /// the previous page's last word resolved.
+  /// Fired once per completed NON-final page turn, immediately after
+  /// [turnPage] moves the machine onto the next page (PRD §8 Unit 5
+  /// page-turn hold). The app shell wires it to the listening session's own
+  /// page advance, so the tracker moves to the new page's words at TURN
+  /// time, not at the moment the previous page's last word resolved. The
+  /// final page's turn is a story-close, not a page advance: it does not
+  /// fire this (there is no next page for the session to open, and the
+  /// tracker already stopped at the last word's resolution).
   final VoidCallback? onPageTurned;
 
   final ReadingTrackerHandle _tracker;
@@ -197,21 +207,31 @@ class ReadingController extends ChangeNotifier {
     _tracker.tapCurrentWord();
   }
 
-  /// Turns a held page (PRD §8 Unit 5 page-turn hold, mockup-spec §8): the
-  /// screen's page-curl gesture lands here.
+  /// Turns a held page (PRD §8 Unit 5 page-turn hold, mockup-spec §8;
+  /// amended 2026-07-29: the curl closes every page): the screen's
+  /// page-curl gesture lands here.
   ///
   /// Only meaningful while the machine reports
   /// [WordStateSnapshot.isPageComplete]; any other call -- including a
-  /// double gesture for the same hold -- is a no-op, so a page can never be
-  /// skipped. On a real turn the machine advances first, then
-  /// [onPageTurned] fires (the session rebuilds its tracker for the new
-  /// page), then listeners are notified.
+  /// double gesture for the same hold, or any call after the story
+  /// completed -- is a no-op, so a page can never be skipped and completion
+  /// can never re-fire. On a non-final turn the machine advances first,
+  /// then [onPageTurned] fires (the session rebuilds its tracker for the
+  /// new page), then listeners are notified. On the FINAL page's turn the
+  /// machine signals story completion instead: the ~400 ms celebration beat
+  /// starts here -- at turn time, not at the last word's resolution -- and
+  /// [onPageTurned] is not called (there is no next page; the tracker
+  /// already stopped at resolution).
   void turnPage() {
     if (_disposed) return;
     if (!_snapshot.isPageComplete) return;
-    _machine.turnPage();
-    _snapshot = _machine.snapshot;
-    onPageTurned?.call();
+    final result = _machine.turnPage();
+    _snapshot = result.snapshot;
+    if (result.storyCompleted) {
+      _startCelebrationBeat();
+    } else {
+      onPageTurned?.call();
+    }
     notifyListeners();
   }
 
@@ -222,11 +242,14 @@ class ReadingController extends ChangeNotifier {
     final result = _machine.apply(event);
     _snapshot = result.snapshot;
     _trackWordReads(fromPage: fromPage, fromIndex: fromIndex, result: result);
-    if (result.storyCompleted) {
-      // Pinned ordering: listening stops on the very event that resolves
-      // the last word, and only then does the beat run.
+    if (result.pageCompleted &&
+        result.snapshot.currentPageIndex == pages.length - 1) {
+      // Pinned ordering (unchanged by the 2026-07-29 curl-closes-every-page
+      // ruling): listening stops on the very event that resolves the last
+      // word -- there is nothing left to hear while the dog-ear waits. The
+      // hold that follows is purely visual; the celebration beat runs only
+      // once the child turns the page (see [turnPage]).
       _tracker.stop();
-      _startCelebrationBeat();
     }
     notifyListeners();
   }

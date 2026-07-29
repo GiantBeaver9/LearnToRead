@@ -97,21 +97,27 @@ void main() {
       );
     });
 
-    test('back-fill landing on the final word of the story signals story completion', () {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+    // the back-fill now lands in the page-turn HOLD; turnPage() completes.
+    test('back-fill landing on the final word of the story holds the page; the turn completes it', () {
       final machine = _machine([
         ['hop', 'skip'],
       ]);
 
       // Word 0 is current; hearing word 1 (the LAST word) back-fills 0 and
-      // resolves 1, completing the story in a single apply() call.
+      // resolves 1, finishing the page in a single apply() call.
       final result = machine.apply(const WordAccepted(index: 1));
 
-      expect(result.storyCompleted, isTrue);
+      expect(result.pageCompleted, isTrue);
+      expect(result.storyCompleted, isFalse);
+      expect(result.snapshot.isPageComplete, isTrue);
       expect(result.snapshot.currentIndex, -1);
       expect(
         result.snapshot.currentPageWords.every((w) => w.lifecycle == WordLifecycle.done),
         isTrue,
       );
+
+      expect(machine.turnPage().storyCompleted, isTrue);
     });
 
     test('sequential back-fills across a realistic tracker script settle the whole sentence', () async {
@@ -133,7 +139,11 @@ void main() {
         last = machine.apply(event);
       }
 
-      expect(last!.storyCompleted, isTrue);
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // the last back-fill holds the finished page; turnPage() completes.
+      expect(last!.pageCompleted, isTrue);
+      expect(last.storyCompleted, isFalse);
+      expect(machine.turnPage().storyCompleted, isTrue);
       expect(
         machine.snapshot.currentPageWords.map((w) => w.resolution).toList(),
         [
@@ -226,7 +236,11 @@ void main() {
       expect(turned.currentPageWords, turned.pages[1]);
     });
 
-    test('completing the FINAL page signals storyCompleted, not pageCompleted (no page-turn needed)', () {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+    // previously "the FINAL page signals storyCompleted, not pageCompleted
+    // (no page-turn needed)". Inverted: the final page holds like every
+    // other, and its turn is what signals storyCompleted.
+    test('completing the FINAL page signals pageCompleted and holds; its turn signals storyCompleted', () {
       final machine = _machine([
         ['see', 'spot'],
         ['spot', 'runs', 'fast'],
@@ -241,16 +255,21 @@ void main() {
       machine.apply(const WordAccepted(index: 1));
       final finalResult = machine.apply(const WordAccepted(index: 2));
 
-      expect(finalResult.storyCompleted, isTrue);
+      expect(finalResult.pageCompleted, isTrue);
       expect(
-        finalResult.pageCompleted,
+        finalResult.storyCompleted,
         isFalse,
-        reason: 'the last page hands off to celebration, not a page-turn',
+        reason: 'the last page also holds for the curl; the child closes the book',
       );
+      expect(finalResult.snapshot.isPageComplete, isTrue);
       expect(finalResult.snapshot.currentIndex, -1);
       expect(finalResult.snapshot.pages[1].every((w) => w.lifecycle == WordLifecycle.done), isTrue);
       // Page 0 remains untouched/done from earlier -- no regression across pages.
       expect(finalResult.snapshot.pages[0].every((w) => w.lifecycle == WordLifecycle.done), isTrue);
+
+      final turned = machine.turnPage();
+      expect(turned.storyCompleted, isTrue);
+      expect(turned.snapshot.isStoryComplete, isTrue);
     });
 
     test('lookahead back-fill works across the boundary of a single page (does not spill into the next page)',
@@ -296,18 +315,23 @@ void main() {
       );
 
       final results = <WordStateResult>[];
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // the FINAL page now holds too, so its turn is what completes the
+      // story -- storyCompleted comes from turnPage(), never from apply().
+      final turnResults = <WordStateResult>[];
       await for (final event in tracker.eventsStream) {
         final result = machine.apply(event);
         results.add(result);
         // AMENDED 2026-07-28: page-turn-hold ruling (PRD §8 Unit 5): the
         // machine holds at the page boundary; the harness plays the child's
         // turn gesture so the scripted page-1 events land on page 1.
-        if (result.pageCompleted) machine.turnPage();
+        if (result.pageCompleted) turnResults.add(machine.turnPage());
       }
 
       expect(results, hasLength(4));
-      expect(results.map((r) => r.pageCompleted).toList(), [false, true, false, false]);
-      expect(results.map((r) => r.storyCompleted).toList(), [false, false, false, true]);
+      expect(results.map((r) => r.pageCompleted).toList(), [false, true, false, true]);
+      expect(results.map((r) => r.storyCompleted).toList(), [false, false, false, false]);
+      expect(turnResults.map((r) => r.storyCompleted).toList(), [false, true]);
       expect(machine.snapshot.isStoryComplete, isTrue);
     });
   });

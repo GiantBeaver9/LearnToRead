@@ -271,6 +271,12 @@ void main() {
       expect(controller.snapshot.currentPageWords[0].resolution, WordResolution.accepted);
       expect(controller.snapshot.currentPageWords[1].resolution, WordResolution.accepted);
       expect(controller.snapshot.currentPageWords[2].resolution, WordResolution.accepted);
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // the resolving event holds the finished page; the child's turn is
+      // what completes the story.
+      expect(controller.snapshot.isPageComplete, isTrue);
+      expect(controller.snapshot.isStoryComplete, isFalse);
+      controller.turnPage();
       expect(controller.snapshot.isStoryComplete, isTrue);
     });
 
@@ -357,8 +363,12 @@ void main() {
   });
 
   group('EDGE: last word of the story', () {
-    testWidgets('resolving the last word turns it green, story completes, '
-        'and there is no current-word marker left anywhere', (tester) async {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+    // resolving the last word now HOLDS (green, no current marker, story
+    // not yet complete); the turn completes the story and starts the beat.
+    testWidgets('resolving the last word turns it green and holds; the turn '
+        'completes the story, and there is no current-word marker left '
+        'anywhere', (tester) async {
       final words = [_word('go')];
       final beat = _Recorder();
       controller = buildController(words: words, onStoryComplete: beat.call);
@@ -370,9 +380,18 @@ void main() {
 
       expect(_colorOf(tester, 0), DesignTokens.wordReadGreen);
       expect(find.byKey(const ValueKey('word-current-marker-0')), findsNothing);
+      expect(controller.snapshot.isPageComplete, isTrue);
+      expect(controller.snapshot.isStoryComplete, isFalse);
+      expect(beat.calls, 0, reason: 'no handoff without the child\'s turn');
+
+      controller.turnPage();
+      await tester.pump();
       expect(controller.snapshot.isStoryComplete, isTrue);
+      expect(find.byKey(const ValueKey('word-current-marker-0')), findsNothing);
       // The celebration beat has not elapsed yet.
       expect(beat.calls, 0);
+      await tester.pump(kCelebrationBeat);
+      expect(beat.calls, 1);
     });
   });
 

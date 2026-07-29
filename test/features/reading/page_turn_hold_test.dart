@@ -4,18 +4,23 @@
 /// reward beat").
 ///
 /// Pinned contract:
-///  - `WordStateMachine`: resolving the last word of a NON-final page enters
-///    the `isPageComplete` hold -- words stay done/green, `currentPageIndex`
-///    unchanged, further events inert. `turnPage()` exits the hold and
-///    advances exactly once; it is a no-op any other time (double-turn
-///    safe). Final-page completion is UNCHANGED (storyCompleted, no hold).
+///  - `WordStateMachine`: resolving the last word of ANY page -- the
+///    final/only page included (AMENDED 2026-07-29: curl-closes-every-page
+///    ruling (PRD §8 Unit 5)) -- enters the `isPageComplete` hold -- words
+///    stay done/green, `currentPageIndex` unchanged, further events inert.
+///    `turnPage()` exits the hold exactly once -- advancing on a non-final
+///    page, signalling `storyCompleted` on the final one; it is a no-op any
+///    other time (double-turn safe).
 ///  - `ReadingScreen`: while holding, the reading card carries the
 ///    `PageCurlCorner` dog-ear; the child's corner gesture turns the page
-///    and fires `onPageTurned` exactly once. No dog-ear on single-page
-///    stories or on the final page, ever.
-///  - Listening: the tracker is neither stopped nor paused at page
-///    completion or across the turn; `ReadingSession` moves its per-page
-///    tracker at TURN time (`advancePage`), not at resolution time.
+///    and fires `onPageTurned` exactly once per non-final turn. The final
+///    page's turn hands off to the celebration beat instead.
+///  - Listening: on a NON-final page the tracker is neither stopped nor
+///    paused at page completion or across the turn; `ReadingSession` moves
+///    its per-page tracker at TURN time (`advancePage`), not at resolution
+///    time. On the FINAL page the tracker stops at RESOLUTION time, as it
+///    always did -- the hold is visual; nothing records while the dog-ear
+///    waits.
 ///  - The listening waveform (`WaveBars`) animates live -- and every pump in
 ///    this suite is bounded (no `pumpAndSettle` while listening).
 library;
@@ -265,8 +270,12 @@ void main() {
       expect(machine.snapshot.pages[0][1].lifecycle, WordLifecycle.current);
     });
 
-    test('POSITIVE: FINAL page completion is unchanged -- storyCompleted, no '
-        'hold, and turnPage() after completion is a no-op', () {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5) --
+    // this test previously pinned "FINAL page completion is unchanged:
+    // storyCompleted at resolution, no hold". Inverted: the final page now
+    // holds like any other, and turnPage() is what signals storyCompleted.
+    test('POSITIVE: FINAL page completion HOLDS; turnPage() signals '
+        'storyCompleted exactly once, and a second turn is a no-op', () {
       final machine = _machine([
         ['see'],
         ['run'],
@@ -276,27 +285,55 @@ void main() {
 
       final done = machine.apply(const WordAccepted(index: 0));
 
-      expect(done.storyCompleted, isTrue);
-      expect(done.pageCompleted, isFalse);
-      expect(done.snapshot.isPageComplete, isFalse);
-      expect(done.snapshot.isStoryComplete, isTrue);
+      expect(done.storyCompleted, isFalse,
+          reason: 'resolution no longer completes the story -- the turn does');
+      expect(done.pageCompleted, isTrue);
+      expect(done.snapshot.isPageComplete, isTrue);
+      expect(done.snapshot.isStoryComplete, isFalse);
+      expect(done.snapshot.currentPageIndex, 1);
       expect(done.snapshot.currentIndex, -1);
 
-      machine.turnPage();
-      expect(machine.snapshot.currentPageIndex, 1);
+      // Events during the final hold are inert and never re-signal.
+      final during = machine.apply(const WordAccepted(index: 0));
+      expect(during.pageCompleted, isFalse);
+      expect(during.storyCompleted, isFalse);
+      expect(machine.snapshot.isPageComplete, isTrue);
+
+      final turned = machine.turnPage();
+      expect(turned.storyCompleted, isTrue);
+      expect(turned.pageCompleted, isFalse);
+      expect(turned.snapshot.isStoryComplete, isTrue);
+      expect(turned.snapshot.isPageComplete, isFalse);
+      expect(turned.snapshot.currentPageIndex, 1,
+          reason: 'there is no page beyond the final one to advance to');
+
+      final doubleTurn = machine.turnPage();
+      expect(doubleTurn.storyCompleted, isFalse,
+          reason: 'completion signals exactly once; double-turn is safe');
       expect(machine.snapshot.isStoryComplete, isTrue);
+      expect(machine.snapshot.currentPageIndex, 1);
     });
 
-    test('EDGE: a single-page story never holds', () {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5) --
+    // previously pinned "a single-page story never holds". Inverted: the
+    // whole young range is single-page stories, and they hold for the curl
+    // like every other page.
+    test('EDGE: a single-page story holds at completion; the turn completes '
+        'the story', () {
       final machine = _machine([
         ['go', 'now'],
       ]);
       machine.apply(const WordAccepted(index: 0));
       final done = machine.apply(const WordAccepted(index: 1));
 
-      expect(done.storyCompleted, isTrue);
-      expect(done.pageCompleted, isFalse);
-      expect(done.snapshot.isPageComplete, isFalse);
+      expect(done.storyCompleted, isFalse);
+      expect(done.pageCompleted, isTrue);
+      expect(done.snapshot.isPageComplete, isTrue);
+      expect(done.snapshot.isStoryComplete, isFalse);
+
+      final turned = machine.turnPage();
+      expect(turned.storyCompleted, isTrue);
+      expect(turned.snapshot.isStoryComplete, isTrue);
     });
   });
 
@@ -447,8 +484,13 @@ void main() {
       );
     });
 
-    testWidgets('POSITIVE: the FINAL page completes with no dog-ear and the '
-        'celebration handoff is unchanged', (tester) async {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5) --
+    // previously pinned "the FINAL page completes with no dog-ear and the
+    // handoff runs from resolution". Inverted: the final page holds with
+    // the dog-ear; the child's turn starts the (otherwise unchanged)
+    // ~400 ms beat. Listening still stops at RESOLUTION time.
+    testWidgets('POSITIVE: the FINAL page holds with the dog-ear; the turn '
+        'starts the unchanged celebration beat', (tester) async {
       final tracker = _FakeTrackerHandle();
       final complete = <int>[];
       await tester.pumpWidget(_buildScreen(
@@ -471,18 +513,38 @@ void main() {
       tracker.emit(const WordAccepted(index: 1));
       await tester.pump();
 
-      // No hold, no curl -- listening stops on the resolving event and the
-      // celebration beat runs as before.
-      expect(find.byType(PageCurlCorner), findsNothing);
-      expect(tracker.calls, contains('stop'));
+      // Held with the dog-ear, exactly like a mid-story hold -- but the mic
+      // stopped on the resolving event (nothing left to listen for), and
+      // the beat has NOT started.
+      expect(find.byType(PageCurlCorner), findsOneWidget);
+      expect(_dogEar(), findsOneWidget);
+      expect(tracker.calls, contains('stop'),
+          reason: 'listening stops at final-word RESOLUTION, as always');
+      await tester.pump(kCelebrationBeat * 4);
+      expect(complete, isEmpty,
+          reason: 'no timeout, no auto-advance: the hold waits for the child');
+
+      // The story-closing turn. Pumped in bounded steps that stop at the
+      // curl's completion, so the beat that starts at turn time can be
+      // observed not-yet-fired.
+      final corner = tester.getBottomRight(find.byType(PageCurlCorner)) -
+          const Offset(8, 8);
+      await tester.tapAt(corner);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 360)); // curl completes
+
       expect(complete, isEmpty, reason: 'handoff waits for the ~400 ms beat');
       await tester.pump(kCelebrationBeat);
       await tester.pump();
       expect(complete, hasLength(1));
     });
 
-    testWidgets('EDGE: a single-page story never shows a dog-ear, before or '
-        'after completion', (tester) async {
+    // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5) --
+    // previously pinned "a single-page story never shows a dog-ear".
+    // Inverted: single-page stories (the entire young range) get the curl
+    // on completion too.
+    testWidgets('EDGE: a single-page story shows no dog-ear before '
+        'completion, and holds with one after', (tester) async {
       final tracker = _FakeTrackerHandle();
       await tester.pumpWidget(
         _buildScreen(story: _singlePageStory(), tracker: tracker),
@@ -496,8 +558,11 @@ void main() {
       await tester.pump();
       await tester.pump(DesignTokens.greenSweepDuration);
 
-      expect(find.byType(PageCurlCorner), findsNothing);
-      expect(_dogEar(), findsNothing);
+      expect(find.byType(PageCurlCorner), findsOneWidget);
+      expect(_dogEar(), findsOneWidget);
+      expect(find.text('go'), findsOneWidget,
+          reason: 'the finished page stays on screen, words green, holding');
+      expect(find.text('now'), findsOneWidget);
     });
   });
 

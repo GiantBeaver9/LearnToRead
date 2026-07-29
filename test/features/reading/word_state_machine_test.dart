@@ -28,8 +28,9 @@
 ///     }
 ///     class WordStateResult {
 ///       final WordStateSnapshot snapshot;
-///       final bool pageCompleted;  // true only when a NON-final page just finished
-///       final bool storyCompleted; // true only on the apply() that finishes the LAST page
+///       // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+///       final bool pageCompleted;  // true when ANY page just finished (final included)
+///       final bool storyCompleted; // true only on the turnPage() that turns the LAST page
 ///     }
 ///     class WordStateMachine {
 ///       WordStateMachine({required List<List<WordToken>> pages, required Level level});
@@ -259,14 +260,23 @@ void main() {
         expect(result.storyCompleted, isFalse, reason: 'word $i is not the last word');
       }
 
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // the last word's resolution now HOLDS the completed page; the child's
+      // turnPage() is what signals story completion.
       final finalResult = machine.apply(const WordAccepted(index: 3));
-      expect(finalResult.storyCompleted, isTrue);
-      expect(finalResult.snapshot.isStoryComplete, isTrue);
+      expect(finalResult.storyCompleted, isFalse);
+      expect(finalResult.pageCompleted, isTrue);
+      expect(finalResult.snapshot.isPageComplete, isTrue);
       expect(finalResult.snapshot.currentIndex, -1);
       expect(
         finalResult.snapshot.currentPageWords.every((w) => w.lifecycle == WordLifecycle.done),
         isTrue,
       );
+
+      final turned = machine.turnPage();
+      expect(turned.storyCompleted, isTrue);
+      expect(turned.snapshot.isStoryComplete, isTrue);
+      expect(turned.snapshot.currentIndex, -1);
     });
   });
 
@@ -393,7 +403,11 @@ void main() {
       }
 
       expect(lastResult, isNotNull);
-      expect(lastResult!.storyCompleted, isTrue);
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // the final event holds the completed page; turnPage() completes.
+      expect(lastResult!.pageCompleted, isTrue);
+      expect(lastResult.storyCompleted, isFalse);
+      expect(machine.turnPage().storyCompleted, isTrue);
       expect(machine.snapshot.currentPageWords, [
         WordState(index: 0, lifecycle: WordLifecycle.done, resolution: WordResolution.accepted),
         WordState(
@@ -557,29 +571,43 @@ void main() {
       final machine = _machine([
         ['only'],
       ]);
-      final completion = machine.apply(const WordAccepted(index: 0));
+      // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+      // resolution holds; the turn is what completes the story.
+      final resolved = machine.apply(const WordAccepted(index: 0));
+      expect(resolved.pageCompleted, isTrue);
+      expect(resolved.storyCompleted, isFalse);
+      final completion = machine.turnPage();
       expect(completion.storyCompleted, isTrue);
 
       final after = machine.apply(const WordAccepted(index: 0));
 
       expect(after.storyCompleted, isFalse, reason: 'completion signals fire once, not repeatedly');
+      expect(after.pageCompleted, isFalse);
       expect(after.snapshot.isStoryComplete, isTrue);
       expect(after.snapshot.currentIndex, -1);
       expect(after.snapshot.currentPageWords, completion.snapshot.currentPageWords);
     });
   });
 
-  group('EDGE: single-word story completes on the very first event', () {
-    test('one word, one wordAccepted event -> immediate story completion', () {
+  // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5):
+  // previously "completes on the very first event"; the first event now
+  // HOLDS the one-word page, and the turn completes the story.
+  group('EDGE: single-word story holds on the very first event; the turn completes it', () {
+    test('one word, one wordAccepted event -> hold; turnPage() -> story completion', () {
       final machine = _machine([
         ['done'],
       ]);
       final result = machine.apply(const WordAccepted(index: 0));
 
-      expect(result.storyCompleted, isTrue);
-      expect(result.pageCompleted, isFalse);
+      expect(result.storyCompleted, isFalse);
+      expect(result.pageCompleted, isTrue);
+      expect(result.snapshot.isPageComplete, isTrue);
       expect(result.snapshot.currentIndex, -1);
       expect(result.snapshot.currentPageWords.single.lifecycle, WordLifecycle.done);
+
+      final turned = machine.turnPage();
+      expect(turned.storyCompleted, isTrue);
+      expect(turned.snapshot.isStoryComplete, isTrue);
     });
   });
 

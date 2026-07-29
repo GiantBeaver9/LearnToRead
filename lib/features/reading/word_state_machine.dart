@@ -38,15 +38,18 @@ class WordStateSnapshot {
   /// (there is no "current" word in either state).
   final int currentIndex;
 
-  /// True while the machine is holding at a completed NON-final page,
-  /// waiting for [WordStateMachine.turnPage] (PRD §8 Unit 5 page-turn hold,
-  /// mockup-spec §8, owner-confirmed 2026-07-28): the page's words stay
+  /// True while the machine is holding at a completed page, waiting for
+  /// [WordStateMachine.turnPage] (PRD §8 Unit 5 page-turn hold, mockup-spec
+  /// §8, owner-confirmed 2026-07-28; amended 2026-07-29: the curl closes
+  /// EVERY page, the final/only one included): the page's words stay
   /// done/green, [currentPageIndex] is unchanged, and the screen shows the
-  /// page-curl dog-ear. Never true on the final page — that path sets
-  /// [isStoryComplete] instead.
+  /// page-curl dog-ear. On the final page the hold ends in
+  /// [isStoryComplete] rather than a next page.
   final bool isPageComplete;
 
-  /// True once the last word of the last page has resolved.
+  /// True once the final page has been turned (PRD §8 Unit 5, amended
+  /// 2026-07-29: resolution holds; the child's turn is what completes the
+  /// story).
   final bool isStoryComplete;
 
   /// Shorthand for `pages[currentPageIndex]`.
@@ -64,18 +67,22 @@ class WordStateResult {
   /// The machine's state immediately after the event was applied.
   final WordStateSnapshot snapshot;
 
-  /// True iff this event just finished a page that is NOT the story's last
-  /// page -- the machine now HOLDS ([WordStateSnapshot.isPageComplete]) and
-  /// the screen should show the page-curl dog-ear; the page advances only
-  /// when the child turns it ([WordStateMachine.turnPage]). Mutually
-  /// exclusive with [storyCompleted].
+  /// True iff this event just finished a page -- ANY page, the final/only
+  /// one included (PRD §8 Unit 5, amended 2026-07-29: the curl closes every
+  /// page). The machine now HOLDS ([WordStateSnapshot.isPageComplete]) and
+  /// the screen should show the page-curl dog-ear; the machine moves
+  /// forward only when the child turns the page
+  /// ([WordStateMachine.turnPage]). Mutually exclusive with
+  /// [storyCompleted].
   final bool pageCompleted;
 
-  /// True iff this event just finished the LAST page of the story -- the
-  /// screen should hand off to the celebration sequence (after its own
-  /// ~400 ms beat; that timing is the reading-screen's, not this machine's).
-  /// Fires exactly once: further events after completion report `false`
-  /// (see [WordStateMachine.apply]).
+  /// True iff this result is the [WordStateMachine.turnPage] call that
+  /// turned the story's FINAL page (PRD §8 Unit 5, amended 2026-07-29:
+  /// resolution holds; the turn completes the story) -- the screen should
+  /// hand off to the celebration sequence (after its own ~400 ms beat; that
+  /// timing is the reading-screen's, not this machine's). Fires exactly
+  /// once: [WordStateMachine.apply] never reports it, and further turnPage
+  /// calls after completion report `false`.
   final bool storyCompleted;
 }
 
@@ -91,13 +98,14 @@ class WordStateResult {
 /// word/page/story state.
 ///
 /// **Page-turn hold (PRD §8 Unit 5, mockup-spec §8, owner-confirmed
-/// 2026-07-28):** resolving the last word of a NON-final page does NOT
+/// 2026-07-28; amended 2026-07-29: the curl closes EVERY page):** resolving
+/// the last word of ANY page -- the final/only page included -- does NOT
 /// auto-advance. The machine enters a holding state
 /// ([WordStateSnapshot.isPageComplete]) with the finished page still
 /// current and every event inert, until [turnPage] -- driven by the child's
 /// page-curl gesture, which IS the reward beat -- advances to the next
-/// page. Final-page completion is unchanged: it signals story completion
-/// directly, with no hold and no curl.
+/// page, or, on the final page, signals story completion: the child closes
+/// the book, and the celebration follows the gesture.
 class WordStateMachine {
   /// Builds a machine over [pages] (already-flattened `Page.sentences ->
   /// words`, per page) at the given [level] (used only for
@@ -147,11 +155,11 @@ class WordStateMachine {
   /// resulting [WordStateResult].
   ///
   /// Once the story is complete, every subsequent call is inert: state is
-  /// unchanged and both `pageCompleted`/`storyCompleted` report `false` (the
-  /// completion signal fires exactly once, on the apply() call that finished
-  /// the last page). Likewise, while the machine is holding at a completed
-  /// non-final page (page-turn hold) every event is inert: the page's words
-  /// are all done, and only [turnPage] moves the machine forward.
+  /// unchanged and both `pageCompleted`/`storyCompleted` report `false`.
+  /// Likewise, while the machine is holding at a completed page (page-turn
+  /// hold -- every page holds, the final one included, per the 2026-07-29
+  /// amendment) every event is inert: the page's words are all done, and
+  /// only [turnPage] moves the machine forward.
   WordStateResult apply(TrackerEvent event) {
     if (_isStoryComplete || _isPageComplete) {
       return _inertResult();
@@ -244,38 +252,47 @@ class WordStateMachine {
       return WordStateResult(snapshot: snapshot, pageCompleted: false, storyCompleted: false);
     }
 
-    final isFinalPage = _currentPageIndex == _pages.length - 1;
-    if (isFinalPage) {
-      _isStoryComplete = true;
-      return WordStateResult(snapshot: snapshot, pageCompleted: false, storyCompleted: true);
-    }
-
-    // Non-final page complete: STOP and hold (PRD §8 Unit 5 page-turn hold,
-    // owner-confirmed 2026-07-28). The page's words stay done/green and the
-    // page index does not move; the child's turn gesture drives [turnPage].
+    // Page complete -- ANY page, the final/only one included (PRD §8 Unit 5
+    // page-turn hold, owner-confirmed 2026-07-28; amended 2026-07-29: the
+    // curl closes every page): STOP and hold. The page's words stay
+    // done/green and the page index does not move; the child's turn gesture
+    // drives [turnPage].
     _isPageComplete = true;
     return WordStateResult(snapshot: snapshot, pageCompleted: true, storyCompleted: false);
   }
 
   /// Turns the held page: the child's page-curl gesture lands here (PRD §8
   /// Unit 5 page-turn hold; mockup-spec §8 — "the visual replaces the
-  /// control, the logic does not change").
+  /// control, the logic does not change"; amended 2026-07-29: the curl
+  /// closes every page, so the FINAL page's turn is what completes the
+  /// story).
   ///
-  /// Only meaningful while [WordStateSnapshot.isPageComplete]: exits the
-  /// hold, advances [WordStateSnapshot.currentPageIndex] by one, and the new
-  /// page's first word becomes `current` (the rest start `unread`). Any
-  /// other time -- mid-page, on the final page, after the story completed,
-  /// or a second call for the same hold -- it is a no-op, so a stray double
-  /// gesture can never skip a page.
-  void turnPage() {
-    if (!_isPageComplete) return;
+  /// Only meaningful while [WordStateSnapshot.isPageComplete]:
+  ///  - On a non-final page it exits the hold, advances
+  ///    [WordStateSnapshot.currentPageIndex] by one, and the new page's
+  ///    first word becomes `current` (the rest start `unread`); the result
+  ///    reports neither flag.
+  ///  - On the final page it exits the hold, sets
+  ///    [WordStateSnapshot.isStoryComplete], and the result reports
+  ///    `storyCompleted: true` -- exactly once.
+  ///
+  /// Any other time -- mid-page, after the story completed, or a second
+  /// call for the same hold -- it is an inert no-op, so a stray double
+  /// gesture can never skip a page or re-signal completion.
+  WordStateResult turnPage() {
+    if (!_isPageComplete) return _inertResult();
     _isPageComplete = false;
+    if (_currentPageIndex == _pages.length - 1) {
+      _isStoryComplete = true;
+      return WordStateResult(snapshot: snapshot, pageCompleted: false, storyCompleted: true);
+    }
     _currentPageIndex += 1;
     _currentIndex = 0;
     final nextPage = _pages[_currentPageIndex];
     if (nextPage.isNotEmpty) {
       nextPage[0] = nextPage[0].copyWith(lifecycle: WordLifecycle.current);
     }
+    return _inertResult();
   }
 
   WordStateResult _inertResult() =>

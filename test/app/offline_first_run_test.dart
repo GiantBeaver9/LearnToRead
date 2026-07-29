@@ -57,6 +57,7 @@ import 'package:learn_to_read/features/audio/audio_service.dart';
 import 'package:learn_to_read/features/audio/fake_audio_service.dart';
 import 'package:learn_to_read/features/celebration/celebration_controller.dart';
 import 'package:learn_to_read/features/listening/contracts/asr_engine.dart';
+import 'package:learn_to_read/design/page_curl.dart';
 import 'package:learn_to_read/features/listening/contracts/fake_asr_engine.dart';
 import 'package:learn_to_read/features/parent/consent_controller.dart';
 import 'package:learn_to_read/features/profiles/profile_picker_screen.dart';
@@ -250,6 +251,19 @@ Future<void> _pumpFrames(
   for (var i = 0; i < frames; i++) {
     await tester.pump(step);
   }
+}
+
+// AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5): the
+// final/only page holds at completion with the dog-ear; the child's turn
+// (the real corner gesture) is what hands control to the celebration beat.
+Future<void> _turnFinalPage(WidgetTester tester) async {
+  await _pumpFrames(tester, frames: 2);
+  final corner =
+      tester.getBottomRight(find.byType(PageCurlCorner)) - const Offset(8, 8);
+  await tester.tapAt(corner);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400)); // curl completes
+  await tester.pump();
 }
 
 void main() {
@@ -493,6 +507,8 @@ void main() {
           );
         }
 
+        // AMENDED 2026-07-29: curl-closes-every-page ruling (PRD §8 Unit 5).
+        await _turnFinalPage(tester);
         await tester.pump(kCelebrationBeat + const Duration(milliseconds: 50));
         await tester.pump(kCelebrationDefaultAnimationDuration);
         await tester.pump(DesignTokens.collectibleFlightDuration);

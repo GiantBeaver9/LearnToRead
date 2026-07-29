@@ -12,10 +12,12 @@
 ///  - listen-first narration (A-11) at [Level.narrationEnabled] levels, and
 ///    the ear-icon replay that suspends recognition while it plays,
 ///  - the page host, plus the ratified page-turn hold (PRD §8 Unit 5,
-///    mockup-spec §8, owner-confirmed 2026-07-28): completing a non-final
+///    mockup-spec §8, owner-confirmed 2026-07-28; amended 2026-07-29: the
+///    curl closes EVERY page, the final/only one included): completing any
 ///    page STOPS the machine, a dog-ear appears at the reading card's
 ///    bottom-right corner, and the child's curl gesture -- the reward beat
-///    -- is what turns the page,
+///    -- is what turns the page; turning the final page is what hands
+///    control to the celebration sequence,
 ///  - the two always-available touch affordances: the discreet tap fallback
 ///    on the current word, and blue vocabulary words, which pause listening
 ///    and restore the cursor exactly when their card closes, and
@@ -124,15 +126,17 @@ class ReadingScreen extends StatefulWidget {
   /// Opens a vocabulary card and completes when it closes.
   final VocabCardOpener vocabCardOpener;
 
-  /// Fired once, a beat after the last word turns green, to hand over to
-  /// the celebration sequence.
+  /// Fired once, a beat after the child turns the final page (PRD §8
+  /// Unit 5, amended 2026-07-29: the turn, not the last resolution, hands
+  /// over), to hand over to the celebration sequence.
   final VoidCallback? onStoryComplete;
 
-  /// Fired once per completed page-curl turn, after the word state machine
-  /// has advanced onto the new page. The app shell wires it to
-  /// `ReadingSession.advancePage`, which is what moves the listening
+  /// Fired once per completed NON-final page-curl turn, after the word
+  /// state machine has advanced onto the new page. The app shell wires it
+  /// to `ReadingSession.advancePage`, which is what moves the listening
   /// tracker to the new page's words at turn time (PRD §8 Unit 5 page-turn
-  /// hold).
+  /// hold). The final page's turn hands over to the celebration instead
+  /// and does not fire this.
   final VoidCallback? onPageTurned;
 
   /// Fired once when this screen leaves the tree. The app shell wires it to
@@ -352,8 +356,10 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   /// The child's page-curl completed: turn the held page. `turnPage()` is a
   /// no-op unless the machine is actually holding, so a stray second gesture
-  /// can never advance twice. Any on-demand sound-out is stopped first so a
-  /// stale highlight can never name a word on the page being left.
+  /// can never advance twice. On the FINAL page the turn is what starts the
+  /// ~400 ms beat into the celebration handoff (PRD §8 Unit 5, amended
+  /// 2026-07-29). Any on-demand sound-out is stopped first so a stale
+  /// highlight can never name a word on the page being left.
   void _onPageTurned() {
     _onDemandSoundOut.cancel();
     _controller.turnPage();
@@ -387,12 +393,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
       ],
     );
 
-    // Page-turn hold (PRD §8 Unit 5, mockup-spec §8): while the machine is
-    // holding at this completed non-final page, the reading card grows to
-    // fill the page region (a book page) and carries the bottom-right
-    // page-curl dog-ear. [PageCurlCorner] needs bounded constraints for its
-    // corner geometry, which is why the held layout swaps the
-    // centered/scrollable card for a stretched one.
+    // Page-turn hold (PRD §8 Unit 5, mockup-spec §8; amended 2026-07-29:
+    // every page holds, the final/only one included): while the machine is
+    // holding at this completed page, the reading card grows to fill the
+    // page region (a book page) and carries the bottom-right page-curl
+    // dog-ear. [PageCurlCorner] needs bounded constraints for its corner
+    // geometry, which is why the held layout swaps the centered/scrollable
+    // card for a stretched one.
     final held =
         snapshot.isPageComplete && pageIndex == snapshot.currentPageIndex;
     if (held) {
@@ -408,7 +415,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
           // The face revealed under the curl is a blank sheet of the same
           // cream paper, NOT the next page's live words: the next page has
           // not started yet (its words go current only on turnPage()), and
-          // rendering it here would duplicate the per-word widget keys.
+          // rendering it here would duplicate the per-word widget keys. On
+          // the FINAL page the same blank card reads as the book's back
+          // cover -- the plain themed face the 2026-07-29 ruling allows.
           nextPage: const _ReadingCard(child: SizedBox.expand()),
           onTurned: _onPageTurned,
         ),
