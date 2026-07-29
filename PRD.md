@@ -512,6 +512,13 @@ critical path.
   change) and exists deliberately to reinforce physical-book reading
   habits. Implementation is a corner-anchored clip+rotate curl with a
   shaded back face — simple and 60fps — not a cloth simulation.
+  **Amended 2026-07-29 (owner-directed):** the curl closes EVERY page,
+  including the final/only one — single-sentence stories included, so the
+  youngest readers get the habit too. Completing the last page holds
+  (words stay green, no negative state) with the dog-ear showing; turning
+  it is what hands control to the celebration sequence (the ~400 ms beat
+  then runs as pinned). The child closes the book; the reward follows the
+  gesture.
 - **Listen-first at early levels (ratified):** at sentence-format levels,
   opening a story plays the recorded human narration of the sentence once
   before listening begins; a listen button (ear icon, design system)
