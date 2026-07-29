@@ -23,7 +23,7 @@ visual checks).
 ## 1. The one command
 
 ```sh
-tool/setup_and_run.sh
+./tool/setup_and_run.sh
 ```
 
 That's the whole setup: dependencies → demo content generation → local TTS
@@ -98,7 +98,7 @@ emulator is for demoing.
   and retry.
 - **Linux build fails fetching sqlite**: your network blocks sqlite.org;
   see `tool/setup_and_run.sh --skip-tts` note or build for Android instead.
-- **Fresh content after edits**: rerun `tool/setup_and_run.sh` — content
+- **Fresh content after edits**: rerun `./tool/setup_and_run.sh` — content
   regeneration, voicing, validation, and sideload are idempotent.
 
 ## 5. What's real vs. staged (be straight in the demo)
