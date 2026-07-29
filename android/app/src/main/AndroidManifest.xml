@@ -3,6 +3,13 @@
          platform ASR adapter. MainActivity requests it at runtime on
          first launch. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Network: the platform SpeechRecognizer may route recognition through
+         Google's speech service, which can require network access on devices
+         without a downloaded offline model. Declared in the MAIN manifest
+         because only the debug/profile manifests carry INTERNET by default —
+         a release build without this line would silently break recognition
+         on those devices. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="learn_to_read"
         android:name="${applicationName}"

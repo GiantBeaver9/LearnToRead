@@ -16,6 +16,9 @@ class MainActivity : FlutterActivity() {
         // platform-asr-adapter unit adds its own registration here
         // alongside this one.
         SpikeSpeechHandler.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
+        // Production on-device ASR adapter (PRD §9 A-10) — the native half of
+        // lib/features/listening/engine/platform_asr_engine.dart.
+        AsrSpeechHandler.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

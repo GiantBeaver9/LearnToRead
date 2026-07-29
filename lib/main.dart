@@ -53,7 +53,9 @@ import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/pack_manifest.dart';
 import 'package:learn_to_read/domain/phonics/scope_sequence_loader.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
+import 'package:learn_to_read/features/parent/consent_controller.dart';
 import 'package:learn_to_read/features/audio/just_audio_service.dart';
+import 'package:learn_to_read/features/listening/engine/platform_asr_engine.dart';
 
 /// Asset key of the bundled starter-content archive (see
 /// `tool/bundle_content.dart`).
@@ -152,6 +154,28 @@ Future<List<Override>> buildBootOverrides() async {
       var nextSceneSeed = 0;
       return () => BuiltInStoryStage(sceneSeed: nextSceneSeed++);
     }),
+    // Real on-device speech recognition (PRD §9 A-10: Android
+    // SpeechRecognizer with contextual biasing, behind the engine seam).
+    // Owner-directed supersession of the Unit 0 spike gate: the adapter was
+    // deliberately held on FakeAsrEngine until the owner's spike verdict;
+    // the owner has now explicitly directed wiring the real engine for the
+    // live demo. Android only — every other platform stays on the provider's
+    // silent fake (tap-only) until its own adapter lands.
+    if (Platform.isAndroid)
+      asrEngineProvider.overrideWithValue(PlatformAsrEngine()),
+    // The in-app mic-permission seam: no permission plugin ships in the POC,
+    // and the provider default answers notDetermined FOREVER — which
+    // resolves every story to tap-only and never starts the engine (found
+    // by the ASR adapter's mic-chain audit). On Android the OS-level
+    // RECORD_AUDIO ask is made by MainActivity at first launch, and a
+    // genuinely denied mic surfaces as MIC_PERMISSION_DENIED from the
+    // recognizer, which the tracker already degrades to tap — so answering
+    // granted here is truthful layering for the demo. Replace with a real
+    // permission plugin before any store build.
+    if (Platform.isAndroid)
+      micPermissionServiceProvider.overrideWithValue(
+        FakeMicPermissionService(MicPermissionStatus.granted),
+      ),
   ];
 }
 
