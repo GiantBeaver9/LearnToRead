@@ -84,9 +84,23 @@ fi
 if [ "$NO_RUN" = 1 ]; then say "done (--no-run)"; exit 0; fi
 
 say "looking for a device"
-if ! command -v adb >/dev/null || ! adb devices | awk 'NR>1 && $2=="device"' | grep -q .; then
-  echo "No Android device/emulator connected. Start one and re-run, or use --no-run."
-  echo "(Everything is built; 'flutter run' + 'tool/sideload_android.sh' finish the job.)"
+device_ready() { command -v adb >/dev/null && adb devices | awk 'NR>1 && $2=="device"' | grep -q .; }
+if ! device_ready; then
+  # Try to auto-start the first available emulator image.
+  EMU="$(command -v emulator || echo "$HOME/Android/Sdk/emulator/emulator")"
+  if [ -x "$EMU" ] && [ -n "$("$EMU" -list-avds 2>/dev/null | head -1)" ]; then
+    AVD="$("$EMU" -list-avds | head -1)"
+    say "starting emulator '$AVD' (first boot can take a minute)"
+    "$EMU" -avd "$AVD" >/dev/null 2>&1 &
+    for _ in $(seq 1 60); do device_ready && break; sleep 5; done
+    adb wait-for-device
+    # Wait for full boot before installing.
+    until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 3; done
+  fi
+fi
+if ! device_ready; then
+  echo "No Android device/emulator available. Create one in Android Studio's"
+  echo "Device Manager (see docs/DEMO.md §0.3), start it, and re-run — or use --no-run."
   exit 1
 fi
 
