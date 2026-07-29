@@ -79,10 +79,20 @@ if (-not (DeviceReady)) {
   exit 1
 }
 
+$model = (adb shell getprop ro.product.model 2>$null)
+if ("$model" -match "16k") {
+  Write-Host ""
+  Write-Host "This emulator ('$($model.Trim())') is a 16 KB page-size image, which crashes" -ForegroundColor Yellow
+  Write-Host "prebuilt native libraries at load (silent freeze on the splash screen)." -ForegroundColor Yellow
+  Write-Host "Create a standard API 34/35 x86_64 'Google APIs' AVD instead (docs/DEMO.md)." -ForegroundColor Yellow
+  exit 1
+}
+
 Say "building + installing debug app"
 flutter build apk --debug
 if ($LASTEXITCODE -ne 0) { Write-Host "apk build failed"; exit 1 }
-flutter install
+adb install -r build\app\outputs\flutter-apk\app-debug.apk
+if ($LASTEXITCODE -ne 0) { Write-Host "install failed"; exit 1 }
 
 Say "sideloading content"
 if (Test-Path build\sideload) { Remove-Item -Recurse -Force build\sideload }

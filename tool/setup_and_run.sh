@@ -104,9 +104,16 @@ if ! device_ready; then
   exit 1
 fi
 
+model="$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r')"
+case "$model" in *16k*)
+  echo "This emulator ('$model') is a 16 KB page-size image, which crashes prebuilt"
+  echo "native libraries at load. Use a standard API 34/35 x86_64 AVD (docs/DEMO.md)."
+  exit 1 ;;
+esac
+
 say "installing debug app"
 flutter build apk --debug
-flutter install
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
 
 say "sideloading content"
 tool/sideload_android.sh
