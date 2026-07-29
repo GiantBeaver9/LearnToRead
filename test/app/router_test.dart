@@ -109,6 +109,7 @@ import 'package:learn_to_read/features/listening/contracts/asr_engine.dart';
 import 'package:learn_to_read/features/listening/contracts/fake_asr_engine.dart';
 import 'package:learn_to_read/features/map/progress_map_screen.dart';
 import 'package:learn_to_read/features/parent/consent_controller.dart';
+import 'package:learn_to_read/features/parent/parent_corner_screen.dart';
 import 'package:learn_to_read/features/parent/parental_gate.dart';
 import 'package:learn_to_read/features/profiles/profile_picker_screen.dart';
 import 'package:learn_to_read/features/reading/reading_screen.dart';
@@ -532,6 +533,45 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(ProfilePickerScreen), findsOneWidget);
+    });
+
+    // ADDED 2026-07-29: first-run dead-end regression (found on-device: a
+    // fresh install rendered blank parchment with no reachable parent
+    // corner — the only route that can create the first profile).
+    testWidgets(
+        'POSITIVE: fresh install shows the parent invitation and it opens '
+        'the parent corner', (tester) async {
+      h.tearDown();
+      h = _Harness();
+      await h.setUp(seedProfiles: false);
+
+      await tester.pumpWidget(h.app);
+      await _pumpFrames(tester);
+
+      final invitation =
+          find.byKey(const ValueKey<String>('picker-first-run-invitation'));
+      expect(invitation, findsOneWidget);
+      await tester.tap(invitation);
+      await _pumpFrames(tester);
+      expect(find.byType(ParentCornerScreen), findsOneWidget);
+    });
+
+    testWidgets(
+        'POSITIVE: the discreet corner lock reaches the parent corner even '
+        'with profiles present, and the invitation is gone', (tester) async {
+      await tester.pumpWidget(h.app);
+      await _pumpFrames(tester);
+
+      expect(
+        find.byKey(const ValueKey<String>('picker-first-run-invitation')),
+        findsNothing,
+      );
+      final lock =
+          find.byKey(const ValueKey<String>('picker-parent-corner-button'));
+      expect(lock, findsOneWidget);
+      await tester.tap(lock);
+      await _pumpFrames(tester);
+      expect(find.byType(ParentCornerScreen), findsOneWidget);
     });
   });
 

@@ -435,12 +435,65 @@ class _ProfilePickerRouteState extends ConsumerState<ProfilePickerRoute> {
   Widget build(BuildContext context) {
     final profiles = _profiles;
     if (profiles == null) return const _RouteLoading();
-    return ProfilePickerScreen(
-      profiles: profiles,
-      onProfileSelected: (profile, ordinal) {
-        ref.read(activeProfileProvider.notifier).select(profile, ordinal);
-        context.go(kRoutePathMap);
-      },
+    // The picker itself is child-facing and text-free, but the fresh-install
+    // moment belongs to the PARENT (the router doc pins the parent corner as
+    // "the only way to create the first profile") — without an on-screen
+    // entry, first run is a blank dead end. Discreet lock always; a plain
+    // invitation card only while no profile exists.
+    return Stack(
+      children: <Widget>[
+        ProfilePickerScreen(
+          profiles: profiles,
+          onProfileSelected: (profile, ordinal) {
+            ref.read(activeProfileProvider.notifier).select(profile, ordinal);
+            context.go(kRoutePathMap);
+          },
+        ),
+        if (profiles.isEmpty)
+          Center(
+            child: GestureDetector(
+              key: const ValueKey<String>('picker-first-run-invitation'),
+              onTap: () => context.go(kRoutePathParentCorner),
+              child: Container(
+                padding: const EdgeInsets.all(DesignTokens.spacingLg),
+                decoration: BoxDecoration(
+                  color: DesignTokens.readingBackground,
+                  border: Border.all(color: DesignTokens.cardBorder),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(Icons.lock_rounded,
+                        size: 40, color: DesignTokens.mutedLabel),
+                    const SizedBox(height: DesignTokens.spacingMd),
+                    Text(
+                      'Grown-ups: tap here to set up your reader',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: DesignTokens.displayFontFamily,
+                        fontSize: 18,
+                        color: DesignTokens.mutedBody,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              key: const ValueKey<String>('picker-parent-corner-button'),
+              icon: const Icon(Icons.lock_rounded,
+                  color: DesignTokens.mutedLabel),
+              iconSize: 28,
+              onPressed: () => context.go(kRoutePathParentCorner),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
