@@ -2,6 +2,7 @@ package com.learntoread.learn_to_read
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -68,6 +69,24 @@ import io.flutter.plugin.common.MethodChannel
  * RECOGNIZER_BUSY loop (or a device with a broken recognition service) from
  * spinning forever.
  *
+ * ## Round-chime muting
+ *
+ * The system recognizer plays its listening start/stop chime on every round,
+ * and the continuous loop rounds many times per page — a constant
+ * bloop-bloop over the child's reading. While the loop is ACTIVE (from the
+ * first successful start until stop/fatal/detach — NOT per round) the
+ * NOTIFICATION and SYSTEM streams, which the chime plays on, are muted via
+ * [AudioManager.adjustStreamVolume]. STREAM_MUSIC is deliberately untouched:
+ * that is where the app's own narration/phoneme/TTS clips play.
+ *
+ * Tradeoff, accepted: other apps' notification beeps are also silenced while
+ * a child is reading — a reasonable price for a chime-free reading session,
+ * and the streams are ALWAYS restored when the loop ends. Only streams this
+ * handler itself muted are unmuted (a stream the user already had muted
+ * stays muted). Some devices throw SecurityException from volume calls under
+ * Do Not Disturb; each call is wrapped and degrades silently (chimes then
+ * remain audible, nothing else breaks).
+ *
  * All SpeechRecognizer calls happen on the main thread (a SpeechRecognizer
  * requirement). Flutter delivers method calls on the main thread already;
  * [mainHandler] additionally serializes the delayed restarts onto it.
@@ -92,6 +111,31 @@ class AsrSpeechHandler(private val context: Context) :
         const val MAX_RESULTS = 3
 
         /**
+         * Round-lengthening extras (Google's recognizer honors these on most
+         * devices; harmless where ignored — hence device-verified only).
+         * Longer rounds = fewer restarts = fewer chime/focus events. Values
+         * are Int: the platform recognizer reads these extras as ints.
+         */
+
+        /** Silence after speech before the round finalizes (default ~1s). */
+        const val ROUND_COMPLETE_SILENCE_MS = 5000
+
+        /** Silence after a POSSIBLY complete utterance before finalizing. */
+        const val ROUND_POSSIBLY_COMPLETE_SILENCE_MS = 5000
+
+        /** Minimum length of one recognition round. */
+        const val ROUND_MINIMUM_LENGTH_MS = 15000
+
+        /**
+         * The streams the recognizer's round chime plays on. STREAM_MUSIC is
+         * deliberately absent — the app's own clips play there.
+         */
+        val CHIME_STREAMS = intArrayOf(
+            AudioManager.STREAM_NOTIFICATION,
+            AudioManager.STREAM_SYSTEM,
+        )
+
+        /**
          * Registers the method + event channels against [messenger]. Called
          * once from MainActivity.configureFlutterEngine.
          */
@@ -114,6 +158,13 @@ class AsrSpeechHandler(private val context: Context) :
 
     /** Current run of consecutive errored rounds (reset by any result). */
     private var consecutiveErrors = 0
+
+    /**
+     * The chime streams THIS handler muted (i.e. they were not already muted
+     * when the loop started). Exactly these — and only these — are unmuted
+     * when the loop ends, so a user's own pre-existing mute is respected.
+     */
+    private val mutedChimeStreams = mutableListOf<Int>()
 
     // --- method channel -----------------------------------------------------
 
@@ -146,6 +197,9 @@ class AsrSpeechHandler(private val context: Context) :
         biasingWords = words
         started = true
         consecutiveErrors = 0
+        // Loop-scoped, not round-scoped: muted once here, restored only by
+        // stopInternal (stop / fatal / start-while-started / detach).
+        muteChimeStreams()
         startRound()
         result.success(null)
     }
@@ -163,6 +217,52 @@ class AsrSpeechHandler(private val context: Context) :
         }
         recognizer = null
         consecutiveErrors = 0
+        restoreChimeStreams()
+    }
+
+    // --- round-chime muting ---------------------------------------------------
+
+    /**
+     * Mutes the streams the recognizer's listening chime plays on, for the
+     * whole life of the loop. Remembers which streams it muted itself so
+     * [restoreChimeStreams] never unmutes a stream the user had muted.
+     * API 23+ only (ADJUST_MUTE / isStreamMute); older devices keep their
+     * chimes. Every call degrades silently — some devices throw
+     * SecurityException from volume adjustment under Do Not Disturb, and a
+     * still-chiming loop beats a crashed one.
+     */
+    private fun muteChimeStreams() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        if (mutedChimeStreams.isNotEmpty()) return // Already muted by us.
+        val audioManager =
+            context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        for (stream in CHIME_STREAMS) {
+            try {
+                if (!audioManager.isStreamMute(stream)) {
+                    audioManager.adjustStreamVolume(stream, AudioManager.ADJUST_MUTE, 0)
+                    mutedChimeStreams.add(stream)
+                }
+            } catch (_: Exception) {
+                // DND SecurityException et al.: this stream keeps its chime.
+            }
+        }
+    }
+
+    /** Unmutes exactly the streams [muteChimeStreams] muted. Idempotent. */
+    private fun restoreChimeStreams() {
+        if (mutedChimeStreams.isEmpty()) return
+        val audioManager =
+            context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        if (audioManager != null) {
+            for (stream in mutedChimeStreams) {
+                try {
+                    audioManager.adjustStreamVolume(stream, AudioManager.ADJUST_UNMUTE, 0)
+                } catch (_: Exception) {
+                    // Best effort; never let a restore failure break teardown.
+                }
+            }
+        }
+        mutedChimeStreams.clear()
     }
 
     // --- the continuous-recognition loop -------------------------------------
@@ -275,6 +375,23 @@ class AsrSpeechHandler(private val context: Context) :
             )
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, MAX_RESULTS)
+            // Longer rounds (demo polish): a child pausing between words was
+            // finalizing rounds every couple of seconds, so restarts (and
+            // their chime/focus churn) were constant. Honored by Google's
+            // recognizer on most devices; harmless where ignored. onResults
+            // still restarts immediately; NO_MATCH/TIMEOUT keep the backoff.
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
+                ROUND_COMPLETE_SILENCE_MS,
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                ROUND_POSSIBLY_COMPLETE_SILENCE_MS,
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
+                ROUND_MINIMUM_LENGTH_MS,
+            )
             // Contextual biasing (A-10): the expected sentence words, exactly
             // as ReadingTracker passes them ("never open-ended transcription",
             // PRD §6). EXTRA_BIASING_STRINGS is API 33+; below that the extra
@@ -317,5 +434,10 @@ class AsrSpeechHandler(private val context: Context) :
 
     override fun onCancel(arguments: Any?) {
         eventSink = null
+        // Detach: nobody is listening for hypotheses any more (Dart-side
+        // dispose / engine hot-restart), so a still-running loop would only
+        // hold the mic and keep the chime streams muted forever. End the
+        // loop — which also ALWAYS restores the muted streams.
+        stopInternal()
     }
 }

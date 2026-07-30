@@ -23,6 +23,7 @@
 
 import 'dart:async';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learn_to_read/features/audio/audio_service.dart';
 import 'package:learn_to_read/features/audio/just_audio_service.dart';
@@ -405,6 +406,45 @@ void main() {
 
       h.players.single.finishPlayback();
       await h.service.completionOf(handle);
+    });
+
+    // The default configuration is a plain value object, so its
+    // anti-focus-fight choices (why playback no longer stutters while the
+    // continuous ASR loop grabs transient focus each round) are pinned
+    // headlessly here; the audible result is device-verified.
+    group('default configuration (recognizer focus-fight fix)', () {
+      test('never pauses when ducked by the recognizer\'s transient focus', () {
+        expect(
+          defaultAudioSessionConfiguration.androidWillPauseWhenDucked,
+          isFalse,
+          reason: 'the speech() preset\'s pause-when-ducked was the choppy '
+              'TTS bug: SpeechRecognizer ducks us on every recognition round',
+        );
+      });
+
+      test('requests only polite transient-may-duck focus for our own clips', () {
+        expect(
+          defaultAudioSessionConfiguration.androidAudioFocusGainType,
+          AndroidAudioFocusGainType.gainTransientMayDuck,
+          reason: 'a full gain request would yank focus from the in-flight '
+              'recognizer round',
+        );
+      });
+
+      test('plays as media-usage spoken content on the music base', () {
+        expect(
+          defaultAudioSessionConfiguration.androidAudioAttributes,
+          const AndroidAudioAttributes(
+            usage: AndroidAudioUsage.media,
+            contentType: AndroidAudioContentType.speech,
+          ),
+        );
+        // The music() base carries the iOS side unchanged.
+        expect(
+          defaultAudioSessionConfiguration.avAudioSessionCategory,
+          AVAudioSessionCategory.playback,
+        );
+      });
     });
   });
 }

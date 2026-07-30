@@ -26,6 +26,10 @@ Method channel **`learn_to_read/asr/method`**:
 | `start` | `{ "biasingWords": [String] }` | (Re)starts continuous recognition biased toward the expected sentence words. `start` while already started is a graceful stop-then-restart. Fails with `ENGINE_UNAVAILABLE` when no recognition service exists on the device. |
 | `stop` | none | Cancels recognition (discarding the in-flight utterance) and exits the restart loop. Idempotent. |
 
+The event channel's `onCancel` (Dart-side dispose / hot restart) also ends
+the loop: with no sink there is nobody to deliver to, and the loop must not
+keep the mic open or the chime streams muted.
+
 Event channel **`learn_to_read/asr/events`** — one map per hypothesis burst:
 
 ```json
@@ -60,6 +64,35 @@ state the native handler automatically begins a new recognition round:
 All recognizer calls run on the main thread (a `SpeechRecognizer`
 requirement); delayed restarts are serialized through a
 `Handler(Looper.getMainLooper())`.
+
+### Round length (demo polish)
+
+Each round's intent carries the round-lengthening extras (honored by
+Google's recognizer on most devices, harmless where ignored):
+`EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS = 5000`,
+`EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS = 5000`,
+`EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS = 15000` — so a child pausing
+between words no longer finalizes a round every couple of seconds. A round
+ending in `onResults` still restarts immediately; `NO_MATCH`/`TIMEOUT` keep
+the backoff above.
+
+### Round-chime muting (demo polish)
+
+The system recognizer chimes on every round start/stop; the continuous loop
+made that a constant bloop-bloop. While the loop is ACTIVE — from a
+successful `start` until `stop`, a fatal error, or event-channel detach,
+NOT per round — the native handler mutes `STREAM_NOTIFICATION` and
+`STREAM_SYSTEM` (`AudioManager.adjustStreamVolume(…, ADJUST_MUTE, 0)`).
+Rules:
+
+- `STREAM_MUSIC` is never touched — the app's own narration/phoneme/TTS
+  clips play there.
+- Prior mute state is respected: only streams the handler itself muted are
+  unmuted on loop end, and restore ALWAYS runs on every loop-end path.
+- Each volume call is try/caught (some devices throw `SecurityException`
+  under Do Not Disturb) and degrades silently; API < 23 keeps its chimes.
+- Accepted tradeoff: other apps' notification beeps are silenced while a
+  child reads.
 
 ### Restart / backoff rule
 
@@ -112,6 +145,17 @@ work:
 - **Kotlin compilation** — this container has no Android SDK, so
   `AsrSpeechHandler.kt` has not been compiled here. First `flutter build
   apk` / `flutter run -d <android>` on a machine with the SDK verifies it.
+- **Chime muting and round length** — whether a given OEM's recognizer
+  actually plays its chime on NOTIFICATION/SYSTEM (a few route it
+  elsewhere), whether DND blocks the mute, and whether the
+  `EXTRA_SPEECH_INPUT_*` round-length extras are honored are all
+  device-dependent; verify on the demo device.
+- **Playback-vs-recognizer focus behavior** — the
+  `defaultAudioSessionConfiguration` change in
+  `lib/features/audio/just_audio_service.dart` (media attributes,
+  `gainTransientMayDuck`, `androidWillPauseWhenDucked: false`) is unit-pinned
+  as a value, but smooth TTS playback across recognition rounds is audible
+  only on device.
 - **Emulator caveats**: in the emulator's Extended Controls → Microphone,
   "Virtual microphone uses host audio input" must be ON, or the recognizer
   hears silence. The device/image must have a recognition service — the

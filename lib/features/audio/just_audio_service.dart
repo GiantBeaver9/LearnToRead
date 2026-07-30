@@ -95,14 +95,45 @@ class RealJustAudioPlayer implements JustAudioPlayerApi {
   Future<void> dispose() => _player.dispose();
 }
 
-/// Default [AudioSessionConfigurator]: configures `audio_session` for spoken
-/// audio playback (speech preset -- appropriate for a kids reading app whose
-/// audio is narration/phonics voice clips; it requests the platform's spoken
-/// audio routing/interruption behavior). Wrapped in try/catch by the service,
-/// so environments without platform channels are unaffected.
+/// The session configuration [defaultAudioSessionConfigurator] applies.
+///
+/// Base recipe: [AudioSessionConfiguration.music] -- deliberately NOT
+/// `.speech()`. The speech preset sets `androidWillPauseWhenDucked: true`,
+/// and Android's `SpeechRecognizer` grabs transient audio focus at the start
+/// of EVERY recognition round; the continuous-listening loop
+/// (`AsrSpeechHandler.kt`) rounds many times per page, so under the speech
+/// preset each round's focus grab paused in-flight voice clips -- the choppy
+/// TTS playback observed on device. The three Android overrides below stop
+/// that focus fight:
+///  - `androidAudioAttributes`: usage `media` / contentType `speech` -- the
+///    clips are still spoken-word content, but routed and focus-arbitrated
+///    as ordinary media rather than assistant-adjacent speech;
+///  - `androidAudioFocusGainType: gainTransientMayDuck` -- OUR focus
+///    requests are the polite transient kind, so starting a clip never
+///    yanks focus from the in-flight recognizer round either;
+///  - `androidWillPauseWhenDucked: false` -- when the recognizer (or any
+///    other holder) ducks us, playback continues at reduced volume instead
+///    of stutter-pausing on every round boundary.
+///
+/// Exposed as a value (not inlined in the configurator) so headless tests
+/// can pin these choices without touching platform channels.
+final AudioSessionConfiguration defaultAudioSessionConfiguration =
+    const AudioSessionConfiguration.music().copyWith(
+  androidAudioAttributes: const AndroidAudioAttributes(
+    usage: AndroidAudioUsage.media,
+    contentType: AndroidAudioContentType.speech,
+  ),
+  androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+  androidWillPauseWhenDucked: false,
+);
+
+/// Default [AudioSessionConfigurator]: applies
+/// [defaultAudioSessionConfiguration] (see its header for why the music
+/// recipe underlies a speech app). Wrapped in try/catch by the service, so
+/// environments without platform channels are unaffected.
 Future<void> defaultAudioSessionConfigurator() async {
   final session = await AudioSession.instance;
-  await session.configure(const AudioSessionConfiguration.speech());
+  await session.configure(defaultAudioSessionConfiguration);
 }
 
 /// One live (started, not yet finished) playback.
