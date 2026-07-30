@@ -626,6 +626,20 @@ class ReadingSession implements ReadingTrackerHandle {
       helpRecorder: helpRecorder,
       yourTurnPromptAudioRef: yourTurnPromptAudioRef,
       onHelpGiven: onHelpGiven,
+      // Help audio plays over the same open microphone the child reads
+      // into, so every help pass (Tier 1 sound-out, Tier 2's model +
+      // "your turn", the near-miss prompt) brackets recognition with the
+      // session's own pause/resume — the same tracker verbs the narration
+      // replay and the on-demand sound-out already use. Without this the
+      // recognizer can hear Tier 2 model the target word and self-accept
+      // it, and Tier 1's phoneme bursts feed the tracker's A-12
+      // non-matching-burst counter. Escalation timing is untouched: T1->T2
+      // runs on the scaffold's own timers, and the tracker's silence
+      // detector (disarmed while paused, restarted fresh on resume) only
+      // ever *enters* Tier 1, which has already fired by the time any help
+      // audio plays.
+      pauseListening: pause,
+      resumeListening: resume,
     );
     _helpStateSub = _scaffold.helpState.listen((state) {
       if (!_disposed) helpState.value = state;

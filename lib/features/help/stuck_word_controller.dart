@@ -4,6 +4,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show VoidCallback;
+
 import 'package:learn_to_read/domain/models/content_models.dart';
 import 'package:learn_to_read/domain/models/user_models.dart';
 import 'package:learn_to_read/domain/tuning.dart';
@@ -80,6 +82,43 @@ import 'package:learn_to_read/features/listening/contracts/tracker_events.dart';
 /// `t1`/`t2` default to [kStruggleT1]/[kTier2WaitT2] from the single tuning
 /// file and are constructor overrides so per-level timing profiles (longer
 /// patience at higher levels) and pilot adjustments never touch this file.
+///
+/// ## The listening bracket (help audio over an open microphone)
+///
+/// Every help pass that plays audio — the Tier 1 sound-out, Tier 2's model
+/// word + "your turn" pair, and the near-miss prompt's two clips — is
+/// bracketed by [pauseListening]/[resumeListening], the same two callbacks
+/// `NarrationController` and `OnDemandSoundOut` take. Without the bracket
+/// the recognizer hears the app's own pronunciation of the target word and
+/// can self-accept it (recorded unaided-correct for a word the child never
+/// said), and Tier 1's phoneme bursts feed the tracker's A-12
+/// non-matching-burst counter. Bracket guarantees:
+///
+///  - **exactly one pause and one resume per pass** (per Tier 1 sound-out,
+///    per Tier 2 clip pair, per near-miss prompt) when passes don't overlap;
+///  - **resume is unconditional** — a missing clip, an audio error, and a
+///    cancelled/superseded pass all still close their bracket
+///    (swallow-and-resume, `NarrationController.replay`'s posture);
+///  - **overlapping passes never unbalance**: brackets are depth-counted, so
+///    if a new tier fires while a superseded pass's clip is still winding
+///    down, [pauseListening] fires only on the first open and
+///    [resumeListening] only when the *last* open bracket closes — listening
+///    is never resumed under live help audio and never paused twice;
+///  - on [dispose] no resume is issued (the owning screen is being torn
+///    down and owns its tracker's final state — `OnDemandSoundOut`'s pinned
+///    dispose semantics).
+///
+/// **Escalation timing is unaffected by pausing.** T1→T2 escalation is
+/// driven entirely by this controller's own [Timer]s (the post-Tier-1 `t2`
+/// wait and the final `t2` wait after Tier 2's clips), never by tracker
+/// events: the tracker's silence detector is disarmed while paused
+/// (`ReadingTracker.pause` stops it, `resume` restarts the window fresh),
+/// but tracker silence/struggle only ever *enters* Tier 1 — by the time any
+/// help audio plays (and the bracket pauses), that trigger has already
+/// fired, and the ladder's internal timers carry it the rest of the way.
+///
+/// Both callbacks default to no-ops so existing construction sites are
+/// source- and behavior-compatible until they wire the tracker in.
 class StuckWordController {
   /// Wires the scaffold to its collaborators.
   ///
@@ -87,7 +126,10 @@ class StuckWordController {
   /// [yourTurnPromptAudioRef] is the authored recorded "your turn" line
   /// played at Tier 2. [onHelpGiven] is the `help_given(tier)` analytics
   /// emission hook — the actual client wiring lives in the reading screen /
-  /// app shell.
+  /// app shell. [pauseListening]/[resumeListening] bracket every help audio
+  /// pass so recognition never hears the app's own clips (see the class
+  /// docs); they default to no-ops, which leaves behavior byte-identical to
+  /// an unbracketed controller.
   StuckWordController({
     required Stream<TrackerEvent> events,
     required this.soundOutSequence,
@@ -98,6 +140,8 @@ class StuckWordController {
     this.t1 = kStruggleT1,
     this.t2 = kTier2WaitT2,
     this.onHelpGiven,
+    this.pauseListening = _noopListening,
+    this.resumeListening = _noopListening,
   }) {
     _eventsSub = events.listen(_onEvent);
   }
@@ -128,6 +172,16 @@ class StuckWordController {
   /// [WordHelped] emission and never for a [HelpLevel.none] resolution.
   final void Function(int index, HelpLevel tier)? onHelpGiven;
 
+  /// Suspends recognition for the duration of a help audio pass (default
+  /// no-op). Wire it to the same tracker `pause` the narration replay and
+  /// on-demand sound-out use.
+  final VoidCallback pauseListening;
+
+  /// Resumes recognition after a help audio pass (default no-op).
+  /// Guaranteed to be called exactly once per pause, on every exit path —
+  /// completion, error, and cancellation alike — except [dispose].
+  final VoidCallback resumeListening;
+
   final StreamController<HelpState> _helpStateController =
       StreamController<HelpState>.broadcast();
   final StreamController<WordHelped> _wordHelpedController =
@@ -136,6 +190,12 @@ class StuckWordController {
   StreamSubscription<TrackerEvent>? _eventsSub;
   _WatchedWord? _current;
   bool _disposed = false;
+
+  /// How many listening brackets are open right now. [pauseListening] fires
+  /// only on 0 -> 1 and [resumeListening] only on 1 -> 0, so overlapping
+  /// passes (a new tier firing while a superseded pass's clip winds down)
+  /// can never double-pause or resume under live help audio.
+  int _pauseDepth = 0;
 
   /// The help state the reading screen renders: one event per highlighted
   /// grapheme cluster through Tier 1, a single tier-`modeled` event with no
@@ -221,12 +281,47 @@ class StuckWordController {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // The listening bracket.
+  // -------------------------------------------------------------------------
+
+  /// Opens one listening bracket and returns its closer.
+  ///
+  /// The closer is idempotent (safe to call from both a pass's normal end
+  /// and its cancellation path) and each open is matched by exactly one
+  /// effective close, so [_pauseDepth] can never go negative or leak a
+  /// pause. On [dispose] the underlying [resumeListening] is deliberately
+  /// not issued — the owner is tearing the tracker down.
+  VoidCallback _openListeningBracket() {
+    if (_pauseDepth == 0) {
+      pauseListening();
+    }
+    _pauseDepth++;
+    var closed = false;
+    return () {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      _pauseDepth--;
+      if (_pauseDepth == 0 && !_disposed) {
+        resumeListening();
+      }
+    };
+  }
+
   Future<void> _playNearMiss(_WatchedWord watched) async {
+    // Bracket: the prompt line + word pronunciation play while the mic is
+    // already listening for the NEXT word — pause so the pair can't be
+    // counted as one of its non-matching bursts.
+    final closeBracket = _openListeningBracket();
     try {
       await nearMissPrompt.play(watched.word);
     } catch (_) {
       // A missing authored clip must never block reading: the word is
       // already accepted and green, so there is nothing to recover.
+    } finally {
+      closeBracket();
     }
   }
 
@@ -240,6 +335,11 @@ class StuckWordController {
     }
     watched.cancelTimer();
     watched.tier = HelpLevel.soundOut;
+    // Bracket the whole sound-out pass: paused before the first phoneme is
+    // dispatched, resumed when the stream closes ([_onSoundOutDone]) or the
+    // pass is cancelled mid-word (`_WatchedWord.cancel`), whichever comes
+    // first — exactly one pause/resume per pass.
+    watched.soundOutBracketClose = _openListeningBracket();
     watched.soundOutSub = soundOutSequence
         .play(watched.word)
         .listen(
@@ -259,6 +359,10 @@ class StuckWordController {
 
   void _onSoundOutDone(_WatchedWord watched) {
     watched.soundOutSub = null;
+    // The pass's audio is over (including the error path — the stream still
+    // closes): resume BEFORE the T2 wait, so the child's production window
+    // is fully heard.
+    watched.closeSoundOutBracket();
     if (!_isActive(watched)) {
       return;
     }
@@ -286,6 +390,12 @@ class StuckWordController {
   }
 
   Future<void> _playTier2(_WatchedWord watched) async {
+    // Bracket the clip pair: paused before the model word is dispatched,
+    // resumed once "your turn" completes — or on any error, cancellation,
+    // or supersession (`finally` runs on the early returns too) — so the
+    // recognizer can never hear the app model the target word and
+    // self-accept it. Exactly one pause/resume per Tier 2 firing.
+    final closeBracket = _openListeningBracket();
     try {
       final wordHandle = await audioService.play(
         watched.word.pronunciationAudioRef,
@@ -303,6 +413,8 @@ class StuckWordController {
     } catch (_) {
       // A missing clip is a content bug, not a reason to strand the child:
       // fall through to the final T2 wait and the auto-accept below.
+    } finally {
+      closeBracket();
     }
     if (!_isActive(watched)) {
       return;
@@ -350,6 +462,11 @@ class StuckWordController {
   }
 }
 
+/// The default for [StuckWordController.pauseListening] /
+/// [StuckWordController.resumeListening]: no microphone session wired, do
+/// nothing — byte-identical behavior to the pre-bracket controller.
+void _noopListening() {}
+
 /// The mutable per-word state the ladder walks: which word, how far up the
 /// tiers it got, and the one pending timer / sound-out subscription it owns.
 ///
@@ -378,18 +495,34 @@ class _WatchedWord {
   /// The live Tier 1 sound-out subscription, if any.
   StreamSubscription<HelpState>? soundOutSub;
 
+  /// Closes the Tier 1 pass's listening bracket. Held here because a
+  /// cancelled subscription never fires `onDone` — [cancel] closing it is
+  /// what keeps the resume guarantee on the supersede/resolve paths. The
+  /// closure itself is idempotent; nulling it here is just tidiness.
+  VoidCallback? soundOutBracketClose;
+
   void cancelTimer() {
     timer?.cancel();
     timer = null;
   }
 
+  /// Closes the sound-out listening bracket, exactly once (safe to call
+  /// from both the `onDone` path and [cancel]).
+  void closeSoundOutBracket() {
+    final close = soundOutBracketClose;
+    soundOutBracketClose = null;
+    close?.call();
+  }
+
   /// Stops everything still pending for this word. Cancelling the sound-out
   /// subscription is what guarantees no further phoneme is force-played once
-  /// the child has produced the word.
+  /// the child has produced the word — and, since a cancelled subscription's
+  /// `onDone` never fires, this is also where its listening bracket closes.
   void cancel() {
     cancelTimer();
     final sub = soundOutSub;
     soundOutSub = null;
     unawaited(sub?.cancel());
+    closeSoundOutBracket();
   }
 }
